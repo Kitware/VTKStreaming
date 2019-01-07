@@ -71,8 +71,6 @@ warn () {
 
 readonly regex_date='20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]'
 readonly basehash_regex="$name $regex_date ([0-9a-f]*)"
-readonly basehash="$( git rev-list --author="$ownership" --grep="$basehash_regex" -n 1 HEAD )"
-readonly upstream_old_short="$( git cat-file commit "$basehash" | sed -n '/'"$basehash_regex"'/ {s/.*(//;s/)//;p}' | egrep '^[0-9a-f]+$' )"
 
 ########################################################################
 # Sanity checking
@@ -87,6 +85,18 @@ readonly upstream_old_short="$( git cat-file commit "$basehash" | sed -n '/'"$ba
     die "'repo' is empty"
 [ -n "$tag" ] || \
     die "'tag' is empty"
+
+# Check for an empty destination directory on disk.  By checking on disk and
+# not in the repo it allows a library to be freshly re-inialized in a single
+# commit rather than first deleting the old copy in one commit and adding the
+# new copy in a seperate commit.
+if [ ! -d "$(git rev-parse --show-toplevel)/$subtree" ]; then
+    readonly basehash=""
+else
+    readonly basehash="$( git rev-list --author="$ownership" --grep="$basehash_regex" -n 1 HEAD )"
+fi
+readonly upstream_old_short="$( git cat-file commit "$basehash" | sed -n '/'"$basehash_regex"'/ {s/.*(//;s/)//;p}' | egrep '^[0-9a-f]+$' )"
+
 [ -n "$basehash" ] || \
     warn "'basehash' is empty; performing initial import"
 readonly do_shortlog="${shortlog-false}"
