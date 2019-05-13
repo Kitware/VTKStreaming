@@ -71,6 +71,9 @@ warn () {
 
 readonly regex_date='20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]'
 readonly basehash_regex="$name $regex_date ([0-9a-f]*)"
+readonly toplevel_dir="$( git rev-parse --show-toplevel )"
+
+cd "$toplevel_dir"
 
 ########################################################################
 # Sanity checking
