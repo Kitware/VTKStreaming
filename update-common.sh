@@ -56,7 +56,7 @@ disable_custom_gitattributes() {
     pushd "${extractdir}/${name}-reduced"
     # Git does not allow custom attributes in a subdirectory where we
     # are about to merge the `.gitattributes` file, so disable them.
-    sed -i '/^\[attr\]/ {s/^/#/}' .gitattributes
+    sed -i '/^\[attr\]/ {s/^/#/;}' .gitattributes
     popd
 }
 
@@ -95,7 +95,7 @@ if [ ! -d "$(git rev-parse --show-toplevel)/$subtree" ]; then
 else
     readonly basehash="$( git rev-list --author="$ownership" --grep="$basehash_regex" -n 1 HEAD )"
 fi
-readonly upstream_old_short="$( git cat-file commit "$basehash" | sed -n '/'"$basehash_regex"'/ {s/.*(//;s/)//;p}' | egrep '^[0-9a-f]+$' )"
+readonly upstream_old_short="$( git cat-file commit "$basehash" | sed -n '/'"$basehash_regex"'/ {s/.*(//;s/)//;p;}' | egrep '^[0-9a-f]+$' )"
 
 [ -n "$basehash" ] || \
     warn "'basehash' is empty; performing initial import"
