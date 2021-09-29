@@ -152,7 +152,7 @@ if [ -n "$basehash" ]; then
     git worktree add "$extractdir" "$basehash"
     # Clear out the working tree
     pushd "$extractdir"
-    git ls-files --recurse-submodules | xargs rm -v
+    git ls-files -z --recurse-submodules | xargs -0 rm -v
     find . -type d -empty -delete
     popd
 else
