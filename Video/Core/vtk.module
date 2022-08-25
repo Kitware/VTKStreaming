@@ -1,0 +1,11 @@
+NAME
+  VTKVideo::Core
+LIBRARY_NAME
+  vtkVideoCore
+GROUPS
+  Video
+KIT
+  VTKVideo::Core
+DEPENDS
+  VTK::CommonCore
+  VTK::CommonDataModel

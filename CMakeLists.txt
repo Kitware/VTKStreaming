@@ -45,8 +45,8 @@ if (NOT DEFINED VTKSTREAMING_CMAKE_DESTINATION)
 endif ()
 
 set(_vtk_module_log ALL)
-vtk_module_find_modules(VTKSTREAMING_MODULE_FILES "${PROJECT_SOURCE_DIR}/Streaming")
-vtk_module_find_kits(VTKSTREAMING_KIT_FILES "${PROJECT_SOURCE_DIR}/Streaming")
+vtk_module_find_modules(VTKSTREAMING_MODULE_FILES "${PROJECT_SOURCE_DIR}/Video")
+vtk_module_find_kits(VTKSTREAMING_KIT_FILES "${PROJECT_SOURCE_DIR}/Video")
 vtk_module_scan(
   MODULE_FILES 					${VTKSTREAMING_MODULE_FILES}
   KIT_FILES           	${VTKSTREAMING_KIT_FILES}
