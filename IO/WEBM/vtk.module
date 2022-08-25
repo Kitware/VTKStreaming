@@ -1,0 +1,12 @@
+NAME
+  VTK::IOWEBM
+LIBRARY_NAME
+  vtkIOWEBM
+GROUPS
+  StandAlone
+DEPENDS
+  VTK::CommonCore
+  VTK::CommonDataModel
+PRIVATE_DEPENDS
+  VTK::VideoCore
+  VTK::libwebm
