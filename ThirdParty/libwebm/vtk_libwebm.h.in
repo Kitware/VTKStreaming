@@ -1,0 +1,25 @@
+/*=========================================================================
+
+  Program:   Visualization Toolkit
+  Module:    vtk_libwebm.h
+
+  Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
+  All rights reserved.
+  See Copyright.txt or http://www.kitware.com/Copyright.htm for details.
+
+     This software is distributed WITHOUT ANY WARRANTY; without even
+     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+     PURPOSE.  See the above copyright notice for more information.
+
+=========================================================================*/
+#ifndef vtk_libwebm_h
+#define vtk_libwebm_h
+
+#include <vtklibwebm/mkvmuxer/mkvmuxer.h>
+#include <vtklibwebm/mkvmuxer/mkvmuxertypes.h>
+#include <vtklibwebm/mkvmuxer/mkvmuxerutil.h>
+#include <vtklibwebm/mkvmuxer/mkvwriter.h>
+#include <vtklibwebm/mkvparser/mkvparser.h>
+#include <vtklibwebm/mkvparser/mkvreader.h>
+
+#endif
