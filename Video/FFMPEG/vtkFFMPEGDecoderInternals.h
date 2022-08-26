@@ -36,7 +36,7 @@ class vtkFFMPEGDecoderInternals
 public:
   // data
   AVCodecContext* DecodeCtx;
-  AVFrame *OutputAVFrame = nullptr, *SoftwareFrame = nullptr;
+  AVFrame* SoftwareFrame = nullptr;
   AVPacket* Packet;
   AVPixelFormat OutputPixFmt;
 

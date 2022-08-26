@@ -24,50 +24,6 @@ extern "C"
 }
 
 //------------------------------------------------------------------------------
-bool vtkFFMPEGDecoderInternals::IsOutputFrameOutdated()
-{
-  vtkLogScopeFunction(TRACE);
-  return this->OutputAVFrame != nullptr &&
-    (this->OutputAVFrame->width != this->SoftwareFrame->width ||
-      this->OutputAVFrame->height != this->SoftwareFrame->height);
-}
-
-//------------------------------------------------------------------------------
-bool vtkFFMPEGDecoderInternals::InitializeOutputFrame(AVPixelFormat pixFmt)
-{
-  vtkLogScopeFunction(TRACE);
-  if (this->IsOutputFrameOutdated())
-  {
-    // buffers are outdated, need to allocate new frame data.
-    av_frame_free(&this->OutputAVFrame);
-    this->OutputAVFrame = nullptr;
-  }
-  else if (this->OutputAVFrame != nullptr)
-  {
-    return true;
-  }
-
-  vtkLog(TRACE, "Setting up new output frame");
-  this->OutputAVFrame = av_frame_alloc();
-  if (!this->OutputAVFrame)
-  {
-    vtkLog(ERROR, "Failed to allocate output frame");
-    return false;
-  }
-
-  this->OutputAVFrame->width = this->SoftwareFrame->width;
-  this->OutputAVFrame->height = this->SoftwareFrame->height;
-  this->OutputAVFrame->format = pixFmt;
-
-  if (av_frame_get_buffer(this->OutputAVFrame, 0) < 0)
-  {
-    vtkLog(ERROR, << "Failed to allocate output frame data");
-    return false;
-  }
-  return true;
-}
-
-//------------------------------------------------------------------------------
 bool vtkFFMPEGDecoderInternals::GetOutputFrameFromDecodedFrame()
 {
   vtkLogScopeFunction(TRACE);
@@ -75,57 +31,49 @@ bool vtkFFMPEGDecoderInternals::GetOutputFrameFromDecodedFrame()
                 << this->SoftwareFrame->height);
   vtkLog(TRACE, << "Decoded frame linsize " << this->SoftwareFrame->linesize[0] << "x"
                 << this->SoftwareFrame->linesize[1] << 'x' << this->SoftwareFrame->linesize[2]);
-  vtkLog(TRACE, << "Output frame dimensions " << this->OutputAVFrame->width << "x"
-                << this->OutputAVFrame->height);
 
-  auto tStart = std::chrono::high_resolution_clock::now();
-
-  this->SwScaleCtx = sws_getCachedContext(this->SwScaleCtx, this->SoftwareFrame->width,
-    this->SoftwareFrame->height, AVPixelFormat(this->SoftwareFrame->format),
-    this->OutputAVFrame->width, this->OutputAVFrame->height,
-    AVPixelFormat(this->OutputAVFrame->format), 0, nullptr, nullptr, nullptr);
-
-  if (!this->SwScaleCtx)
+  // Wrap the decoded frame into our vtkRawVideoFrame instance.
+  this->OutputVideoFrame->SetWidth(this->SoftwareFrame->width);
+  this->OutputVideoFrame->SetHeight(this->SoftwareFrame->height);
+  this->OutputVideoFrame->SetIsKeyFrame(this->SoftwareFrame->key_frame);
+  switch (this->SoftwareFrame->format)
   {
-    vtkLog(ERROR, << "Could not initialize a scaling context for given parameters");
-    return false;
+    case AV_PIX_FMT_RGB24:
+      this->OutputVideoFrame->SetPixelFormat(VTKPixelFormat::RGB24);
+      this->OutputVideoFrame->SetSliceOrder(vtkRawVideoFrame::SliceOrderType::BottomUp);
+      break;
+    case AV_PIX_FMT_RGBA:
+      this->OutputVideoFrame->SetPixelFormat(VTKPixelFormat::RGBA32);
+      this->OutputVideoFrame->SetSliceOrder(vtkRawVideoFrame::SliceOrderType::BottomUp);
+      break;
+    case AV_PIX_FMT_NV12:
+      this->OutputVideoFrame->SetPixelFormat(VTKPixelFormat::NV12);
+      this->OutputVideoFrame->SetSliceOrder(vtkRawVideoFrame::SliceOrderType::TopDown);
+      break;
+    case AV_PIX_FMT_YUV420P:
+    default:
+      this->OutputVideoFrame->SetPixelFormat(VTKPixelFormat::YUV420P);
+      this->OutputVideoFrame->SetSliceOrder(vtkRawVideoFrame::SliceOrderType::TopDown);
+      break;
   }
-
-  // SoftwareFrame is always top-down, so we need to flip the data when output requires bottom-up.
-  if (this->OutputVideoFrame->GetSliceOrder() == vtkRawVideoFrame::SliceOrderType::BottomUp)
+  // set the arrays with strides.
+  // NOTE: upon receiving a next decoded frame, the data backing  OutputVideoFrame will be invalid.
+  // Keep that in mind.
+  this->OutputVideoFrame->SetStrides(this->SoftwareFrame->linesize, AV_NUM_DATA_POINTERS);
+  for (int planeId = 0;
+       planeId < VTK_RAW_VIDEO_FRAME_MAX_NUM_PLANES && planeId < AV_NUM_DATA_POINTERS; ++planeId)
   {
-    for (int i = 0; i < 4; i++)
+    int size = 0;
+    if (planeId && this->SoftwareFrame->format != AV_PIX_FMT_RGBA &&
+      this->SoftwareFrame->format != AV_PIX_FMT_RGB24)
     {
-      if (i &&
-        (this->SoftwareFrame->format != AV_PIX_FMT_RGB24 &&
-          this->SoftwareFrame->format != AV_PIX_FMT_RGBA))
-      {
-        this->SoftwareFrame->data[i] += static_cast<ptrdiff_t>(
-          this->SoftwareFrame->linesize[i] * ((this->SoftwareFrame->height >> 1) - 1));
-        this->SoftwareFrame->linesize[i] = -this->SoftwareFrame->linesize[i];
-      }
-      else
-      {
-        this->SoftwareFrame->data[i] += static_cast<ptrdiff_t>(
-          this->SoftwareFrame->linesize[i] * (this->SoftwareFrame->height - 1));
-        this->SoftwareFrame->linesize[i] = -this->SoftwareFrame->linesize[i];
-      }
+      size = this->SoftwareFrame->linesize[planeId] * (this->SoftwareFrame->height >> 1);
     }
+    else
+    {
+      size = this->SoftwareFrame->linesize[planeId] * (this->SoftwareFrame->height);
+    }
+    this->OutputVideoFrame->SetArray(this->SoftwareFrame->data[planeId], size, planeId);
   }
-
-  sws_scale(this->SwScaleCtx, (const uint8_t* const*)this->SoftwareFrame->data,
-    this->SoftwareFrame->linesize, 0, this->SoftwareFrame->height, this->OutputAVFrame->data,
-    this->OutputAVFrame->linesize);
-
-  this->dtScale = std::chrono::high_resolution_clock::now() - tStart;
-
-  // Prepare the callback payload.
-  this->OutputVideoFrame->SetWidth(this->OutputAVFrame->width);
-  this->OutputVideoFrame->SetHeight(this->OutputAVFrame->height);
-  this->OutputVideoFrame->SetIsKeyFrame(this->OutputAVFrame->key_frame);
-  this->OutputVideoFrame->SetPixelFormat(
-    this->OutputPixFmt == AV_PIX_FMT_RGBA ? VTKPixelFormat::RGBA32 : VTKPixelFormat::YUV420P);
-  this->OutputVideoFrame->SetArray(this->OutputAVFrame->data[0], this->OutputAVFrame->linesize[0]);
-
   return true;
 }

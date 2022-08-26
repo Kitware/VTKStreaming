@@ -135,12 +135,6 @@ void vtkFFMPEGSoftwareDecoder::ShutdownInternal()
     internals.DecodeCtx = nullptr;
   }
 
-  if (internals.OutputAVFrame)
-  {
-    av_frame_free(&internals.OutputAVFrame);
-    internals.OutputAVFrame = nullptr;
-  }
-
   if (internals.SoftwareFrame)
   {
     av_frame_free(&internals.SoftwareFrame);
@@ -222,18 +216,6 @@ bool vtkFFMPEGSoftwareDecoder::Decode()
     }
     else
     {
-      switch (this->OutputPixelFormat)
-      {
-        case YUV420P:
-          internals.InitializeOutputFrame(AV_PIX_FMT_YUV420P);
-          internals.OutputVideoFrame->SetSliceOrder(vtkRawVideoFrame::SliceOrderType::TopDown);
-          break;
-        case RGBA32:
-        default:
-          internals.InitializeOutputFrame(AV_PIX_FMT_RGBA);
-          internals.OutputVideoFrame->SetSliceOrder(vtkRawVideoFrame::SliceOrderType::BottomUp);
-          break;
-      }
       internals.GetOutputFrameFromDecodedFrame();
       this->InvokeEvent(vtkCommand::ProgressEvent, internals.OutputVideoFrame);
     }
