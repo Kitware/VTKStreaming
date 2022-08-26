@@ -30,7 +30,10 @@ vtkRawVideoFrame::~vtkRawVideoFrame() = default;
 void vtkRawVideoFrame::PrintSelf(ostream& os, vtkIndent indent)
 {
   this->Superclass::PrintSelf(os, indent);
-  os << "Size: " << this->Buffer->GetNumberOfValues() << "\n";
+  for (int i = 0; i < VTK_RAW_VIDEO_FRAME_MAX_NUM_PLANES; ++i)
+  {
+    os << "Plane-" << i << " Size: " << this->Planes[i]->GetNumberOfValues() << "\n";
+  }
   os << "IsKeyFrame: " << this->IsKeyFrame << "\n";
   os << "PresentationTS: " << this->PresentationTS << "\n";
   os << "Width: " << this->Width << "\n";
@@ -41,12 +44,16 @@ void vtkRawVideoFrame::PrintSelf(ostream& os, vtkIndent indent)
   {
     case VTKPixelFormat::NV12:
       os << "NV12\n";
+      break;
     case VTKPixelFormat::RGB24:
       os << "RGB24\n";
+      break;
     case VTKPixelFormat::RGBA32:
       os << "RGBA32\n";
+      break;
     case VTKPixelFormat::YUV420P:
       os << "YUV420P\n";
+      break;
     default:
       break;
   }
@@ -55,6 +62,7 @@ void vtkRawVideoFrame::PrintSelf(ostream& os, vtkIndent indent)
   {
     case vtkRawVideoFrame::SliceOrderType::TopDown:
       os << "TopDown\n";
+      break;
     case vtkRawVideoFrame::SliceOrderType::BottomUp:
     default:
       os << "BottomUp\n";
@@ -63,25 +71,25 @@ void vtkRawVideoFrame::PrintSelf(ostream& os, vtkIndent indent)
 }
 
 //------------------------------------------------------------------------------
-void vtkRawVideoFrame::SetSize(int size)
+void vtkRawVideoFrame::SetSize(int size, int plane /*=0*/)
 {
-  this->Buffer->SetNumberOfValues(size);
+  this->Planes[plane]->SetNumberOfValues(size);
 }
 
 //------------------------------------------------------------------------------
-int vtkRawVideoFrame::GetSize()
+int vtkRawVideoFrame::GetSize(int plane /*=0*/) const
 {
-  return this->Buffer->GetNumberOfValues();
+  return this->Planes[plane]->GetNumberOfValues();
 }
 
 //------------------------------------------------------------------------------
-void vtkRawVideoFrame::SetArray(unsigned char* buffer, int size)
+void vtkRawVideoFrame::SetArray(unsigned char* buffer, int size, int plane /*=0*/)
 {
-  this->Buffer->SetArray(buffer, size, 1);
+  this->Planes[plane]->SetArray(buffer, size, 1);
 }
 
 //------------------------------------------------------------------------------
-void vtkRawVideoFrame::SetArray(vtkUnsignedCharArray* buffer)
+void vtkRawVideoFrame::SetArray(vtkUnsignedCharArray* buffer, int plane /*=0*/)
 {
   if (buffer != nullptr)
   {
@@ -90,14 +98,14 @@ void vtkRawVideoFrame::SetArray(vtkUnsignedCharArray* buffer)
 }
 
 //------------------------------------------------------------------------------
-void vtkRawVideoFrame::CopyData(unsigned char* buffer, int size)
+void vtkRawVideoFrame::CopyData(unsigned char* buffer, int size, int plane /*=0*/)
 {
-  this->Buffer->SetNumberOfValues(size);
-  std::copy(buffer, buffer + size, this->Buffer->GetPointer(0));
+  this->Planes[plane]->SetNumberOfValues(size);
+  std::copy(buffer, buffer + size, this->Planes[plane]->GetPointer(0));
 }
 
 //------------------------------------------------------------------------------
-void vtkRawVideoFrame::CopyData(vtkUnsignedCharArray* buffer)
+void vtkRawVideoFrame::CopyData(vtkUnsignedCharArray* buffer, int plane /*=0*/)
 {
   if (buffer != nullptr)
   {
@@ -106,8 +114,54 @@ void vtkRawVideoFrame::CopyData(vtkUnsignedCharArray* buffer)
 }
 
 //------------------------------------------------------------------------------
-int vtkRawVideoFrame::GetData(unsigned char*& buffer) const
+int vtkRawVideoFrame::GetData(unsigned char*& buffer, int plane /*=0*/) const
 {
-  buffer = this->Buffer->GetPointer(0);
-  return this->Buffer->GetNumberOfValues();
+  buffer = this->Planes[plane]->GetPointer(0);
+  return this->Planes[plane]->GetNumberOfValues();
+}
+
+//------------------------------------------------------------------------------
+void vtkRawVideoFrame::SetStrides(int* strides, int size)
+{
+  for (int i = 0; i < 8 && i < size; ++i)
+  {
+    this->Strides[i] = strides[i];
+  }
+  this->Modified();
+  this->StridesMTime = this->GetMTime();
+}
+
+//------------------------------------------------------------------------------
+void vtkRawVideoFrame::ComputeStrides(int byteAlignment /*=1*/)
+{
+  if (this->GetMTime() <= this->StridesMTime)
+  {
+    return;
+  }
+
+  auto getPaddedSize = [&byteAlignment](const int& size)
+  { return size + (byteAlignment - (size % byteAlignment)) % byteAlignment; };
+
+  switch (this->PixelFormat)
+  {
+    case RGBA32:
+      this->Strides[0] = getPaddedSize(4 * this->Width);
+      break;
+    case RGB24:
+      this->Strides[0] = getPaddedSize(3 * this->Width);
+      break;
+    case YUV420P:
+      this->Strides[0] = getPaddedSize(this->Width);
+      this->Strides[1] = getPaddedSize(this->Width >> 1);
+      this->Strides[2] = getPaddedSize(this->Width >> 1);
+      break;
+    case NV12:
+      this->Strides[0] = getPaddedSize(this->Width);
+      this->Strides[1] = getPaddedSize(this->Strides[0] >> 1);
+      break;
+    default:
+      vtkLog(ERROR, << "Unsupported pixel format");
+  }
+  this->Modified();
+  this->StridesMTime = this->GetMTime();
 }

@@ -45,7 +45,11 @@
 
 #include "vtkObject.h"
 #include "vtkPixelFormats.h"
+#include "vtkType.h"
 #include "vtkUnsignedCharArray.h"
+#include <vector>
+
+#define VTK_RAW_VIDEO_FRAME_MAX_NUM_PLANES 8
 
 class VTKVIDEOCORE_EXPORT vtkRawVideoFrame : public vtkObject
 {
@@ -113,9 +117,10 @@ public:
   /**
    * Set/Get the size of an internal buffer.
    * Use the SetSize variant when you wish to prepare the frame from an external data pointer.
+   * plane value: 0-VTK_RAW_VIDEO_FRAME_MAX_NUM_PLANES
    */
-  virtual void SetSize(int size);
-  virtual int GetSize();
+  virtual void SetSize(int size, int plane = 0);
+  virtual int GetSize(int plane = 0) const;
   ///@}
 
   ///@{
@@ -124,19 +129,47 @@ public:
    * This method does NOT save the array contents.
    * Remember to consume the buffer from GetData(buf) before
    * the owner frees this buffer.
+   * plane value: 0-VTK_RAW_VIDEO_FRAME_MAX_NUM_PLANES
+   * Use the plane argument to specify a higher (>0) plane for planar image formats like YUV, NV12.
+   * In packed image formats like RGBA32 and RGB24, all the data is in the Planes[0] buffer.
+   * In planar image formats like YUV and friends, the Y data is in Planes[0], U -> Planes[1], V ->
+   * Planes[2]. This class can represent upto 8 planes.
    */
-  virtual void SetArray(unsigned char* buffer, int size);
-  void SetArray(vtkUnsignedCharArray* buffer);
-  virtual int GetData(unsigned char*& buffer) const;
+  virtual void SetArray(unsigned char* buffer, int size, int plane = 0);
+  void SetArray(vtkUnsignedCharArray* buffer, int plane = 0);
+  virtual int GetData(unsigned char*& buffer, int plane = 0) const;
   ///@}
 
   ///@{
   /**
    * Copy the array that represents image pixels.
    * This method saves the array contents by copying the elements.
+   * plane value: 0-VTK_RAW_VIDEO_FRAME_MAX_NUM_PLANES
    */
-  virtual void CopyData(unsigned char* buffer, int size);
-  void CopyData(vtkUnsignedCharArray* buffer);
+  virtual void CopyData(unsigned char* buffer, int size, int plane = 0);
+  void CopyData(vtkUnsignedCharArray* buffer, int plane = 0);
+  ///@}
+
+  ///@{
+  /**
+   * Computes strides with specified byte alignment.
+   * You can also set the strides externally and use them to interpret the planes.
+   * In case, you explicitly called SetStrides, make sure that you don't modify the object
+   * before the next GetStrides() call.
+   * Refer https://docs.microsoft.com/en-us/windows/win32/medfound/image-stride for an
+   * excellent description on this topic.
+   */
+  void ComputeStrides(int byteAignment = 1);
+  void SetStrides(int* strides, int size);
+  void SetStrides(std::vector<int> strides) 
+  {
+    this->SetStrides(strides.data(), static_cast<int>(strides.size()));
+  }
+  int* GetStrides() VTK_SIZEHINT(VTK_RAW_VIDEO_FRAME_MAX_NUM_PLANES)
+  {
+    this->ComputeStrides();
+    return this->Strides;
+  }
   ///@}
 
 protected:
@@ -146,10 +179,12 @@ protected:
   bool IsKeyFrame = false;
   int Width = 0;
   int Height = 0;
+  int Strides[VTK_RAW_VIDEO_FRAME_MAX_NUM_PLANES];
+  vtkMTimeType StridesMTime = 0;
   long long PresentationTS = 0;
   VTKPixelFormat PixelFormat;
   SliceOrderType SliceOrder;
-  vtkNew<vtkUnsignedCharArray> Buffer;
+  vtkNew<vtkUnsignedCharArray> Planes[VTK_RAW_VIDEO_FRAME_MAX_NUM_PLANES];
 
 private:
   vtkRawVideoFrame(const vtkRawVideoFrame&) = delete;
