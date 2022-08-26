@@ -79,6 +79,12 @@ void vtkWEBMWriter::SetFileName(const char* filename)
 }
 
 //------------------------------------------------------------------------------
+const char* vtkWEBMWriter::GetFileName() const
+{
+  return this->FileName.c_str();
+}
+
+//------------------------------------------------------------------------------
 void vtkWEBMWriter::WriteFileHeader(const char* codecId)
 {
   vtkLogScopeFunction(TRACE);

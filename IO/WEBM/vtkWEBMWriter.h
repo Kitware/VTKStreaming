@@ -133,7 +133,7 @@ public:
    * Set/Get file name.
    */
   void SetFileName(const char* filename);
-  const char* GetFileName();
+  const char* GetFileName() const;
   ///@}
 
   ///@{
