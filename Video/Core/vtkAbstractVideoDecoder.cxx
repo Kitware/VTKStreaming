@@ -61,6 +61,7 @@ void vtkAbstractVideoDecoder::Shutdown()
     return;
   }
   this->ShutdownInternal();
+  this->Initialized = false;
 }
 
 //------------------------------------------------------------------------------
