@@ -131,6 +131,7 @@ void vtkFFMPEGSoftwareDecoder::ShutdownInternal()
 
   if (internals.DecodeCtx)
   {
+    avcodec_flush_buffers(internals.DecodeCtx);
     avcodec_free_context(&internals.DecodeCtx);
     internals.DecodeCtx = nullptr;
   }
@@ -179,6 +180,8 @@ bool vtkFFMPEGSoftwareDecoder::Decode()
   int ret = avcodec_send_packet(internals.DecodeCtx, internals.Packet);
   if (ret < 0)
   {
+    internals.OutputVideoFrame->SetWidth(0);
+    internals.OutputVideoFrame->SetHeight(0);
     vtkLog(ERROR, "Error sending a packet for decoding");
     return false;
   }
