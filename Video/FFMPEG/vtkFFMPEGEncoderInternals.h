@@ -40,7 +40,7 @@ class vtkRawVideoFrame;
 class vtkFFMPEGEncoderInternals
 {
 public:
-  using PackcketRecvCallbackT = std::function<void(vtkCodedVideoPacket*)>;
+  using PacketRecvCallbackT = std::function<void(vtkCodedVideoPacket*)>;
 
   AVCodecContext* EncodeCtx = nullptr;
   AVFrame *SoftwareFrame = nullptr, *HardwareFrame = nullptr, *Frame = nullptr;
@@ -70,7 +70,7 @@ public:
   bool InitializeHWFrame();
   bool PreprocessInput(vtkRawVideoFrame* frame);
   bool PrepareForEncoding();
-  bool Encode(bool isKeyFrame, PackcketRecvCallbackT& packetReciever);
+  bool Encode(bool isKeyFrame, PacketRecvCallbackT& packetReceiver);
   void Tweak();
 
   void Flush();

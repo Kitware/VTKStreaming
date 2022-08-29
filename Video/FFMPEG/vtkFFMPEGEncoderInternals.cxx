@@ -295,7 +295,7 @@ int vtkFFMPEGEncoderInternals::Push(bool keyFrame /*=false*/)
 
 //------------------------------------------------------------------------------
 // TODO: Think of a way to not let this function block the calling thread.
-bool vtkFFMPEGEncoderInternals::Encode(bool isKeyFrame, PackcketRecvCallbackT& packetReciever)
+bool vtkFFMPEGEncoderInternals::Encode(bool isKeyFrame, PacketRecvCallbackT& packetReceiver)
 {
   vtkLogScopeFunction(TRACE);
   bool ready = this->PrepareForEncoding();
@@ -358,7 +358,7 @@ bool vtkFFMPEGEncoderInternals::Encode(bool isKeyFrame, PackcketRecvCallbackT& p
       pkt->SetWidth(this->Frame->width);
       pkt->SetHeight(this->Frame->height);
       vtkLog(TRACE, << "Successfully encoded, pktSize " << this->Packet->size << "bytes");
-      packetReciever(pkt.GetPointer());
+      packetReceiver(pkt.GetPointer());
     }
     ++this->FrameCounter;
   }

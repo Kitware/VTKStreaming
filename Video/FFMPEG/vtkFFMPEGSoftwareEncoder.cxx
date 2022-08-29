@@ -172,7 +172,7 @@ bool vtkFFMPEGSoftwareEncoder::Encode()
 {
   vtkLogScopeFunction(TRACE);
   auto& internals = *(this->Internals);
-  vtkFFMPEGEncoderInternals::PackcketRecvCallbackT packetReciever = [this](vtkCodedVideoPacket* pkt)
+  vtkFFMPEGEncoderInternals::PacketRecvCallbackT packetReciever = [this](vtkCodedVideoPacket* pkt)
   { this->PacketHandler(pkt); };
 
   bool success = internals.Encode(this->GetForceIFrame(), packetReciever);
