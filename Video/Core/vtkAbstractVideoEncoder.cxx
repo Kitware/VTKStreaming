@@ -127,7 +127,10 @@ bool vtkAbstractVideoEncoder::Push(vtkRawVideoFrame* frame)
   // check if we've to setup a new frame.
   if (this->NeedsNewEncoderFrame(w, h) || this->LastSetupMTime < this->GetMTime())
   {
-    this->TearDownEncoderFrame();
+    // When the dimensions change, a new context is required. Otherwise, a listening decoder will be
+    // oblivious to the change in dimensions.
+    this->Shutdown();
+    this->Initialize();
     // this resets frame->pts = 0
     success = this->SetupEncoderFrame(w, h);
     this->LastSetupMTime = success ? this->GetMTime() : -1;
