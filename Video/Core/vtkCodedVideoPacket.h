@@ -95,6 +95,7 @@ public:
   virtual void SetArray(unsigned char* buffer, int size);
   void SetArray(vtkUnsignedCharArray* buffer);
   int GetData(unsigned char*& buffer) const;
+  vtkUnsignedCharArray* GetData() const { return this->Buffer; };
   ///@}
 
   ///@{
