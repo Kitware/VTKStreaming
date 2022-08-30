@@ -46,10 +46,14 @@ vtkWEBMWriter::vtkWEBMWriter()
 //------------------------------------------------------------------------------
 vtkWEBMWriter::~vtkWEBMWriter()
 {
-  delete this->Internals->segment;
-  delete this->Internals->writer;
-  this->Internals->writer = nullptr;
-  this->Internals->segment = nullptr;
+  if (this->IsHeaderWritten)
+  {
+    this->Internals->segment->Finalize();
+    delete this->Internals->segment;
+    delete this->Internals->writer;
+    this->Internals->writer = nullptr;
+    this->Internals->segment = nullptr;
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -172,6 +176,10 @@ void vtkWEBMWriter::WriteWebmBlock(vtkCodedVideoPacket* packet)
 void vtkWEBMWriter::WriteFileTrailer()
 {
   vtkLogScopeFunction(TRACE);
+  if (!this->IsHeaderWritten)
+  {
+    return;
+  }
   this->Internals->segment->Finalize();
   delete this->Internals->segment;
   delete this->Internals->writer;
