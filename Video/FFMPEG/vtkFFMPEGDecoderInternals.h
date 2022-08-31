@@ -25,8 +25,6 @@
 extern "C"
 {
 #include <libavcodec/avcodec.h>
-#include <libavcodec/codec.h>
-#include <libavcodec/packet.h>
 #include <libavutil/frame.h>
 #include <libavutil/pixfmt.h>
 }

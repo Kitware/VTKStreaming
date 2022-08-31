@@ -24,8 +24,6 @@
 extern "C"
 {
 #include <libavcodec/avcodec.h>
-#include <libavcodec/codec.h>
-#include <libavcodec/packet.h>
 #include <libavutil/avutil.h>
 #include <libavutil/buffer.h>
 #include <libavutil/hwcontext.h>

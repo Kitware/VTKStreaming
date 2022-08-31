@@ -1,6 +1,6 @@
 vtk_module_find_package(
   PACKAGE FFMPEG
-  VERSION 4.3.0
+  VERSION 4.0.0
   FORWARD_VERSION_REQ MINOR
   COMPONENTS
     avformat
