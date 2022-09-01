@@ -109,7 +109,7 @@ void vtkRawVideoFrame::CopyData(vtkUnsignedCharArray* buffer, int plane /*=0*/)
 {
   if (buffer != nullptr)
   {
-    this->SetArray(buffer->GetPointer(0), buffer->GetNumberOfValues());
+    this->CopyData(buffer->GetPointer(0), buffer->GetNumberOfValues(), plane);
   }
 }
 
