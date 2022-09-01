@@ -16,13 +16,17 @@
 #ifndef vtkCodecTypes_h
 #define vtkCodecTypes_h
 
+// Please add new codecs above MaxNumberOfSupportedCodecs
+
 enum VTKCodecType
 {
-  HEVC,
   VP9,
   JPEG,
   BMP, // uncompressed.
-  AV1
+  AV1,
+  H264,
+  H265,
+  MaxNumberOfSupportedCodecs
 };
 
 #endif // vtkCodecTypes_h
