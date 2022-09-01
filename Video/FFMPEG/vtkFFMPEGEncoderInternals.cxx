@@ -99,7 +99,7 @@ bool vtkFFMPEGEncoderInternals::InitializeHWEncodeCtx(AVHWDeviceType type)
   vtkLogScopeFunction(TRACE);
   if (av_hwdevice_ctx_create(&this->HardwareDevCtx, type, nullptr, nullptr, 0) < 0)
   {
-    vtkLog(ERROR, << "Failed to create a VAAPI device");
+    vtkLog(ERROR, << "Failed to create a HW encoding context.");
     return false;
   }
 
@@ -225,7 +225,7 @@ bool vtkFFMPEGEncoderInternals::InitializeCodec()
 }
 
 //------------------------------------------------------------------------------
-bool vtkFFMPEGEncoderInternals::SetupVAAPIHWFrameCtx()
+bool vtkFFMPEGEncoderInternals::SetupHWFrameCtx(AVPixelFormat HWPixelFormat)
 {
   vtkLogScopeFunction(TRACE);
   AVBufferRef* hwFramesRef = nullptr;
@@ -238,7 +238,7 @@ bool vtkFFMPEGEncoderInternals::SetupVAAPIHWFrameCtx()
   }
 
   hwFramesCtx = reinterpret_cast<AVHWFramesContext*>(hwFramesRef->data);
-  hwFramesCtx->format = AV_PIX_FMT_VAAPI;
+  hwFramesCtx->format = HWPixelFormat;
   hwFramesCtx->sw_format = this->InputPixFmt;
   hwFramesCtx->width = this->EncodeCtx->width;
   hwFramesCtx->height = this->EncodeCtx->height;
@@ -377,7 +377,7 @@ void vtkFFMPEGEncoderInternals::Tweak()
   vtkLogScopeFunction(TRACE);
   auto& codec = this->Codec;
   auto& ctx = this->EncodeCtx;
-  if (codec->id == AV_CODEC_ID_VP9)
+  if (codec->id == AV_CODEC_ID_VP9 && std::string(codec->name) == "libvpx-vp9")
   {
     // https://www.reddit.com/r/AV1/comments/k7colv/encoder_tuning_part_1_tuning_libvpxvp9_be_more/
     av_opt_set(ctx->priv_data, "lag-in-frames", "0", 0);
@@ -392,7 +392,59 @@ void vtkFFMPEGEncoderInternals::Tweak()
   }
   else if (codec->id == AV_CODEC_ID_VP9 && this->EncodeCtx->pix_fmt == AV_PIX_FMT_VAAPI)
   {
-    av_opt_set(ctx->priv_data, "rc_mode", "2", 0);
+    av_opt_set(ctx->priv_data, "rc_mode", "2", 0); // cbr
+  }
+  else if (codec->id == AV_CODEC_ID_H264 && this->EncodeCtx->pix_fmt == AV_PIX_FMT_VAAPI)
+  {
+    av_opt_set(ctx->priv_data, "rc_mode", "2", 0); // cbr
+  }
+  else if (codec->id == AV_CODEC_ID_HEVC && this->EncodeCtx->pix_fmt == AV_PIX_FMT_VAAPI)
+  {
+    av_opt_set(ctx->priv_data, "rc_mode", "2", 0); // cbr
+  }
+  else if (codec->id == AV_CODEC_ID_H264 && this->EncodeCtx->pix_fmt == AV_PIX_FMT_CUDA)
+  {
+    av_opt_set(ctx->priv_data, "rc", "cbr", 0);
+    av_opt_set(ctx->priv_data, "preset", "p4", 0);
+    av_opt_set(ctx->priv_data, "tune", "ull", 0);
+    av_opt_set(ctx->priv_data, "profile", "high", 0);
+    av_opt_set(ctx->priv_data, "rc-lookahead", "0", 0);
+    av_opt_set(ctx->priv_data, "multipass", "disabled", 0);
+    av_opt_set(ctx->priv_data, "gpu", "any", 0);
+    av_opt_set(ctx->priv_data, "delay", "0", 0);
+    av_opt_set(ctx->priv_data, "forced-idr", "1", 0);
+    av_opt_set(ctx->priv_data, "zerolatency", "1", 0);
+  }
+  else if (codec->id == AV_CODEC_ID_HEVC && this->EncodeCtx->pix_fmt == AV_PIX_FMT_CUDA)
+  {
+    // same as h264
+    av_opt_set(ctx->priv_data, "rc", "cbr", 0);
+    av_opt_set(ctx->priv_data, "preset", "p4", 0);
+    av_opt_set(ctx->priv_data, "tune", "ull", 0);
+    av_opt_set(ctx->priv_data, "profile", "main", 0);
+    av_opt_set(ctx->priv_data, "rc-lookahead", "0", 0);
+    av_opt_set(ctx->priv_data, "multipass", "disabled", 0);
+    av_opt_set(ctx->priv_data, "gpu", "any", 0);
+    av_opt_set(ctx->priv_data, "delay", "0", 0);
+    av_opt_set(ctx->priv_data, "forced-idr", "1", 0);
+    av_opt_set(ctx->priv_data, "zerolatency", "1", 0);
+  }
+  else if (codec->id == AV_CODEC_ID_H264 && std::string(codec->name) == "libx264")
+  {
+    // https://trac.ffmpeg.org/wiki/Encode/H.264#crf
+    // Applies to libx265 as well.
+    av_opt_set(ctx->priv_data, "tune", "zerolatency", 0);
+    av_opt_set(ctx->priv_data, "preset", "ultrafast", 0);
+    av_opt_set(ctx->priv_data, "rc-lookahead", "0", 0);
+    av_opt_set(ctx->priv_data, "forced-idr", "1", 0);
+  }
+  else if (codec->id == AV_CODEC_ID_HEVC && std::string(codec->name) == "libx265")
+  {
+    // https://trac.ffmpeg.org/wiki/Encode/H.264#crf
+    // Applies to libx265 as well.
+    av_opt_set(ctx->priv_data, "tune", "zerolatency", 0);
+    av_opt_set(ctx->priv_data, "preset", "ultrafast", 0);
+    av_opt_set(ctx->priv_data, "forced-idr", "1", 0);
   }
   else if (std::string(codec->name) == "libaom-av1")
   {
@@ -400,13 +452,6 @@ void vtkFFMPEGEncoderInternals::Tweak()
     av_opt_set(ctx->priv_data, "lag-in-frames", "0", 0);
     av_opt_set(ctx->priv_data, "usage", "realtime", 0); // default is good.
     av_opt_set(ctx->priv_data, "row-mt", "1", 0);       // default auto.
-  }
-  else if (std::string(codec->name) == "libx265")
-  {
-    // https://trac.ffmpeg.org/wiki/Encode/H.264#crf
-    // Applies to libx265 as well.
-    av_opt_set(ctx->priv_data, "tune", "zerolatency", 0);
-    av_opt_set(ctx->priv_data, "preset", "ultrafast", 0);
   }
   // TODO: Provide an interface in abstract video encoder for custom codec parameters.
   for (const auto& pair : this->CustomCodecParameters)

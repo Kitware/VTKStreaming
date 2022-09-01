@@ -63,14 +63,11 @@ bool vtkFFMPEGSoftwareDecoder::InitializeInternal()
 
   switch (this->CodecType)
   {
-    case HEVC:
+    case H264:
+      internals.CodecName = "h264";
+      break;
+    case H265:
       internals.CodecName = "hevc";
-      break;
-    case JPEG:
-      internals.CodecName = "libopenjpeg";
-      break;
-    case BMP:
-      internals.CodecName = "bmp";
       break;
     case AV1:
       internals.CodecName = "libaom-av1";

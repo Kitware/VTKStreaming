@@ -63,7 +63,7 @@ public:
   bool InitializeBasicEncodeCtx();
 
   bool InitializeCodec();
-  bool SetupVAAPIHWFrameCtx();
+  bool SetupHWFrameCtx(AVPixelFormat HWPixelFormat);
   bool InitializeSWFrame();
   bool InitializeHWFrame();
   bool PreprocessInput(vtkRawVideoFrame* frame);

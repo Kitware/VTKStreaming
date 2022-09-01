@@ -21,8 +21,6 @@
 enum VTKCodecType
 {
   VP9,
-  JPEG,
-  BMP, // uncompressed.
   AV1,
   H264,
   H265,

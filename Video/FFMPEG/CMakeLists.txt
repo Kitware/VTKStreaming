@@ -13,7 +13,7 @@ vtk_module_find_package(
 set(classes 
   vtkFFMPEGSoftwareDecoder
   vtkFFMPEGSoftwareEncoder
-  vtkFFMPEGVaapiEncoder
+  vtkFFMPEGHardwareEncoder
 )
 
 set(private_classes

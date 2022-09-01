@@ -66,17 +66,13 @@ bool vtkFFMPEGSoftwareEncoder::InitializeInternal()
 
   switch (this->Codec)
   {
-    case HEVC:
-      internals.CodecName = "libx265";
+    case H264:
+      internals.CodecName = "libx264";
       internals.InputPixFmt = AV_PIX_FMT_YUV420P;
       break;
-    case JPEG:
-      internals.CodecName = "libopenjpeg";
-      internals.InputPixFmt = AV_PIX_FMT_RGBA;
-      break;
-    case BMP:
-      internals.CodecName = "bmp";
-      internals.InputPixFmt = AV_PIX_FMT_BGR24;
+    case H265:
+      internals.CodecName = "libx265";
+      internals.InputPixFmt = AV_PIX_FMT_YUV420P;
       break;
     case AV1:
       internals.CodecName = "libaom-av1";
