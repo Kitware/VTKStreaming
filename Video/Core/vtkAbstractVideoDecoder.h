@@ -92,7 +92,6 @@ protected:
   /**
    * Concrete subclasses implement the process of decoding.
    */
-  virtual bool Decode() = 0;
   virtual bool PushInternal(vtkCodedVideoPacket* packet) = 0;
   ///@}
 

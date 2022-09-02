@@ -65,8 +65,12 @@ protected:
    * Implement parent class decoding.
    */
   void FlushInternal() override;
-  bool Decode() override;
   ///@}
+
+  /**
+   * Implements the decode process.
+   */
+  bool Decode();
 
 private:
   vtkFFMPEGSoftwareDecoder(const vtkFFMPEGSoftwareDecoder&) = delete;

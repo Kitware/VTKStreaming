@@ -177,7 +177,6 @@ protected:
   /**
    * Concrete subclasses implement the process of encoding and compressed packet retrieval.
    */
-  virtual bool Encode() = 0;
   virtual bool PushInternal(vtkRawVideoFrame* frame) = 0;
   virtual void PacketHandler(vtkCodedVideoPacket* pkt);
   ///@}

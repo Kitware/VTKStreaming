@@ -138,8 +138,12 @@ protected:
   bool SetupEncoderFrame(const int& w, const int& h) override;
   bool NeedsNewEncoderFrame(const int& w, const int& h) override;
   void TearDownEncoderFrame() override;
-  bool Encode() override;
   ///@}
+
+  /**
+   * Implements the encode process.
+   */
+  bool Encode();
 
 private:
   vtkFFMPEGHardwareEncoder(const vtkFFMPEGHardwareEncoder&) = delete;
