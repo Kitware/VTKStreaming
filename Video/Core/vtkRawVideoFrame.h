@@ -145,6 +145,9 @@ public:
    * Copy the array that represents image pixels.
    * This method saves the array contents by copying the elements.
    * plane value: 0-VTK_RAW_VIDEO_FRAME_MAX_NUM_PLANES
+   *
+   * Assumes that underlying buffer is allocated to atleast 'size' bytes through
+   * either vtkRawVideoFrame::SetSize or vtkRawVideoFrame::AllocateCopy
    */
   virtual void CopyData(unsigned char* buffer, int size, int plane = 0);
   void CopyData(vtkUnsignedCharArray* buffer, int plane = 0);
@@ -161,7 +164,7 @@ public:
    */
   void ComputeStrides(int byteAignment = 1);
   void SetStrides(int* strides, int size);
-  void SetStrides(std::vector<int> strides) 
+  void SetStrides(std::vector<int> strides)
   {
     this->SetStrides(strides.data(), static_cast<int>(strides.size()));
   }
@@ -170,6 +173,16 @@ public:
     this->ComputeStrides();
     return this->Strides;
   }
+  ///@}
+
+  ///@{
+  /**
+   * Makes a copy of all members except the data.
+   * Use the more expressive AllocateCopy/SetArray/CopyData/GetData functions to manage the
+   * underlying planes.
+   */
+  void ShallowCopy(vtkRawVideoFrame* other);
+  void AllocateCopy(vtkRawVideoFrame* other);
   ///@}
 
 protected:

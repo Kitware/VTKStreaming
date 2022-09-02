@@ -65,7 +65,6 @@ void vtkCodedVideoPacket::SetArray(vtkUnsignedCharArray* buffer)
 //------------------------------------------------------------------------------
 void vtkCodedVideoPacket::CopyData(unsigned char* buffer, int size)
 {
-  this->Buffer->SetNumberOfValues(size);
   std::copy(buffer, buffer + size, this->Buffer->GetPointer(0));
 }
 
@@ -83,4 +82,27 @@ int vtkCodedVideoPacket::GetData(unsigned char*& buffer) const
 {
   buffer = this->Buffer->GetPointer(0);
   return this->Buffer->GetNumberOfValues();
+}
+
+//------------------------------------------------------------------------------
+void vtkCodedVideoPacket::ShallowCopy(vtkCodedVideoPacket* other)
+{
+  if (other == nullptr)
+  {
+    return;
+  }
+  this->IsKeyFrame = other->IsKeyFrame;
+  this->PresentationTS = other->PresentationTS;
+  this->Width = other->Width;
+  this->Height = other->Height;
+}
+
+//------------------------------------------------------------------------------
+void vtkCodedVideoPacket::AllocateCopy(vtkCodedVideoPacket* other)
+{
+  if (other == nullptr)
+  {
+    return;
+  }
+  this->Buffer->SetNumberOfValues(other->Buffer->GetNumberOfValues());
 }

@@ -71,6 +71,30 @@ void vtkRawVideoFrame::PrintSelf(ostream& os, vtkIndent indent)
 }
 
 //------------------------------------------------------------------------------
+void vtkRawVideoFrame::ShallowCopy(vtkRawVideoFrame* other)
+{
+  for (int i = 0; i < VTK_RAW_VIDEO_FRAME_MAX_NUM_PLANES; ++i)
+  {
+    this->Strides[i] = other->Strides[i];
+  }
+  this->IsKeyFrame = other->IsKeyFrame;
+  this->PresentationTS = other->PresentationTS;
+  this->Width = other->Width;
+  this->Height = other->Height;
+  this->PixelFormat = other->PixelFormat;
+  this->SliceOrder = other->SliceOrder;
+}
+
+//------------------------------------------------------------------------------
+void vtkRawVideoFrame::AllocateCopy(vtkRawVideoFrame* other)
+{
+  for (int i = 0; i < VTK_RAW_VIDEO_FRAME_MAX_NUM_PLANES; ++i)
+  {
+    this->Planes[i]->SetNumberOfValues(other->Planes[i]->GetNumberOfValues());
+  }
+}
+
+//------------------------------------------------------------------------------
 void vtkRawVideoFrame::SetSize(int size, int plane /*=0*/)
 {
   this->Planes[plane]->SetNumberOfValues(size);
@@ -93,14 +117,13 @@ void vtkRawVideoFrame::SetArray(vtkUnsignedCharArray* buffer, int plane /*=0*/)
 {
   if (buffer != nullptr)
   {
-    this->SetArray(buffer->GetPointer(0), buffer->GetNumberOfValues());
+    this->SetArray(buffer->GetPointer(0), buffer->GetNumberOfValues(), plane);
   }
 }
 
 //------------------------------------------------------------------------------
 void vtkRawVideoFrame::CopyData(unsigned char* buffer, int size, int plane /*=0*/)
 {
-  this->Planes[plane]->SetNumberOfValues(size);
   std::copy(buffer, buffer + size, this->Planes[plane]->GetPointer(0));
 }
 
