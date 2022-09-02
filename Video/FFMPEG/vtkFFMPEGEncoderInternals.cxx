@@ -268,7 +268,7 @@ bool vtkFFMPEGEncoderInternals::PreprocessInput(vtkRawVideoFrame* rgba32Image)
 }
 
 //------------------------------------------------------------------------------
-int vtkFFMPEGEncoderInternals::Push(bool keyFrame /*=false*/)
+int vtkFFMPEGEncoderInternals::Send(bool keyFrame /*=false*/)
 {
   vtkLogScopeFunction(TRACE);
   if (this->Frame)
@@ -297,7 +297,7 @@ bool vtkFFMPEGEncoderInternals::Encode(bool isKeyFrame, PacketRecvCallbackT& pac
   }
 
   auto tStart = std::chrono::high_resolution_clock::now();
-  int status = this->Push(isKeyFrame);
+  int status = this->Send(isKeyFrame);
   if (status < 0)
   {
     this->dtEncode = std::chrono::nanoseconds(0);

@@ -77,7 +77,7 @@ public:
 
 private:
   bool ConvertRGBA32ToEncoderPixFmt(vtkRawVideoFrame* rgba32Image);
-  int Push(bool keyFrame = false);
+  int Send(bool keyFrame = false);
   int Receive();
 };
 
