@@ -20,7 +20,7 @@ enum VTKPixelFormat
 {
   // Packed format
   RGBA32, // r,g,b,a 8:8:8:8, 32 bpp Ex: 2x2 -> rgba|rgba|rgba|rgba
-  RGB24,  // r,g,b   8:8:8, 32 bpp Ex: 2x2 -> rgb|rgb|rgb|rgb
+  RGB24,  // r,g,b   8:8:8, 24 bpp Ex: 2x2 -> rgb|rgb|rgb|rgb
 
   // Planar format
   // Y: Luminance, U: Chromatic blue difference (Cb) and V: Chromatic red difference (Cr)
