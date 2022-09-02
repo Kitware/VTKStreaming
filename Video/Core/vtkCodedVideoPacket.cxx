@@ -74,7 +74,7 @@ void vtkCodedVideoPacket::CopyData(vtkUnsignedCharArray* buffer)
 {
   if (buffer != nullptr)
   {
-    this->SetArray(buffer->GetPointer(0), buffer->GetNumberOfValues());
+    this->CopyData(buffer->GetPointer(0), buffer->GetNumberOfValues());
   }
 }
 
