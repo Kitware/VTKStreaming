@@ -274,20 +274,13 @@ int vtkFFMPEGEncoderInternals::Push(bool keyFrame /*=false*/)
   if (this->Frame)
   {
     vtkLog(TRACE, << "Send frame " << this->Frame->pts);
+    this->Frame->pict_type = keyFrame ? AV_PICTURE_TYPE_I : AV_PICTURE_TYPE_NONE;
   }
   else
   {
     vtkLog(TRACE, << "Drain the encoder");
   }
 
-  if (keyFrame)
-  {
-    this->Frame->pict_type = AV_PICTURE_TYPE_I;
-  }
-  else
-  {
-    this->Frame->pict_type = AV_PICTURE_TYPE_NONE;
-  }
   int ret = avcodec_send_frame(this->EncodeCtx, this->Frame);
   return ret;
 }
