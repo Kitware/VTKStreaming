@@ -16,6 +16,17 @@
  * @class   vtkAbstractVideoEncoder
  * @brief   this class defines an abstract interface for a video encoder.
  *
+ * You can push video frames for encoding with the vtkAbstractVideoEncoder::Push method.
+ * Since the method is non-blocking, you have to call vtkAbstractVideoEncoder::GetResult
+ * to obtain the compressed video packet.
+ *
+ * This class spawns one worker thread with `vtkThreadedTaskQueue` that picks up any queued frames
+ * and encodes them without blocking the main thread. You are free to delete or modify the frame
+ * contents after calling `Push`.
+ *
+ * In order to conservatively use memory, the encoder buffers frames to the task queue.
+ * The size of the buffer is equal to the TimeBaseEnd value.
+ *
  * @sa vtkRawVideoFrame, vtkCodedVideoPacket
  */
 
@@ -25,19 +36,20 @@
 #include "vtkVideoCoreModule.h"
 
 #include "vtkCodecTypes.h"
-#include "vtkCommand.h"
 #include "vtkObject.h"
-
-#include <memory>
+#include "vtkVideoProcessingWorkUnitTypes.h"
 
 class vtkRawVideoFrame;
-class vtkCodedVideoPacket;
+class vtkAbstractEncoderDelegate;
 
 class VTKVIDEOCORE_EXPORT vtkAbstractVideoEncoder : public vtkObject
 {
 public:
   vtkTypeMacro(vtkAbstractVideoEncoder, vtkObject);
   void PrintSelf(ostream& os, vtkIndent indent) override;
+
+  void UseAsynchronousDelegate();
+  void UseSynchronousDelegate(); // default
 
   ///@{
   /**
@@ -97,6 +109,36 @@ public:
 
   ///@{
   /**
+   * Set/Get maximum bitrate of an encoder.
+   * Note: This value is used only when the encoder and codec support rate-control
+   * AND they are configured in VBR (Variable Bit Rate) mode.
+   */
+  vtkSetMacro(MaxBitRate, unsigned int);
+  vtkGetMacro(MaxBitRate, unsigned int);
+  ///@}
+
+  ///@{
+  /**
+   * Set/Get minimum bitrate of an encoder.
+   * Note: This value is used only when the encoder and codec support rate-control
+   * AND they are configured in VBR (Variable Bit Rate) mode.
+   */
+  vtkSetMacro(MinBitRate, unsigned int);
+  vtkGetMacro(MinBitRate, unsigned int);
+  ///@}
+
+  ///@{
+  /**
+   * Set/Get number of threads the encoder must use.
+   * Almost every encoder out there is multi-threaded and typically supports
+   * tiling up video frames into rows and columns. Use it wisely.
+   */
+  vtkSetMacro(NumberOfEncoderThreads, unsigned int);
+  vtkGetMacro(NumberOfEncoderThreads, unsigned int);
+  ///@}
+
+  ///@{
+  /**
    * The encoder can force a KeyFrame i.e, an I-Frame irrelevant of
    * the GOP size.
    *
@@ -111,22 +153,43 @@ public:
 
   ///@{
   /**
-   * Public interface for the encoder. Concrete sub-classes are supposed to
-   * implmement the respective *Internal() methods.
-   * vtkAbstractVideoEncoder::Push(vtkRawVideoFrame* frame) is the entry point
-   * to start encoding.
+   * Force the encoder into CBR(Constant Bit Rate) mode.
    *
-   * Listen to `vtkCommand::ProgressEvent` to receive the compressed video packet.
-   *
-   * DevNote: Subclasses should invoke `vtkAbstractVideoEncoder::PacketHandler(vtkCodedVideoPacket*
-   * pkt)` immediately after the implementation produces a coded video packet. The subclass must
-   * wrap the implementation's packet object into a vtkCodedVideoPacket instance and then invoke
-   * `PacketHandler`
+   * DevNote: All these should try their best to put the encoder into CBR mode.
+   * The abstract class simply sets MaxBitRate = MinBitRate = BitRate. Usually,
+   * this is sufficient.
+   */
+  virtual void SetForceCBR(bool val);
+  bool GetForceCBR();
+  void ForceCBROn();
+  void ForceCBROff();
+  ///@}
+
+  ///@{
+  /**
+   * Public interface for the encoder. Concrete sub-classes are supposed to implement the
+   * respective *Internal() methods to initialize and shutdown an encoding context.
    */
   bool Initialize();
   void Shutdown();
   void Flush();
+  ///@}
+
+  ///@{
+  /**
+   * Public interface for the encoder. Concrete sub-classes are supposed to
+   * implement the PushInternal() method.
+   *
+   * vtkAbstractVideoEncoder::Push(vtkRawVideoFrame* frame) is the entry point
+   * to start encoding. The `Push` method is non-blocking.
+   * The return value is false when any stage of the push
+   * process failed.
+   *
+   * Call vtkAbstractVideoEncoder::GetResult() to access the encoded video packets.
+   */
   bool Push(vtkRawVideoFrame* frame);
+  void Drain();
+  VTKVideoProcessingStatusType GetResult(vtkSmartPointer<vtkCodedVideoPacket>& packet);
   ///@}
 
   ///@{
@@ -143,13 +206,24 @@ protected:
   vtkAbstractVideoEncoder();
   ~vtkAbstractVideoEncoder() override;
 
-  bool ForceIFrame = false;
+  // Codec context parameters.
   VTKCodecType Codec = VP9;
-  int GroupOfPicturesSize = 10;
-  int MaximumBFrames = 0;
+  // Sequence parameters
+  bool ForceIFrame = false;
   int TimeBaseStart = 1;
-  int TimeBaseEnd = 30;
-  unsigned int BitRate = 2000000; // 2Mbps
+  int TimeBaseEnd = 120;
+  // Picture parameters.
+  int GroupOfPicturesSize = 10;
+  int MaximumBFrames = -1;
+  // Bitrate control
+  bool ForceCBR = true;           // sets MaxBitRate = MinBitRate = BitRate
+  unsigned int BitRate = 1000000; // 1Mbps
+  unsigned int MaxBitRate = 1000000;
+  unsigned int MinBitRate = 1000000;
+  // Parallelism
+  unsigned int NumberOfEncoderThreads = 2; // conservative default.
+  // Processing delegate
+  vtkAbstractEncoderDelegate* Delegate = nullptr;
 
   bool Initialized = false;
   vtkMTimeType LastSetupMTime = 0;
@@ -168,17 +242,21 @@ protected:
    * Concrete subclasses must handle initialization, allocation and freeing of an encoder frame
    * resource.
    */
-  virtual bool SetupEncoderFrame(const int& w, const int& h) = 0;
-  virtual bool NeedsNewEncoderFrame(const int& w, const int& h) = 0;
+  virtual bool SetupEncoderFrame(const int& width, const int& height) = 0;
+  virtual bool NeedsNewEncoderFrame(const int& width, const int& height) = 0;
   virtual void TearDownEncoderFrame() = 0;
   ///@}
 
   ///@{
   /**
-   * Concrete subclasses implement the process of encoding and compressed packet retrieval.
+   * Concrete subclasses will send a video frame for encoding and retrieve a compressed
+   * video packet from the encoder.
+   *
+   * Warning: This method is called inside a worker thread. If your encoder context is not
+   * thread-safe, please call that non-thread-safe functionaility outside this method.
    */
-  virtual bool PushInternal(vtkRawVideoFrame* frame) = 0;
-  virtual void PacketHandler(vtkCodedVideoPacket* pkt);
+  virtual EncoderResultType EncodeInternal(vtkRawVideoFrame* frame) = 0;
+  virtual void DrainInternal() = 0;
   ///@}
 
 private:

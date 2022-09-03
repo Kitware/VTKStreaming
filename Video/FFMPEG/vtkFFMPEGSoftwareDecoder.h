@@ -25,10 +25,10 @@
 #include "vtkVideoFFMPEGModule.h"
 
 #include "vtkAbstractVideoDecoder.h"
+#include "vtkVideoProcessingStatusTypes.h"
 
 #include <memory>
 
-class vtkCodedVideoPacket;
 class vtkFFMPEGDecoderInternals;
 
 class VTKVIDEOFFMPEG_EXPORT vtkFFMPEGSoftwareDecoder : public vtkAbstractVideoDecoder
@@ -55,22 +55,18 @@ protected:
   /**
    * Implement parent class decoder context management.
    */
-  bool PushInternal(vtkCodedVideoPacket* packet) override;
   bool InitializeInternal() override;
   void ShutdownInternal() override;
+  void FlushInternal() override;
   ///@}
 
   ///@{
   /**
    * Implement parent class decoding.
    */
-  void FlushInternal() override;
+  void DrainInternal() override;
+  DecoderResultType DecodeInternal(vtkCodedVideoPacket* frame) override;
   ///@}
-
-  /**
-   * Implements the decode process.
-   */
-  bool Decode();
 
 private:
   vtkFFMPEGSoftwareDecoder(const vtkFFMPEGSoftwareDecoder&) = delete;

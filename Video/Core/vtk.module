@@ -9,3 +9,5 @@ KIT
 DEPENDS
   VTK::CommonCore
   VTK::CommonDataModel
+PRIVATE_DEPENDS
+  VTK::ParallelCore

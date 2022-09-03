@@ -16,8 +16,12 @@
 #ifndef vtkFFMPEGEncoderInternals_h
 #define vtkFFMPEGEncoderInternals_h
 
+#include "vtkCodedVideoPacket.h"
+#include "vtkSmartPointer.h"
+#include "vtkVideoProcessingStatusTypes.h"
+#include "vtkVideoProcessingWorkUnitTypes.h"
+
 #include <chrono>
-#include <functional>
 #include <string>
 #include <unordered_map>
 
@@ -32,14 +36,13 @@ extern "C"
 #include <libswscale/swscale.h>
 }
 
-class vtkCodedVideoPacket;
+class vtkAbstractEncoderDelegate;
 class vtkRawVideoFrame;
+class vtkCodedVideoPacket;
 
 class vtkFFMPEGEncoderInternals
 {
 public:
-  using PacketRecvCallbackT = std::function<void(vtkCodedVideoPacket*)>;
-
   AVCodecContext* EncodeCtx = nullptr;
   AVFrame *SoftwareFrame = nullptr, *HardwareFrame = nullptr, *Frame = nullptr;
   AVPacket* Packet = nullptr;
@@ -50,7 +53,6 @@ public:
   struct SwsContext* SwScaleCtx = nullptr;
 
   int LastEncodedFrameDims[2] = { -1, -1 };
-  int64_t FrameCounter = 0;
 
   std::string CodecName;
   // codec parameters are represented as key value pairs.
@@ -66,10 +68,11 @@ public:
   bool SetupHWFrameCtx(AVPixelFormat HWPixelFormat);
   bool InitializeSWFrame();
   bool InitializeHWFrame();
+  void Tweak();
+
+  EncoderResultType Encode(bool keyFrame = false);
   bool PreprocessInput(vtkRawVideoFrame* frame);
   bool PrepareForEncoding();
-  bool Encode(bool isKeyFrame, PacketRecvCallbackT& packetReceiver);
-  void Tweak();
 
   void Flush();
   void TearDownEncoderFrames();
@@ -79,6 +82,7 @@ private:
   bool ConvertRGBA32ToEncoderPixFmt(vtkRawVideoFrame* rgba32Image);
   int Send(bool keyFrame = false);
   int Receive();
+  vtkCodedVideoPacket* PackageCompressedPacket();
 };
 
 #endif // vtkFFMPEGEncoderInternals_h

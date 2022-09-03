@@ -26,10 +26,10 @@
 
 #include "vtkAbstractVideoEncoder.h"
 #include "vtkCodecTypes.h"
+#include "vtkVideoProcessingWorkUnitTypes.h"
 
 #include <memory>
 
-class vtkRawVideoFrame;
 class vtkFFMPEGEncoderInternals;
 
 class VTKVIDEOFFMPEG_EXPORT vtkFFMPEGSoftwareEncoder : public vtkAbstractVideoEncoder
@@ -55,27 +55,23 @@ protected:
 
   ///@{
   /**
-   * Implement parent class encoder context management.
+   * Implement parent class encoder context management and status translation.
    */
   bool InitializeInternal() override;
   void ShutdownInternal() override;
   void FlushInternal() override;
-  bool PushInternal(vtkRawVideoFrame* frame) override;
   ///@}
 
   ///@{
   /**
    * Implement parent class encoding and encoder resource management.
    */
-  bool SetupEncoderFrame(const int& w, const int& h) override;
-  bool NeedsNewEncoderFrame(const int& w, const int& h) override;
+  bool SetupEncoderFrame(const int& width, const int& height) override;
+  bool NeedsNewEncoderFrame(const int& width, const int& height) override;
   void TearDownEncoderFrame() override;
+  void DrainInternal() override;
+  EncoderResultType EncodeInternal(vtkRawVideoFrame* frame) override;
   ///@}
-
-  /**
-   * Implements the encode process.
-   */
-  bool Encode();
 
 private:
   vtkFFMPEGSoftwareEncoder(const vtkFFMPEGSoftwareEncoder&) = delete;

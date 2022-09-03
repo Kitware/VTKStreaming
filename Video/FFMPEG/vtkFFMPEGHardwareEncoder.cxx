@@ -14,18 +14,14 @@
 =========================================================================*/
 
 #include "vtkFFMPEGHardwareEncoder.h"
-#include "vtkCodedVideoPacket.h"
+#include "vtkFFMPEGCommon.h"
 #include "vtkFFMPEGEncoderInternals.h"
-#include "vtkRawVideoFrame.h"
 
-#include "vtkCommand.h"
-#include "vtkDataArray.h"
-#include "vtkImageData.h"
 #include "vtkLogger.h"
-#include "vtkObject.h"
 #include "vtkObjectFactory.h"
-#include "vtkPointData.h"
 
+#include "vtkRawVideoFrame.h"
+#include "vtkSmartPointer.h"
 #include "vtksys/SystemInformation.hxx"
 
 extern "C"
@@ -75,8 +71,9 @@ bool vtkFFMPEGHardwareEncoder::QueryPlatformSupport()
       break;
     case DesktopGPUVendor::Intel:
       vtkLog(TRACE, << "Intel GPU preferred.");
-      this->HWEncoderType = HardwareEncoderTypeEnum::QSV; // TODO: find proper tweaks to get qsv
-                                                          // working on linux and windows.
+      // TODO: find proper tweaks to get qsv working on linux and windows. (something to do with
+      // device name..)
+      this->HWEncoderType = HardwareEncoderTypeEnum::QSV;
       probeOS = true;
       break;
     case DesktopGPUVendor::NVIDIA:
@@ -331,33 +328,50 @@ void vtkFFMPEGHardwareEncoder::FlushInternal()
 }
 
 //------------------------------------------------------------------------------
-bool vtkFFMPEGHardwareEncoder::PushInternal(vtkRawVideoFrame* frame)
+EncoderResultType vtkFFMPEGHardwareEncoder::EncodeInternal(vtkRawVideoFrame* frame)
 {
   vtkLogScopeFunction(TRACE);
+  EncoderResultType result;
   auto& internals = *(this->Internals);
-  internals.SoftwareFrame->pts = frame->GetPresentationTS();
-  internals.HardwareFrame->pts = frame->GetPresentationTS();
+  const int64_t pts = frame->GetPresentationTS() % this->TimeBaseEnd;
+  internals.SoftwareFrame->pts = pts ? pts : this->TimeBaseEnd;
+  internals.HardwareFrame->pts = internals.SoftwareFrame->pts;
 
-  auto tStart = std::chrono::high_resolution_clock::now();
-  bool preprocSuccess = internals.PreprocessInput(frame);
-  internals.dtScale = std::chrono::high_resolution_clock::now() - tStart;
-  if (!preprocSuccess)
+  if (!internals.PreprocessInput(frame))
   {
     vtkLog(ERROR, << "Failed to convert rgba32 to encoder input frame pixel format.");
+    result.first = VTKVideoProcessingStatusType::InvalidValue;
+    result.second = nullptr;
+    return result;
   }
 
-  return this->Encode();
+  if (!internals.PrepareForEncoding())
+  {
+    result.first = VTKVideoProcessingStatusType::InvalidValue;
+    result.second = nullptr;
+    return result;
+  }
+
+  return internals.Encode(this->GetForceIFrame());
 }
 
 //------------------------------------------------------------------------------
-bool vtkFFMPEGHardwareEncoder::SetupEncoderFrame(const int& w, const int& h)
+void vtkFFMPEGHardwareEncoder::DrainInternal()
+{
+  vtkLogScopeFunction(TRACE);
+  auto& internals = *(this->Internals);
+  avcodec_send_frame(internals.EncodeCtx, nullptr);
+}
+
+//------------------------------------------------------------------------------
+bool vtkFFMPEGHardwareEncoder::SetupEncoderFrame(const int& width, const int& height)
 {
   vtkLogScopeFunction(TRACE);
   auto& internals = *(this->Internals);
 
   internals.EncodeCtx->bit_rate = this->BitRate;
-  internals.EncodeCtx->width = w;
-  internals.EncodeCtx->height = h;
+  internals.EncodeCtx->width = width;
+  internals.EncodeCtx->height = height;
   internals.EncodeCtx->time_base = AVRational{ this->TimeBaseStart, this->TimeBaseEnd };
   internals.EncodeCtx->framerate = AVRational{ this->TimeBaseEnd, this->TimeBaseStart };
   internals.EncodeCtx->gop_size = this->GroupOfPicturesSize;
@@ -397,6 +411,7 @@ bool vtkFFMPEGHardwareEncoder::SetupEncoderFrame(const int& w, const int& h)
   if (!internals.InitializeCodec())
   {
     vtkLog(ERROR, << "Could not open codec for encoding.");
+    return false;
   }
 
   // Prepare a software frame.
@@ -422,22 +437,6 @@ void vtkFFMPEGHardwareEncoder::TearDownEncoderFrame()
   vtkLogScopeFunction(TRACE);
   auto& internals = *(this->Internals);
   internals.TearDownEncoderFrames();
-}
-
-//------------------------------------------------------------------------------
-bool vtkFFMPEGHardwareEncoder::Encode()
-{
-  vtkLogScopeFunction(TRACE);
-  auto& internals = *(this->Internals);
-  vtkFFMPEGEncoderInternals::PacketRecvCallbackT packetReciever = [this](vtkCodedVideoPacket* pkt)
-  { this->PacketHandler(pkt); };
-
-  bool success = internals.Encode(this->GetForceIFrame(), packetReciever);
-  if (!success)
-  {
-    vtkLog(ERROR, << "Failed to encode.");
-  }
-  return success;
 }
 
 //------------------------------------------------------------------------------

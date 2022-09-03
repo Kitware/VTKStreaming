@@ -16,7 +16,7 @@
 #ifndef vtkCodecTypes_h
 #define vtkCodecTypes_h
 
-// Please add new codecs above MaxNumberOfSupportedCodecs
+// For new codecs, please insert above MaxNumberOfSupportedCodecs
 
 enum VTKCodecType
 {

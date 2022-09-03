@@ -15,21 +15,22 @@
 
 #include "vtkFFMPEGSoftwareEncoder.h"
 #include "vtkCodedVideoPacket.h"
+#include "vtkFFMPEGCommon.h"
 #include "vtkFFMPEGEncoderInternals.h"
-#include "vtkRawVideoFrame.h"
 
-#include "vtkCommand.h"
-#include "vtkDataArray.h"
-#include "vtkImageData.h"
 #include "vtkLogger.h"
 #include "vtkObjectFactory.h"
-#include "vtkPointData.h"
+#include "vtkRawVideoFrame.h"
+#include "vtkVideoProcessingStatusTypes.h"
+#include "vtkVideoProcessingWorkUnitTypes.h"
 
 #include <chrono>
 #include <cstddef>
 
 extern "C"
 {
+#include <libavcodec/avcodec.h>
+#include <libavutil/error.h>
 #include <libavutil/log.h>
 }
 
@@ -76,6 +77,7 @@ bool vtkFFMPEGSoftwareEncoder::InitializeInternal()
       break;
     case AV1:
       internals.CodecName = "libaom-av1";
+      internals.CodecName = "libsvtav1";
       internals.InputPixFmt = AV_PIX_FMT_YUV420P;
       break;
     case VP9:
@@ -105,38 +107,22 @@ void vtkFFMPEGSoftwareEncoder::FlushInternal()
 }
 
 //------------------------------------------------------------------------------
-bool vtkFFMPEGSoftwareEncoder::PushInternal(vtkRawVideoFrame* frame)
-{
-  vtkLogScopeFunction(TRACE);
-  auto& internals = *(this->Internals);
-  internals.SoftwareFrame->pts = frame->GetPresentationTS();
-
-  auto tStart = std::chrono::high_resolution_clock::now();
-  bool preprocSuccess = internals.PreprocessInput(frame);
-  internals.dtScale = std::chrono::high_resolution_clock::now() - tStart;
-  if (!preprocSuccess)
-  {
-    vtkLog(ERROR, << "Failed to convert rgba32 to encoder input frame pixel format.");
-  }
-
-  return this->Encode();
-}
-
-//------------------------------------------------------------------------------
-bool vtkFFMPEGSoftwareEncoder::SetupEncoderFrame(const int& w, const int& h)
+bool vtkFFMPEGSoftwareEncoder::SetupEncoderFrame(const int& width, const int& height)
 {
   vtkLogScopeFunction(TRACE);
   auto& internals = *(this->Internals);
 
   internals.EncodeCtx->bit_rate = this->BitRate;
-  internals.EncodeCtx->width = w;
-  internals.EncodeCtx->height = h;
+  internals.EncodeCtx->rc_max_rate = this->MaxBitRate;
+  internals.EncodeCtx->rc_min_rate = this->MinBitRate;
+  internals.EncodeCtx->thread_count = this->NumberOfEncoderThreads;
+  internals.EncodeCtx->width = width;
+  internals.EncodeCtx->height = height;
   internals.EncodeCtx->time_base = AVRational{ this->TimeBaseStart, this->TimeBaseEnd };
   internals.EncodeCtx->framerate = AVRational{ this->TimeBaseEnd, this->TimeBaseStart };
   internals.EncodeCtx->gop_size = this->GroupOfPicturesSize;
   internals.EncodeCtx->max_b_frames = this->MaximumBFrames;
   internals.EncodeCtx->pix_fmt = internals.InputPixFmt;
-
   internals.Tweak();
 
   if (!internals.InitializeCodec())
@@ -164,24 +150,44 @@ void vtkFFMPEGSoftwareEncoder::TearDownEncoderFrame()
 }
 
 //------------------------------------------------------------------------------
-bool vtkFFMPEGSoftwareEncoder::Encode()
+void vtkFFMPEGSoftwareEncoder::DrainInternal()
 {
   vtkLogScopeFunction(TRACE);
   auto& internals = *(this->Internals);
-  vtkFFMPEGEncoderInternals::PacketRecvCallbackT packetReciever = [this](vtkCodedVideoPacket* pkt)
-  { this->PacketHandler(pkt); };
+  avcodec_send_frame(internals.EncodeCtx, nullptr);
+}
 
-  bool success = internals.Encode(this->GetForceIFrame(), packetReciever);
-  if (!success)
+//------------------------------------------------------------------------------
+EncoderResultType vtkFFMPEGSoftwareEncoder::EncodeInternal(vtkRawVideoFrame* frame)
+{
+  vtkLogScopeFunction(TRACE);
+  EncoderResultType result;
+  auto& internals = *(this->Internals);
+  const int64_t pts = frame->GetPresentationTS() % this->TimeBaseEnd;
+  internals.SoftwareFrame->pts = pts ? pts : this->TimeBaseEnd;
+
+  if (!internals.PreprocessInput(frame))
   {
-    vtkLog(ERROR, << "Failed to encode.");
+    vtkLog(ERROR, << "Failed to convert rgba32 to encoder input frame pixel format.");
+    result.first = VTKVideoProcessingStatusType::InvalidValue;
+    result.second = nullptr;
+    return result;
   }
-  return success;
+
+  if (!internals.PrepareForEncoding())
+  {
+    result.first = VTKVideoProcessingStatusType::InvalidValue;
+    result.second = nullptr;
+    return result;
+  }
+
+  return internals.Encode(this->GetForceIFrame());
 }
 
 //------------------------------------------------------------------------------
 bool vtkFFMPEGSoftwareEncoder::IsCodecSupported(VTKCodecType codec)
 {
+  (void)codec;
   return true;
 }
 

@@ -14,16 +14,11 @@
 =========================================================================*/
 
 #include "vtkFFMPEGSoftwareDecoder.h"
-#include "vtkCodedVideoPacket.h"
+#include "vtkFFMPEGCommon.h"
 #include "vtkFFMPEGDecoderInternals.h"
-#include "vtkRawVideoFrame.h"
 
-#include "vtkImageData.h"
 #include "vtkLogger.h"
-#include "vtkNew.h"
 #include "vtkObjectFactory.h"
-#include "vtkPixelFormats.h"
-#include "vtkUnsignedCharArray.h"
 
 extern "C"
 {
@@ -150,77 +145,68 @@ void vtkFFMPEGSoftwareDecoder::ShutdownInternal()
 void vtkFFMPEGSoftwareDecoder::FlushInternal() {}
 
 //------------------------------------------------------------------------------
-bool vtkFFMPEGSoftwareDecoder::PushInternal(vtkCodedVideoPacket* packet)
-{
-  vtkLogScopeFunction(TRACE);
-  auto& internals = *(this->Internals);
-
-  internals.Packet->size = packet->GetData(internals.Packet->data);
-  bool success = this->Decode();
-  return success;
-}
+void vtkFFMPEGSoftwareDecoder::DrainInternal() {}
 
 //------------------------------------------------------------------------------
-// TODO: Think of a way to not let this function block the calling thread.
-bool vtkFFMPEGSoftwareDecoder::Decode()
+DecoderResultType vtkFFMPEGSoftwareDecoder::DecodeInternal(vtkCodedVideoPacket* packet)
 {
   vtkLogScopeFunction(TRACE);
+  DecoderResultType result;
   auto& internals = *(this->Internals);
+  if (!internals.Packet)
+  {
+    vtkLog(ERROR, << "Internal packet object is null. Cannot send packet for decoding!");
+    result.first = VTKVideoProcessingStatusType::InvalidValue;
+    result.second = nullptr;
+    return result;
+  }
+
+  internals.Packet->size = packet->GetData(internals.Packet->data);
+  // at the moment, since there's only one ffmpeg decoder implementation (software),
+  // i'm not writing the send/recv sections of code in the internals class.
+  int statusCode = avcodec_send_packet(internals.DecodeCtx, internals.Packet);
+  auto status = ParseFFMPEGStatus(statusCode, /*during_send*/ true);
+  if (statusCode < 0)
+  {
+    vtkLog(ERROR,
+      "Error sending a packet for decoding. Error - " << VTKVideoProcessingStatusTypeToStr(status)
+                                                      << " (" << statusCode << ")");
+    result.first = status;
+    result.second = nullptr;
+    return result;
+  }
 
   if (!internals.SoftwareFrame)
   {
     vtkLog(ERROR, << "Frame is null. Cannot decode!");
-    return false;
+    result.first = VTKVideoProcessingStatusType::UnknownError; // dunno why frame is null.
+    result.second = nullptr;
+    return result;
   }
 
   auto tStart = std::chrono::high_resolution_clock::now();
-  int ret = avcodec_send_packet(internals.DecodeCtx, internals.Packet);
-  if (ret < 0)
-  {
-    internals.OutputVideoFrame->SetWidth(0);
-    internals.OutputVideoFrame->SetHeight(0);
-    vtkLog(ERROR, "Error sending a packet for decoding");
-    return false;
-  }
+  statusCode = avcodec_receive_frame(internals.DecodeCtx, internals.SoftwareFrame);
+  auto now = std::chrono::high_resolution_clock::now();
 
-  while (ret >= 0)
+  if (statusCode < 0)
   {
-    ret = avcodec_receive_frame(internals.DecodeCtx, internals.SoftwareFrame);
-    auto now = std::chrono::high_resolution_clock::now();
-    internals.dtDecode = now - tStart;
-    tStart = now;
-    switch (ret)
-    {
-      case AVERROR(EAGAIN):
-      {
-        vtkLog(TRACE, << "Decoder needs more input packets");
-        return true;
-      }
-      case AVERROR_EOF:
-      {
-        vtkLog(TRACE, << "Decoder input is flushed. No more output frames.");
-        return true;
-      }
-      case AVERROR(EINVAL):
-      {
-        vtkLog(ERROR, << "Codec is not opened, or the context is a decoding context.");
-        break;
-      }
-      default:
-        break;
-    }
-    if (ret < 0)
-    {
-      vtkLog(ERROR, "Error during decoding");
-      return false;
-    }
-    else
-    {
-      internals.GetOutputFrameFromDecodedFrame();
-      this->InvokeEvent(vtkCommand::ProgressEvent, internals.OutputVideoFrame);
-    }
+    vtkLog(ERROR,
+      "Failed to receive uncompressed image from decoder. Error - "
+        << VTKVideoProcessingStatusTypeToStr(status) << " (" << statusCode << ")");
+    result.first = status;
+    result.second = nullptr;
+    return result;
   }
-  return true;
+  else
+  {
+    internals.dtDecode = now - tStart;
+    result.first = status;
+    result.second.TakeReference(internals.GetOutputFrameFromDecodedFrame());
+    vtkLog(TRACE, << "Successfully decoded image - "
+                  << result.second->GetSize(0) + result.second->GetSize(1)
+                  << result.second->GetSize(2) << " bytes");
+    return result;
+  }
 }
 
 //------------------------------------------------------------------------------

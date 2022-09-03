@@ -14,11 +14,17 @@
 =========================================================================*/
 
 #include "vtkFFMPEGEncoderInternals.h"
+#include "vtkAbstractEncoderDelegate.h"
 #include "vtkCodedVideoPacket.h"
+#include "vtkFFMPEGCommon.h"
 #include "vtkLogger.h"
 #include "vtkRawVideoFrame.h"
+#include "vtkSmartPointer.h"
+#include "vtkVideoProcessingStatusTypes.h"
+#include "vtkVideoProcessingWorkUnitTypes.h"
 
 #include <cstdint>
+#include <libavutil/dict.h>
 
 extern "C"
 {
@@ -39,6 +45,7 @@ bool vtkFFMPEGEncoderInternals::ConvertRGBA32ToEncoderPixFmt(vtkRawVideoFrame* r
 
   unsigned char* rgba32UcharArr = nullptr;
   auto size = rgba32Image->GetData(rgba32UcharArr);
+  (void)size;
 
   this->SwScaleCtx = sws_getCachedContext(this->SwScaleCtx, srcW, srcH, AV_PIX_FMT_RGBA, dstW, dstH,
     this->InputPixFmt, 0, nullptr, nullptr, nullptr);
@@ -52,7 +59,7 @@ bool vtkFFMPEGEncoderInternals::ConvertRGBA32ToEncoderPixFmt(vtkRawVideoFrame* r
     vtkLog(ERROR, "Failed to make frame writable");
     return false;
   }
-  // ffmpeg requires top-down ordering. if slice order is bottomup, convert it.
+  // ffMPEG requires top-down ordering. if slice order is bottomup, convert it.
   int sign = 1;
   if (rgba32Image->GetSliceOrder() == vtkRawVideoFrame::SliceOrderType::BottomUp)
   {
@@ -264,7 +271,42 @@ bool vtkFFMPEGEncoderInternals::SetupHWFrameCtx(AVPixelFormat HWPixelFormat)
 bool vtkFFMPEGEncoderInternals::PreprocessInput(vtkRawVideoFrame* rgba32Image)
 {
   vtkLogScopeFunction(TRACE);
-  return this->ConvertRGBA32ToEncoderPixFmt(rgba32Image);
+  auto tStart = std::chrono::high_resolution_clock::now();
+  bool success = this->ConvertRGBA32ToEncoderPixFmt(rgba32Image);
+  this->dtScale = std::chrono::high_resolution_clock::now() - tStart;
+  return success;
+}
+
+//------------------------------------------------------------------------------
+EncoderResultType vtkFFMPEGEncoderInternals::Encode(bool keyFrame /*=false*/)
+{
+  vtkLogScopeFunction(TRACE);
+  EncoderResultType result;
+  int statusCode = this->Send();
+  auto status = ParseFFMPEGStatus(statusCode, /*during_send*/ true);
+  if (statusCode < 0)
+  {
+    vtkLog(ERROR, << "Failed to send frame for encoding. Error - "
+                  << VTKVideoProcessingStatusTypeToStr(status) << " (" << statusCode << ")");
+    result.first = status;
+    result.second = nullptr;
+  }
+
+  statusCode = this->Receive();
+  status = ParseFFMPEGStatus(statusCode, /*during_send*/ false);
+  if (statusCode < 0)
+  {
+    vtkLog(ERROR, << "Failed to receive compressed video packet. Error - "
+                  << VTKVideoProcessingStatusTypeToStr(status) << " (" << statusCode << ")");
+    result.first = status;
+    result.second = nullptr;
+  }
+  else
+  {
+    result.first = status;
+    result.second.TakeReference(this->PackageCompressedPacket());
+  }
+  return result;
 }
 
 //------------------------------------------------------------------------------
@@ -281,87 +323,34 @@ int vtkFFMPEGEncoderInternals::Send(bool keyFrame /*=false*/)
     vtkLog(TRACE, << "Drain the encoder");
   }
 
-  int ret = avcodec_send_frame(this->EncodeCtx, this->Frame);
-  return ret;
-}
-
-//------------------------------------------------------------------------------
-// TODO: Think of a way to not let this function block the calling thread.
-bool vtkFFMPEGEncoderInternals::Encode(bool isKeyFrame, PacketRecvCallbackT& packetReceiver)
-{
-  vtkLogScopeFunction(TRACE);
-  bool ready = this->PrepareForEncoding();
-  if (!ready)
-  {
-    return false;
-  }
-
   auto tStart = std::chrono::high_resolution_clock::now();
-  int status = this->Send(isKeyFrame);
-  if (status < 0)
-  {
-    this->dtEncode = std::chrono::nanoseconds(0);
-    return false;
-  }
-
-  /* Receive output in a loop. */
-  // Continue to get as many packets as possible from the encoder
-  // until it gives AVERROR(EAGAIN) or AVERROR_EOF
-  while (status >= 0)
-  {
-    status = this->Receive();
-    auto now = std::chrono::high_resolution_clock::now();
-    this->dtEncode = now - tStart;
-    tStart = now;
-
-    switch (status)
-    {
-      case AVERROR(EAGAIN):
-      {
-        vtkLog(
-          TRACE, << "Encoder needs more input frames. Current frame->pts=" << this->Frame->pts);
-        return true;
-      }
-      case AVERROR_EOF:
-      {
-        vtkLog(TRACE, << "Encoder input is flushed. No more output packets.");
-        return true;
-      }
-      case AVERROR(EINVAL):
-      {
-        vtkLog(ERROR, << "Codec is not opened, or the context is a decoding context.");
-        break;
-      }
-      default:
-        break;
-    }
-
-    if (status < 0)
-    {
-      vtkLog(ERROR, "Error during encoding");
-      return false;
-    }
-    else
-    {
-      vtkNew<vtkCodedVideoPacket> pkt;
-      pkt->SetArray(this->Packet->data, this->Packet->size);
-      pkt->SetIsKeyFrame(this->Packet->flags & AV_PICTURE_TYPE_I);
-      pkt->SetPresentationTS(this->Packet->pts);
-      pkt->SetWidth(this->Frame->width);
-      pkt->SetHeight(this->Frame->height);
-      vtkLog(TRACE, << "Successfully encoded, pktSize " << this->Packet->size << "bytes");
-      packetReceiver(pkt.GetPointer());
-    }
-    ++this->FrameCounter;
-  }
-  return true;
+  int ret = avcodec_send_frame(this->EncodeCtx, this->Frame);
+  auto now = std::chrono::high_resolution_clock::now();
+  this->dtEncode = now - tStart;
+  return ret;
 }
 
 //------------------------------------------------------------------------------
 int vtkFFMPEGEncoderInternals::Receive()
 {
   vtkLogScopeFunction(TRACE);
-  return avcodec_receive_packet(this->EncodeCtx, this->Packet);
+  int result = avcodec_receive_packet(this->EncodeCtx, this->Packet);
+  return result;
+}
+
+//------------------------------------------------------------------------------
+vtkCodedVideoPacket* vtkFFMPEGEncoderInternals::PackageCompressedPacket()
+{
+  vtkLogScopeFunction(TRACE);
+  auto result = vtkCodedVideoPacket::New();
+  result->SetSize(this->Packet->size);
+  result->CopyData(this->Packet->data, this->Packet->size);
+  result->SetIsKeyFrame(this->Packet->flags & AV_PICTURE_TYPE_I);
+  result->SetPresentationTS(this->Packet->pts);
+  result->SetWidth(this->Frame->width);
+  result->SetHeight(this->Frame->height);
+  vtkLog(TRACE, << "Pacakaged compressed frame " << this->Packet->size << " bytes");
+  return result;
 }
 
 //------------------------------------------------------------------------------
@@ -372,20 +361,49 @@ void vtkFFMPEGEncoderInternals::Tweak()
   auto& ctx = this->EncodeCtx;
   if (codec->id == AV_CODEC_ID_VP9 && std::string(codec->name) == "libvpx-vp9")
   {
-    // https://www.reddit.com/r/AV1/comments/k7colv/encoder_tuning_part_1_tuning_libvpxvp9_be_more/
+    // these settings are good for upto 1080p streams.
+    // libvpx is simply incapable of encoding 4k realtime efficiently.
+    // Source 1 :
+    //  https://www.reddit.com/r/AV1/comments/k7colv/encoder_tuning_part_1_tuning_libvpxvp9_be_more/
+    // Source 2 :
+    //  https://developers.google.com/media/vp9/live-encoding
+    // Source 3 :
+    //  https://trac.ffMPEG.org/wiki/Encode/VP9
     av_opt_set(ctx->priv_data, "lag-in-frames", "0", 0);
-    av_opt_set(ctx->priv_data, "rc_lookahead", "0", 0);
+    // default is good
     av_opt_set(ctx->priv_data, "quality", "realtime", 0);
-    av_opt_set(ctx->priv_data, "speed", "8", 0); // 5: high-quality, 8: low-quality
+    // default is good = 1000000 microseconds
+    av_opt_set(ctx->priv_data, "deadline", "realtime", 0);
+    // adjusts target cpu usage for realtime, -8: min cpu usage, +8 max cpu usage.
+    av_opt_set(ctx->priv_data, "cpu-used", "8", 0);
     av_opt_set(ctx->priv_data, "frame-boost", "1", 0);
-    av_opt_set(ctx->priv_data, "tune-content", "screen", 0); // for live-streaming the renders
-    av_opt_set(ctx->priv_data, "deadline", "realtime", 0);   // default is good
-    av_opt_set(ctx->priv_data, "row-mt", "1", 0);            // default disabled.
-    av_opt_set(ctx->priv_data, "speed", "16", 0);            // default is 1
+    av_opt_set(ctx->priv_data, "aq-mode", "0", 0);
+    av_opt_set(ctx->priv_data, "tune-content", "screen", 0);
+    av_opt_set(ctx->priv_data, "row-mt", "1", 0);
+    av_opt_set(ctx->priv_data, "tile-columns", "4", 0);
+    // force cbr.
+    ctx->rc_min_rate = ctx->bit_rate;
+    ctx->rc_max_rate = ctx->bit_rate;
+    ctx->thread_count = 2;
   }
   else if (codec->id == AV_CODEC_ID_VP9 && this->EncodeCtx->pix_fmt == AV_PIX_FMT_VAAPI)
   {
-    av_opt_set(ctx->priv_data, "rc_mode", "2", 0); // cbr
+    av_opt_set(ctx->priv_data, "rc_mode", "2", 0);        // cbr
+    av_opt_set(ctx->priv_data, "idr_interval", "240", 0); // cbr
+  }
+  else if (codec->id == AV_CODEC_ID_AV1 && std::string(codec->name) == "libaom-av1")
+  {
+    av_opt_set(ctx->priv_data, "cpu-used", "8", 0); // default is 1!
+    av_opt_set(ctx->priv_data, "lag-in-frames", "0", 0);
+    av_opt_set(ctx->priv_data, "usage", "realtime", 0); // default is good.
+    av_opt_set(ctx->priv_data, "row-mt", "1", 0);       // default auto.
+    av_opt_set(ctx->priv_data, "tile-columns", "2", 0);
+    av_opt_set(ctx->priv_data, "tile-rows", "1", 0);
+    ctx->thread_count = 2;
+  }
+  else if (codec->id == AV_CODEC_ID_AV1 && std::string(codec->name) == "libsvtav1")
+  {
+    av_opt_set(ctx->priv_data, "svtav1-params", "rc=2:pred-struct=1:preset=12", 0);
   }
   else if (codec->id == AV_CODEC_ID_H264 && this->EncodeCtx->pix_fmt == AV_PIX_FMT_VAAPI)
   {
@@ -424,7 +442,7 @@ void vtkFFMPEGEncoderInternals::Tweak()
   }
   else if (codec->id == AV_CODEC_ID_H264 && std::string(codec->name) == "libx264")
   {
-    // https://trac.ffmpeg.org/wiki/Encode/H.264#crf
+    // https://trac.ffMPEG.org/wiki/Encode/H.264#crf
     // Applies to libx265 as well.
     av_opt_set(ctx->priv_data, "tune", "zerolatency", 0);
     av_opt_set(ctx->priv_data, "preset", "ultrafast", 0);
@@ -433,18 +451,11 @@ void vtkFFMPEGEncoderInternals::Tweak()
   }
   else if (codec->id == AV_CODEC_ID_HEVC && std::string(codec->name) == "libx265")
   {
-    // https://trac.ffmpeg.org/wiki/Encode/H.264#crf
+    // https://trac.ffMPEG.org/wiki/Encode/H.264#crf
     // Applies to libx265 as well.
     av_opt_set(ctx->priv_data, "tune", "zerolatency", 0);
     av_opt_set(ctx->priv_data, "preset", "ultrafast", 0);
     av_opt_set(ctx->priv_data, "forced-idr", "1", 0);
-  }
-  else if (std::string(codec->name) == "libaom-av1")
-  {
-    av_opt_set(ctx->priv_data, "cpu-used", "3", 0); // default is 1!
-    av_opt_set(ctx->priv_data, "lag-in-frames", "0", 0);
-    av_opt_set(ctx->priv_data, "usage", "realtime", 0); // default is good.
-    av_opt_set(ctx->priv_data, "row-mt", "1", 0);       // default auto.
   }
   // TODO: Provide an interface in abstract video encoder for custom codec parameters.
   for (const auto& pair : this->CustomCodecParameters)

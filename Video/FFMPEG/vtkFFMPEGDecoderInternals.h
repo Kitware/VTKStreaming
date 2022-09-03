@@ -16,7 +16,6 @@
 #ifndef vtkFFMPEGDecoderInternals_h
 #define vtkFFMPEGDecoderInternals_h
 
-#include "vtkRawVideoFrame.h"
 #include "vtkType.h"
 
 #include <chrono>
@@ -28,6 +27,8 @@ extern "C"
 #include <libavutil/frame.h>
 #include <libavutil/pixfmt.h>
 }
+
+class vtkRawVideoFrame;
 
 class vtkFFMPEGDecoderInternals
 {
@@ -42,15 +43,15 @@ public:
   struct SwsContext* SwScaleCtx = nullptr;
 
   std::string CodecName;
-  vtkMTimeType LastSetupMTime = -1;
+  vtkMTimeType LastSetupMTime = 0;
 
   // timing for encode and scale operations.
   std::chrono::high_resolution_clock::time_point::duration dtDecode, dtScale;
-  vtkNew<vtkRawVideoFrame> OutputVideoFrame;
 
   bool IsOutputFrameOutdated();
   bool InitializeOutputFrame(AVPixelFormat pixFmt);
-  bool GetOutputFrameFromDecodedFrame();
+  // returns a new raw video frame.
+  vtkRawVideoFrame* GetOutputFrameFromDecodedFrame();
 };
 
 #endif // vtkFFMPEGDecoderInternals_h

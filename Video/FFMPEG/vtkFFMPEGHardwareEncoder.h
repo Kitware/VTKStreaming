@@ -25,15 +25,17 @@
 #ifndef vtkFFMPEGHardwareEncoder_h
 #define vtkFFMPEGHardwareEncoder_h
 
+#include "vtkCodedVideoPacket.h"
+#include "vtkSmartPointer.h"
 #include "vtkVideoFFMPEGModule.h"
 
 #include "vtkAbstractVideoEncoder.h"
 #include "vtkCodecTypes.h"
+#include "vtkVideoProcessingStatusTypes.h"
 
 #include <memory>
 #include <string>
 
-class vtkRawVideoFrame;
 class vtkFFMPEGEncoderInternals;
 
 class VTKVIDEOFFMPEG_EXPORT vtkFFMPEGHardwareEncoder : public vtkAbstractVideoEncoder
@@ -123,27 +125,23 @@ protected:
 
   ///@{
   /**
-   * Implement parent class decoding API.
+   * Implement parent class encoder context management.
    */
   bool InitializeInternal() override;
   void ShutdownInternal() override;
   void FlushInternal() override;
-  bool PushInternal(vtkRawVideoFrame* frame) override;
   ///@}
 
   ///@{
   /**
    * Implement parent class encoding and hardware encoder resource management.
    */
-  bool SetupEncoderFrame(const int& w, const int& h) override;
-  bool NeedsNewEncoderFrame(const int& w, const int& h) override;
+  bool SetupEncoderFrame(const int& width, const int& height) override;
+  bool NeedsNewEncoderFrame(const int& width, const int& height) override;
   void TearDownEncoderFrame() override;
+  void DrainInternal() override;
+  EncoderResultType EncodeInternal(vtkRawVideoFrame* frame) override;
   ///@}
-
-  /**
-   * Implements the encode process.
-   */
-  bool Encode();
 
 private:
   vtkFFMPEGHardwareEncoder(const vtkFFMPEGHardwareEncoder&) = delete;

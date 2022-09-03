@@ -24,7 +24,7 @@ extern "C"
 }
 
 //------------------------------------------------------------------------------
-bool vtkFFMPEGDecoderInternals::GetOutputFrameFromDecodedFrame()
+vtkRawVideoFrame* vtkFFMPEGDecoderInternals::GetOutputFrameFromDecodedFrame()
 {
   vtkLogScopeFunction(TRACE);
   vtkLog(TRACE, << "Decoded frame dimensions " << this->SoftwareFrame->width << "x"
@@ -32,34 +32,35 @@ bool vtkFFMPEGDecoderInternals::GetOutputFrameFromDecodedFrame()
   vtkLog(TRACE, << "Decoded frame linsize " << this->SoftwareFrame->linesize[0] << "x"
                 << this->SoftwareFrame->linesize[1] << 'x' << this->SoftwareFrame->linesize[2]);
 
+  auto output = vtkRawVideoFrame::New();
   // Wrap the decoded frame into our vtkRawVideoFrame instance.
-  this->OutputVideoFrame->SetWidth(this->SoftwareFrame->width);
-  this->OutputVideoFrame->SetHeight(this->SoftwareFrame->height);
-  this->OutputVideoFrame->SetIsKeyFrame(this->SoftwareFrame->key_frame);
+  output->SetWidth(this->SoftwareFrame->width);
+  output->SetHeight(this->SoftwareFrame->height);
+  output->SetIsKeyFrame(this->SoftwareFrame->key_frame);
   switch (this->SoftwareFrame->format)
   {
     case AV_PIX_FMT_RGB24:
-      this->OutputVideoFrame->SetPixelFormat(VTKPixelFormat::RGB24);
-      this->OutputVideoFrame->SetSliceOrder(vtkRawVideoFrame::SliceOrderType::BottomUp);
+      output->SetPixelFormat(VTKPixelFormat::RGB24);
+      output->SetSliceOrder(vtkRawVideoFrame::SliceOrderType::BottomUp);
       break;
     case AV_PIX_FMT_RGBA:
-      this->OutputVideoFrame->SetPixelFormat(VTKPixelFormat::RGBA32);
-      this->OutputVideoFrame->SetSliceOrder(vtkRawVideoFrame::SliceOrderType::BottomUp);
+      output->SetPixelFormat(VTKPixelFormat::RGBA32);
+      output->SetSliceOrder(vtkRawVideoFrame::SliceOrderType::BottomUp);
       break;
     case AV_PIX_FMT_NV12:
-      this->OutputVideoFrame->SetPixelFormat(VTKPixelFormat::NV12);
-      this->OutputVideoFrame->SetSliceOrder(vtkRawVideoFrame::SliceOrderType::TopDown);
+      output->SetPixelFormat(VTKPixelFormat::NV12);
+      output->SetSliceOrder(vtkRawVideoFrame::SliceOrderType::TopDown);
       break;
     case AV_PIX_FMT_YUV420P:
     default:
-      this->OutputVideoFrame->SetPixelFormat(VTKPixelFormat::YUV420P);
-      this->OutputVideoFrame->SetSliceOrder(vtkRawVideoFrame::SliceOrderType::TopDown);
+      output->SetPixelFormat(VTKPixelFormat::YUV420P);
+      output->SetSliceOrder(vtkRawVideoFrame::SliceOrderType::TopDown);
       break;
   }
   // set the arrays with strides.
-  // NOTE: upon receiving a next decoded frame, the data backing  OutputVideoFrame will be invalid.
+  // NOTE: upon receiving a next decoded frame, the data backing  output will be invalid.
   // Keep that in mind.
-  this->OutputVideoFrame->SetStrides(this->SoftwareFrame->linesize, AV_NUM_DATA_POINTERS);
+  output->SetStrides(this->SoftwareFrame->linesize, AV_NUM_DATA_POINTERS);
   for (int planeId = 0;
        planeId < VTK_RAW_VIDEO_FRAME_MAX_NUM_PLANES && planeId < AV_NUM_DATA_POINTERS; ++planeId)
   {
@@ -73,7 +74,9 @@ bool vtkFFMPEGDecoderInternals::GetOutputFrameFromDecodedFrame()
     {
       size = this->SoftwareFrame->linesize[planeId] * (this->SoftwareFrame->height);
     }
-    this->OutputVideoFrame->SetArray(this->SoftwareFrame->data[planeId], size, planeId);
+    output->SetSize(size, planeId);
+    output->CopyData(this->SoftwareFrame->data[planeId], size, planeId);
   }
-  return true;
+
+  return output;
 }
