@@ -1,0 +1,13 @@
+NAME
+  VTKStreaming::FFmpegDecode
+LIBRARY_NAME
+  vtkStreamingFFmpegDecode
+GROUPS
+  Streaming
+KIT
+  VTKStreaming::FFmpegDecode
+DEPENDS
+  VTK::CommonCore
+  VTK::CommonDataModel
+  VTKStreaming::Encode
+  VTKStreaming::Decode

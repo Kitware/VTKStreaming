@@ -1,0 +1,19 @@
+NAME
+  VTKStreaming::OpenGL2
+LIBRARY_NAME
+  vtkStreamingOpenGL2
+GROUPS
+  Streaming
+KIT
+  VTKStreaming::OpenGL2
+DEPENDS
+  VTKStreaming::Core
+PRIVATE_DEPENDS
+  VTK::glew
+  VTK::RenderingOpenGL2
+TEST_DEPENDS
+  VTK::FiltersSources
+  VTK::RenderingOpenGL2
+  VTK::TestingCore
+  VTK::ImagingCore
+  VTK::IOImage

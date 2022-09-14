@@ -1,0 +1,22 @@
+NAME
+  VTKStreaming::NVENC
+LIBRARY_NAME
+  vtkStreamingNVENC
+GROUPS
+  Streaming
+KIT
+  VTKStreaming::NVENC
+DEPENDS
+  VTKStreaming::Encode
+  VTKStreaming::Decode
+  VTKStreaming::OpenGL2
+PRIVATE_DEPENDS
+  VTK::glew
+  VTK::RenderingOpenGL2
+TEST_DEPENDS
+  VTK::TestingCore
+  VTK::RenderingOpenGL2
+  VTK::RenderingUI
+  VTK::InteractionStyle
+  VTK::FiltersSources
+  VTK::CommonColor

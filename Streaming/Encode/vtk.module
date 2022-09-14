@@ -1,0 +1,14 @@
+NAME
+  VTKStreaming::Encode
+LIBRARY_NAME
+  vtkStreamingEncode
+GROUPS
+  Streaming
+KIT
+  VTKStreaming::Encode
+DEPENDS
+  VTKStreaming::Core
+PRIVATE_DEPENDS
+  VTK::ParallelCore
+TEST_DEPENDS
+  VTK::TestingCore
