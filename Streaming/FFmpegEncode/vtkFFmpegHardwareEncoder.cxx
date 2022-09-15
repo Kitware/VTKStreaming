@@ -427,7 +427,7 @@ VTKVideoEncoderResultType vtkFFmpegHardwareEncoder::DrainInternal()
 //------------------------------------------------------------------------------
 bool vtkFFmpegHardwareEncoder::SetupEncoderFrame(const int& width, const int& height)
 {
-  vtkLogScopeFunction(TRACE);
+  vtkLogScopeF(TRACE, "%s size=%dx%d", __func__, width, height);
   auto& internals = *(this->Internals);
 
   internals.EncodeCtx->bit_rate = this->BitRate;

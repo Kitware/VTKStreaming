@@ -114,6 +114,7 @@ void vtkNvEncoderGL::FlushInternal()
 //------------------------------------------------------------------------------
 bool vtkNvEncoderGL::SetupEncoderFrame(const int& width, const int& height)
 {
+  vtkLogScopeF(TRACE, "%s size=%dx%d", __func__, width, height);
   return this->AllocateInputBuffers();
 }
 
@@ -161,7 +162,8 @@ VTKVideoEncoderResultType vtkNvEncoderGL::GetResultInternal()
   std::vector<vtkSmartPointer<vtkCompressedVideoPacket>> packets;
   bool success = internals.Receive(packets);
   return VTKVideoEncoderResultType(
-    { success ? VTKVideoProcessingStatusType::VTKVPStatus_Success : VTKVideoProcessingStatusType::VTKVPStatus_UnknownError,
+    { success ? VTKVideoProcessingStatusType::VTKVPStatus_Success
+              : VTKVideoProcessingStatusType::VTKVPStatus_UnknownError,
       packets });
 }
 
@@ -182,7 +184,8 @@ VTKVideoEncoderResultType vtkNvEncoderGL::EncodeInternal(vtkRawVideoFrame* frame
   std::vector<vtkSmartPointer<vtkCompressedVideoPacket>> packets;
   bool success = internals.Receive(packets);
   return VTKVideoEncoderResultType(
-    { success ? VTKVideoProcessingStatusType::VTKVPStatus_Success : VTKVideoProcessingStatusType::VTKVPStatus_UnknownError,
+    { success ? VTKVideoProcessingStatusType::VTKVPStatus_Success
+              : VTKVideoProcessingStatusType::VTKVPStatus_UnknownError,
       packets });
 }
 
