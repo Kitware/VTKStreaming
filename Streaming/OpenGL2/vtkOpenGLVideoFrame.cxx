@@ -184,7 +184,8 @@ void vtkOpenGLVideoFrame::CopyDataInternal(unsigned char* data, unsigned int siz
   {
     vtkLog(TRACE, << "Padding reason: Given data size " << size << " smaller than frame size "
                   << allocSize << " - " << this->Width << "x" << this->Height
-                  << " for pixel format " << vtkPixelFormatTypeUtilities::ToString(this->PixelFormat));
+                  << " for pixel format "
+                  << vtkPixelFormatTypeUtilities::ToString(this->PixelFormat));
     std::vector<unsigned char> padded(allocSize);
     std::copy(data, data + size, padded.begin());
     // pad with zeros.
@@ -241,8 +242,9 @@ void vtkOpenGLVideoFrame::AllocateDataStore()
                 "vtkOpenGLRenderWindow instance.");
     return;
   }
-  if (this->ActualSize ==
-    vtkRawVideoFrame::GetEstimatedSize(this->Width, this->Height, this->PixelFormat))
+  const auto estimate =
+    vtkRawVideoFrame::GetEstimatedSize(this->Width, this->Height, this->PixelFormat, this->Strides);
+  if (this->ActualSize == estimate)
   {
     return;
   }
