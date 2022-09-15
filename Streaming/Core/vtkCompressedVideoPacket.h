@@ -32,9 +32,11 @@
 
 #include "vtkObject.h"
 
-#include "vtkNew.h"               // for ivar
-#include "vtkUnsignedCharArray.h" // for ivar
-#include "vtkStreamingCoreModule.h"   // for export macro
+#include "vtkNew.h"                 // for ivar
+#include "vtkStreamingCoreModule.h" // for export macro
+#include "vtkUnsignedCharArray.h"   // for ivar
+
+#include <string> // for ivar
 
 class VTKSTREAMINGCORE_EXPORT vtkCompressedVideoPacket : public vtkObject
 {
@@ -42,6 +44,15 @@ public:
   vtkTypeMacro(vtkCompressedVideoPacket, vtkObject);
   void PrintSelf(ostream& os, vtkIndent indent) override;
   static vtkCompressedVideoPacket* New();
+
+  ///@{
+  /**
+   * Specifies the mime type of the binary blob in this packet.
+   * Ex: "video/webm; codecs="vp09.00.10.08"", "image/bmp"
+   */
+  void SetMimeType(const char* value);
+  std::string GetMimeType() const;
+  ///@}
 
   ///@{
   /**
@@ -122,6 +133,7 @@ protected:
   int Width = 0;
   int Height = 0;
   long long PresentationTS = 0;
+  std::string MimeType;
   vtkNew<vtkUnsignedCharArray> Buffer;
 
 private:
