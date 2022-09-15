@@ -104,7 +104,7 @@ public:
    */
   void ComputeDefaultStrides();
   void SetStrides(int* strides, int size);
-  void SetStrides(int stride1, int stride2, int stride3);
+  void SetStrides(int stride0, int stride1, int stride2);
   int* GetStrides() VTK_SIZEHINT(3) { return this->Strides; }
   ///@}
 

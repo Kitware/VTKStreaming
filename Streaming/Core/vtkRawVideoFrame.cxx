@@ -35,7 +35,7 @@ void vtkRawVideoFrame::PrintSelf(ostream& os, vtkIndent indent)
   this->Superclass::PrintSelf(os, indent);
   os << "Width: " << this->Width << "\n";
   os << "Height: " << this->Height << "\n";
-  os << "PixelFormat: " << vtkPixelFormatTypeUtilities::ToString(this->PixelFormat);
+  os << "PixelFormat: " << vtkPixelFormatTypeUtilities::ToString(this->PixelFormat) << '\n';
   os << "AttachedWindow: " << this->AttachedWindow << '\n';
   os << "SliceOrder: ";
   switch (this->SliceOrder)
@@ -279,6 +279,14 @@ void vtkRawVideoFrame::SetStrides(int* strides, int size)
     this->Strides[i] = strides[i];
   }
   this->Modified();
+}
+
+//------------------------------------------------------------------------------
+void vtkRawVideoFrame::SetStrides(int stride0, int stride1, int stride2)
+{
+  this->Strides[0] = stride0;
+  this->Strides[1] = stride1;
+  this->Strides[2] = stride2;
 }
 
 //------------------------------------------------------------------------------
