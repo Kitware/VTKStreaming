@@ -64,6 +64,11 @@ int vtkCompressedVideoPacket::GetSize() const
 //------------------------------------------------------------------------------
 void vtkCompressedVideoPacket::CopyData(unsigned char* buffer, int size)
 {
+  if (this->Buffer->GetNumberOfValues() != size)
+  {
+    // clear out previous contents.
+    this->Buffer->SetNumberOfValues(size);
+  }
   std::copy(buffer, buffer + size, this->Buffer->GetPointer(0));
 }
 

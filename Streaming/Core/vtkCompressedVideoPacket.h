@@ -107,9 +107,7 @@ public:
   ///@{
   /**
    * Copy the array that represents the compressed video packet.
-   *
-   * Assumes that underlying buffer is allocated to atleast 'size' bytes through
-   * either vtkCompressedVideoPacket::SetSize or vtkCompressedVideoPacket::AllocateForCopy
+   * Allocates sufficient number of bytes if necessary.
    */
   virtual void CopyData(unsigned char* buffer, int size);
   void CopyData(vtkUnsignedCharArray* buffer);
