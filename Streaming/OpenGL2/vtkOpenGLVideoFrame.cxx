@@ -103,6 +103,7 @@ void vtkOpenGLVideoFrame::ReleaseGraphicsResources()
   }
   this->Texture->ReleaseGraphicsResources(oglRenWin);
   this->FBO->ReleaseGraphicsResources(oglRenWin);
+  this->ActualSize = 0;
 }
 
 //------------------------------------------------------------------------------
@@ -313,8 +314,15 @@ void vtkOpenGLVideoFrame::CopyMetadata(vtkRawVideoFrame* from) noexcept
   this->Superclass::CopyMetadata(from);
   if (auto glFrame = vtkOpenGLVideoFrame::SafeDownCast(from))
   {
-    this->ReleaseGraphicsResources();
-    this->InitializeGraphicsResources(glFrame->Texture->GetContext());
+    if (glFrame->Texture->GetContext() == this->Texture->GetContext())
+    {
+      return;
+    }
+    else
+    {
+      this->ReleaseGraphicsResources();
+      this->InitializeGraphicsResources(glFrame->Texture->GetContext());
+    }
   }
 }
 
