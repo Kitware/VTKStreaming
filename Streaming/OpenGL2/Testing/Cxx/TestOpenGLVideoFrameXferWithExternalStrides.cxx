@@ -59,7 +59,7 @@ int TestOpenGLVideoFrameXferWithExternalStrides(int argc, char* argv[])
   vtkOpenGLCheckErrors("ERROR uploading pixels to gl texture for source. ");
 
   vtkNew<vtkOpenGLVideoFrame> dstFrame;
-  dstFrame->ShallowCopy(srcFrame);
+  dstFrame->CopyMetadata(srcFrame);
 
   dstFrame->InitializeGraphicsResources(renWin);
   dstFrame->AllocateDataStore();

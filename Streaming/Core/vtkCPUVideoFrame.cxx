@@ -101,10 +101,10 @@ void vtkCPUVideoFrame::AllocateDataStore()
 }
 
 //------------------------------------------------------------------------------
-void vtkCPUVideoFrame::ShallowCopy(vtkRawVideoFrame* from) noexcept
+void vtkCPUVideoFrame::CopyMetadata(vtkRawVideoFrame* from) noexcept
 {
   vtkLogScopeFunction(TRACE);
-  this->Superclass::ShallowCopy(from);
+  this->Superclass::CopyMetadata(from);
 }
 
 //------------------------------------------------------------------------------

@@ -308,9 +308,9 @@ void* vtkOpenGLVideoFrame::GetResourceHandle() noexcept
 }
 
 //------------------------------------------------------------------------------
-void vtkOpenGLVideoFrame::ShallowCopy(vtkRawVideoFrame* from) noexcept
+void vtkOpenGLVideoFrame::CopyMetadata(vtkRawVideoFrame* from) noexcept
 {
-  this->Superclass::ShallowCopy(from);
+  this->Superclass::CopyMetadata(from);
   if (auto glFrame = vtkOpenGLVideoFrame::SafeDownCast(from))
   {
     this->ReleaseGraphicsResources();

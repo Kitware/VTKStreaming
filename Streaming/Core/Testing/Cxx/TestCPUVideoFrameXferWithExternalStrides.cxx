@@ -46,8 +46,7 @@ int TestCPUVideoFrameXferWithExternalStrides(int argc, char* argv[])
   srcFrame->CopyData(rawPixels.data(), rawPixels.size());
 
   vtkNew<vtkCPUVideoFrame> dstFrame;
-  dstFrame->ShallowCopy(srcFrame);
-  dstFrame->AllocateDataStore();
+  dstFrame->CopyMetadata(srcFrame);
   dstFrame->CopyFrameData(srcFrame);
 
   unsigned char* dstData = nullptr;

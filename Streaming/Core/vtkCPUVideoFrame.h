@@ -60,7 +60,7 @@ public:
   /**
    * Shallow copy members except the data. Calls parent class method.
    */
-  void ShallowCopy(vtkRawVideoFrame* from) noexcept override;
+  void CopyMetadata(vtkRawVideoFrame* from) noexcept override;
   ///@}
 
 protected:

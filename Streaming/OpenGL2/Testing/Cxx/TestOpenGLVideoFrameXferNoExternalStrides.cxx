@@ -69,7 +69,7 @@ int TestOpenGLVideoFrameXferNoExternalStrides(int argc, char* argv[])
 
   vtkNew<vtkOpenGLVideoFrame> dstFrame;
   dstFrame->InitializeGraphicsResources(renWin);
-  dstFrame->ShallowCopy(srcFrame);
+  dstFrame->CopyMetadata(srcFrame);
   dstFrame->ComputeDefaultStrides();
   dstFrame->AllocateDataStore();
   dstFrame->CopyFrameData(srcFrame);

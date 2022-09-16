@@ -181,7 +181,7 @@ public:
   /**
    * Copy members except the underlying buffer contents.
    */
-  virtual void ShallowCopy(vtkRawVideoFrame* from) noexcept;
+  virtual void CopyMetadata(vtkRawVideoFrame* from) noexcept;
 
   ///@{
   /**

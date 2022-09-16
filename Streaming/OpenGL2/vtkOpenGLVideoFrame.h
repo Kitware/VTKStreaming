@@ -73,7 +73,7 @@ public:
    * Methods to copy members and data. Subclasses may copy device <-> host memory.
    * CopyData Assumes that underlying buffer is allocated.
    */
-  void ShallowCopy(vtkRawVideoFrame* from) noexcept override;
+  void CopyMetadata(vtkRawVideoFrame* from) noexcept override;
   ///@}
 
 protected:

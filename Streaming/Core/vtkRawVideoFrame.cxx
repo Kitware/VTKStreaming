@@ -357,7 +357,7 @@ void vtkRawVideoFrame::CopyFrameData(vtkRawVideoFrame* from)
 }
 
 //------------------------------------------------------------------------------
-void vtkRawVideoFrame::ShallowCopy(vtkRawVideoFrame* other) noexcept
+void vtkRawVideoFrame::CopyMetadata(vtkRawVideoFrame* other) noexcept
 {
   vtkLogScopeFunction(TRACE);
   this->Width = other->Width;

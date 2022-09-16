@@ -62,7 +62,6 @@ void vtkEncoderDelegate::PrepareFrameInternal(
 {
   vtkLogScopeFunction(TRACE);
   dstFrame.TakeReference(frame->NewInstance());
-  dstFrame->ShallowCopy(frame);
-  dstFrame->AllocateDataStore();
+  dstFrame->CopyMetadata(frame);
   dstFrame->CopyFrameData(frame);
 }
