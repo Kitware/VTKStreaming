@@ -99,6 +99,7 @@ void vtkCompressedVideoPacket::CopyMetadata(vtkCompressedVideoPacket* other)
   this->PresentationTS = other->PresentationTS;
   this->Width = other->Width;
   this->Height = other->Height;
+  this->MimeType = other->MimeType;
 }
 
 //------------------------------------------------------------------------------
