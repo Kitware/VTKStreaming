@@ -112,14 +112,14 @@ void vtkNvEncoderGL::FlushInternal()
 }
 
 //------------------------------------------------------------------------------
-bool vtkNvEncoderGL::SetupEncoderFrame(const int& width, const int& height)
+bool vtkNvEncoderGL::SetupEncoderFrame(int width, int height)
 {
   vtkLogScopeF(TRACE, "%s size=%dx%d", __func__, width, height);
   return this->AllocateInputBuffers();
 }
 
 //------------------------------------------------------------------------------
-bool vtkNvEncoderGL::NeedsNewEncoderFrame(const int& width, const int& height)
+bool vtkNvEncoderGL::NeedsNewEncoderFrame(int width, int height)
 {
   bool outdated = this->Width != width || this->Height != height;
   this->Width = width;

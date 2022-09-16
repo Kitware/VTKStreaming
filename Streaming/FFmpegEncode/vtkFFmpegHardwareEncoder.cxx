@@ -425,7 +425,7 @@ VTKVideoEncoderResultType vtkFFmpegHardwareEncoder::DrainInternal()
 }
 
 //------------------------------------------------------------------------------
-bool vtkFFmpegHardwareEncoder::SetupEncoderFrame(const int& width, const int& height)
+bool vtkFFmpegHardwareEncoder::SetupEncoderFrame(int width, int height)
 {
   vtkLogScopeF(TRACE, "%s size=%dx%d", __func__, width, height);
   auto& internals = *(this->Internals);
@@ -484,7 +484,7 @@ bool vtkFFmpegHardwareEncoder::SetupEncoderFrame(const int& width, const int& he
 }
 
 //------------------------------------------------------------------------------
-bool vtkFFmpegHardwareEncoder::NeedsNewEncoderFrame(const int& w, const int& h)
+bool vtkFFmpegHardwareEncoder::NeedsNewEncoderFrame(int w, int h)
 {
   vtkLogScopeFunction(TRACE);
   auto& internals = *(this->Internals);

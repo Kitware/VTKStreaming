@@ -42,8 +42,8 @@ protected:
   void ShutdownInternal() override;
   void FlushInternal() override;
 
-  bool SetupEncoderFrame(const int&, const int&) override;
-  bool NeedsNewEncoderFrame(const int&, const int&) override;
+  bool SetupEncoderFrame(int, int) override;
+  bool NeedsNewEncoderFrame(int, int) override;
   void TearDownEncoderFrame() override;
 
   VTKVideoProcessingStatusType PushInternal(vtkRawVideoFrame* frame) override;

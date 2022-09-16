@@ -107,7 +107,7 @@ void vtkFFmpegSoftwareEncoder::FlushInternal()
 }
 
 //------------------------------------------------------------------------------
-bool vtkFFmpegSoftwareEncoder::SetupEncoderFrame(const int& width, const int& height)
+bool vtkFFmpegSoftwareEncoder::SetupEncoderFrame(int width, int height)
 {
   vtkLogScopeF(TRACE, "%s size=%dx%d", __func__, width, height);
   auto& internals = *(this->Internals);
@@ -133,7 +133,7 @@ bool vtkFFmpegSoftwareEncoder::SetupEncoderFrame(const int& width, const int& he
 }
 
 //------------------------------------------------------------------------------
-bool vtkFFmpegSoftwareEncoder::NeedsNewEncoderFrame(const int& w, const int& h)
+bool vtkFFmpegSoftwareEncoder::NeedsNewEncoderFrame(int w, int h)
 {
   vtkLogScopeFunction(TRACE);
   auto& internals = *(this->Internals);

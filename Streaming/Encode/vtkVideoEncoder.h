@@ -329,8 +329,8 @@ protected:
    * Concrete subclasses must handle initialization, allocation and freeing of an encoder frame
    * resource.
    */
-  virtual bool SetupEncoderFrame(const int& width, const int& height) = 0;
-  virtual bool NeedsNewEncoderFrame(const int& width, const int& height) = 0;
+  virtual bool SetupEncoderFrame(int width, int height) = 0;
+  virtual bool NeedsNewEncoderFrame(int width, int height) = 0;
   virtual void TearDownEncoderFrame() = 0;
   ///@}
 

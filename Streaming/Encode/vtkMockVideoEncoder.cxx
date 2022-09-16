@@ -55,13 +55,13 @@ void vtkMockVideoEncoder::ShutdownInternal() {}
 void vtkMockVideoEncoder::FlushInternal() {}
 
 //------------------------------------------------------------------------------
-bool vtkMockVideoEncoder::SetupEncoderFrame(const int&, const int&)
+bool vtkMockVideoEncoder::SetupEncoderFrame(int, int)
 {
   return true;
 }
 
 //------------------------------------------------------------------------------
-bool vtkMockVideoEncoder::NeedsNewEncoderFrame(const int&, const int&)
+bool vtkMockVideoEncoder::NeedsNewEncoderFrame(int, int)
 {
   return false;
 }

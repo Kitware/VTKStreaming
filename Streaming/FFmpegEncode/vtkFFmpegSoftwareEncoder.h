@@ -67,8 +67,8 @@ protected:
   /**
    * Implement parent class encoding and encoder resource management.
    */
-  bool SetupEncoderFrame(const int& width, const int& height) override;
-  bool NeedsNewEncoderFrame(const int& width, const int& height) override;
+  bool SetupEncoderFrame(int width, int height) override;
+  bool NeedsNewEncoderFrame(int width, int height) override;
   void TearDownEncoderFrame() override;
   VTKVideoEncoderResultType DrainInternal() override;
   VTKVideoProcessingStatusType PushInternal(vtkRawVideoFrame* frame) override;
