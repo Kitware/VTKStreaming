@@ -42,9 +42,22 @@ vtkStandardNewMacro(vtkFFmpegSoftwareEncoder);
 vtkFFmpegSoftwareEncoder::vtkFFmpegSoftwareEncoder()
   : Internals(new vtkFFmpegEncoderInternals())
 {
-#ifndef NDEBUG
-  av_log_set_level(AV_LOG_TRACE);
-#endif
+  if (vtkLogger::GetCurrentVerbosityCutoff() == vtkLogger::VERBOSITY_ERROR)
+  {
+    av_log_set_level(AV_LOG_ERROR);
+  }
+  else if (vtkLogger::GetCurrentVerbosityCutoff() == vtkLogger::VERBOSITY_INFO)
+  {
+    av_log_set_level(AV_LOG_INFO);
+  }
+  else if (vtkLogger::GetCurrentVerbosityCutoff() == vtkLogger::VERBOSITY_WARNING)
+  {
+    av_log_set_level(AV_LOG_WARNING);
+  }
+  else if (vtkLogger::GetCurrentVerbosityCutoff() == vtkLogger::VERBOSITY_TRACE)
+  {
+    av_log_set_level(AV_LOG_TRACE);
+  }
 }
 
 //------------------------------------------------------------------------------
