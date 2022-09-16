@@ -78,7 +78,6 @@ bool vtkFFmpegSoftwareEncoder::InitializeInternal()
       break;
     case VTKVideoCodecType::VTKVC_AV1:
       internals.CodecName = "libaom-av1";
-      internals.CodecName = "libsvtav1";
       internals.InputPixFmt = AV_PIX_FMT_YUV420P;
       break;
     case VTKVideoCodecType::VTKVC_VP9:
