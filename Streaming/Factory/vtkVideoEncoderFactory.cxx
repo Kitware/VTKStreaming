@@ -154,7 +154,7 @@ void vtkVideoEncoderFactory::LogAvailableEncoders()
   {
     this->Initialize();
   }
-  vtkLog(INFO, << "Avaliable encoders - ");
+  vtkLog(INFO, << "Available encoders - ");
   for (const auto& encoder : ::AvailableEncoders)
   {
     const auto& encoderType = encoder.first;
