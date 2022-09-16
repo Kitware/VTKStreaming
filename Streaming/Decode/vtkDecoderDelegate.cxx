@@ -61,8 +61,8 @@ void vtkDecoderDelegate::PreparePacketInternal(
 {
   vtkLogScopeFunction(TRACE);
   dstPacket.TakeReference(vtkCompressedVideoPacket::New());
-  dstPacket->ShallowCopy(packet);
-  dstPacket->AllocateCopy(packet);
+  dstPacket->CopyMetadata(packet);
+  dstPacket->AllocateForCopy(packet);
 
   // copy data from all planes.
   unsigned char* srcData = nullptr;

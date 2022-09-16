@@ -84,7 +84,7 @@ int vtkCompressedVideoPacket::GetData(unsigned char*& buffer) const
 }
 
 //------------------------------------------------------------------------------
-void vtkCompressedVideoPacket::ShallowCopy(vtkCompressedVideoPacket* other)
+void vtkCompressedVideoPacket::CopyMetadata(vtkCompressedVideoPacket* other)
 {
   if (other == nullptr)
   {
@@ -97,7 +97,7 @@ void vtkCompressedVideoPacket::ShallowCopy(vtkCompressedVideoPacket* other)
 }
 
 //------------------------------------------------------------------------------
-void vtkCompressedVideoPacket::AllocateCopy(vtkCompressedVideoPacket* other)
+void vtkCompressedVideoPacket::AllocateForCopy(vtkCompressedVideoPacket* other)
 {
   if (other == nullptr)
   {

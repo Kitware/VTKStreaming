@@ -90,9 +90,9 @@ int TestCodedVideoPacketMemory(int vtkNotUsed(argc), char* vtkNotUsed(argv)[])
     }
   }
 
-  // 4. AllocateCopy/CopyData(unsigned char*, int)
+  // 4. AllocateForCopy/CopyData(unsigned char*, int)
   {
-    vtkLog(TRACE, << "4. AllocateCopy/CopyData(unsigned char*, int)");
+    vtkLog(TRACE, << "4. AllocateForCopy/CopyData(unsigned char*, int)");
     success = true;
     vtkNew<vtkCompressedVideoPacket> srcPacket, dstPacket;
     auto buf = std::vector<unsigned char>(6);
@@ -103,7 +103,7 @@ int TestCodedVideoPacketMemory(int vtkNotUsed(argc), char* vtkNotUsed(argv)[])
     srcPacket->SetSize(6);
     srcPacket->CopyData(buf.data(), 6);
 
-    dstPacket->AllocateCopy(srcPacket);
+    dstPacket->AllocateForCopy(srcPacket);
     success &= (dstPacket->GetSize() == 6);
     success &= (dstPacket->GetData()->GetNumberOfValues() == 6);
 
@@ -115,14 +115,14 @@ int TestCodedVideoPacketMemory(int vtkNotUsed(argc), char* vtkNotUsed(argv)[])
     }
     if (!success)
     {
-      vtkLog(ERROR, << "Failed 4. AllocateCopy/CopyData(unsigned char*, int)");
+      vtkLog(ERROR, << "Failed 4. AllocateForCopy/CopyData(unsigned char*, int)");
       return 1;
     }
   }
 
-  // 5. AllocateCopy/CopyData(vtkUnsignedCharArray*)
+  // 5. AllocateForCopy/CopyData(vtkUnsignedCharArray*)
   {
-    vtkLog(TRACE, << "5. AllocateCopy/CopyData(vtkUnsignedCharArray*)");
+    vtkLog(TRACE, << "5. AllocateForCopy/CopyData(vtkUnsignedCharArray*)");
     success = true;
     vtkNew<vtkCompressedVideoPacket> srcPacket, dstPacket;
     vtkNew<vtkUnsignedCharArray> buf;
@@ -134,7 +134,7 @@ int TestCodedVideoPacketMemory(int vtkNotUsed(argc), char* vtkNotUsed(argv)[])
     srcPacket->SetSize(6);
     srcPacket->CopyData(buf);
 
-    dstPacket->AllocateCopy(srcPacket);
+    dstPacket->AllocateForCopy(srcPacket);
     success &= (dstPacket->GetSize() == 6);
     success &= (dstPacket->GetData()->GetNumberOfValues() == 6);
 
@@ -146,7 +146,7 @@ int TestCodedVideoPacketMemory(int vtkNotUsed(argc), char* vtkNotUsed(argv)[])
     }
     if (!success)
     {
-      vtkLog(ERROR, << "Failed 5. AllocateCopy/CopyData(vtkUnsignedCharArray*)");
+      vtkLog(ERROR, << "Failed 5. AllocateForCopy/CopyData(vtkUnsignedCharArray*)");
       return 1;
     }
   }

@@ -109,7 +109,7 @@ public:
    * Copy the array that represents the compressed video packet.
    *
    * Assumes that underlying buffer is allocated to atleast 'size' bytes through
-   * either vtkCompressedVideoPacket::SetSize or vtkCompressedVideoPacket::AllocateCopy
+   * either vtkCompressedVideoPacket::SetSize or vtkCompressedVideoPacket::AllocateForCopy
    */
   virtual void CopyData(unsigned char* buffer, int size);
   void CopyData(vtkUnsignedCharArray* buffer);
@@ -118,11 +118,11 @@ public:
   ///@{
   /**
    * Makes a copy of all members except the data.
-   * Use the more expressive AllocateCopy/SetArray/CopyData/GetData functions to manage the
+   * Use the more expressive AllocateForCopy/SetArray/CopyData/GetData functions to manage the
    * underlying buffer.
    */
-  void ShallowCopy(vtkCompressedVideoPacket* other);
-  void AllocateCopy(vtkCompressedVideoPacket* other);
+  void CopyMetadata(vtkCompressedVideoPacket* other);
+  void AllocateForCopy(vtkCompressedVideoPacket* other);
   ///@}
 
 protected:
