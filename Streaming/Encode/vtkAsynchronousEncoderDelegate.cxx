@@ -71,8 +71,7 @@ void vtkAsynchronousEncoderDelegate::PushWorkUnitInternal(vtkRawVideoFrame* fram
 
 bool vtkAsynchronousEncoderDelegate::HasResult()
 {
-  VTKVideoEncoderResultType result;
-  this->TrySucceeded = this->TaskQueue->TryPop(result);
+  this->TrySucceeded = this->TaskQueue->TryPop(this->Result);
   return this->TrySucceeded;
 }
 

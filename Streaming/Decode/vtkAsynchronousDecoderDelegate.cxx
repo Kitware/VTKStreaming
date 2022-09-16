@@ -71,8 +71,7 @@ void vtkAsynchronousDecoderDelegate::PushWorkUnitInternal(vtkCompressedVideoPack
 
 bool vtkAsynchronousDecoderDelegate::HasResult()
 {
-  VTKVideoDecoderResultType result;
-  this->TrySucceeded = this->TaskQueue->TryPop(result);
+  this->TrySucceeded = this->TaskQueue->TryPop(this->Result);
   return this->TrySucceeded;
 }
 
