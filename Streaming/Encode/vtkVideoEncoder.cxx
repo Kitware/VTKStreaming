@@ -398,7 +398,6 @@ VTKVideoProcessingStatusType vtkVideoEncoder::Push(vtkRawVideoFrame* frame)
       return VTKVideoProcessingStatusType::VTKVPStatus_UnknownError;
     }
 
-    // this resets frame->pts = 0
     success = this->SetupEncoderFrame(width, height);
     this->LastSetupMTime = success ? this->GetMTime() : -1;
 
@@ -413,6 +412,14 @@ VTKVideoProcessingStatusType vtkVideoEncoder::Push(vtkRawVideoFrame* frame)
     if (!this->Initialize())
     {
       vtkLog(ERROR, "Failed to initialize encoding context.");
+      return VTKVideoProcessingStatusType::VTKVPStatus_UnknownError;
+    }
+    success = this->SetupEncoderFrame(width, height);
+    this->LastSetupMTime = success ? this->GetMTime() : -1;
+
+    if (!success)
+    {
+      vtkLog(ERROR, << "Failed to setup an encoder frame");
       return VTKVideoProcessingStatusType::VTKVPStatus_UnknownError;
     }
   }
