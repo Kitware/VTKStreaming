@@ -56,8 +56,6 @@ vtkOpenGLVideoFrame::vtkOpenGLVideoFrame()
   , RGBA32Delegate(
       std::unique_ptr<vtkOpenGLRGBA32RenderDelegate>(new vtkOpenGLRGBA32RenderDelegate()))
 {
-  this->Texture = vtkTextureObject::New();
-  this->FBO = vtkOpenGLFramebufferObject::New();
 }
 
 //------------------------------------------------------------------------------
@@ -68,6 +66,11 @@ vtkOpenGLVideoFrame::~vtkOpenGLVideoFrame()
   {
     this->Texture->Delete();
     this->Texture = nullptr;
+  }
+  if (this->FBO != nullptr)
+  {
+    this->FBO->Delete();
+    this->FBO = nullptr;
   }
 }
 
