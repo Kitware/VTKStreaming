@@ -14,6 +14,7 @@
 =========================================================================*/
 
 #include "vtkEncoderDelegate.h"
+#include "vtkCPUVideoFrame.h"
 #include "vtkLogger.h"
 #include <iostream>
 
@@ -61,7 +62,7 @@ void vtkEncoderDelegate::PrepareFrameInternal(
   vtkRawVideoFrame* frame, VTKVideoEncoderInputType& dstFrame)
 {
   vtkLogScopeFunction(TRACE);
-  dstFrame.TakeReference(frame->NewInstance());
+  dstFrame = vtk::TakeSmartPointer(vtkCPUVideoFrame::New());
   dstFrame->CopyMetadata(frame);
   dstFrame->AllocateDataStore();
   dstFrame->CopyFrameData(frame);
