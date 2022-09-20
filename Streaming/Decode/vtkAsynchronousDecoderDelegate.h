@@ -22,21 +22,25 @@
 #ifndef vtkAsynchronousDecoderDelegate_h
 #define vtkAsynchronousDecoderDelegate_h
 
-#include "vtkDecoderDelegate.h"
+#include "vtkObject.h"
 
-#include "vtkThreadedTaskQueue.h" // for taskqueue
+#include "vtkThreadedTaskQueue.h"            // for taskqueue
+#include "vtkVideoProcessingWorkUnitTypes.h" // for return value
 
 #include <atomic> // for ivar
 #include <memory> // for ivar
 
-class vtkAsynchronousDecoderDelegate : public vtkDecoderDelegate
+class vtkAsynchronousDecoderDelegate : public vtkObject
 {
 public:
-  vtkTypeMacro(vtkAsynchronousDecoderDelegate, vtkDecoderDelegate);
+  vtkTypeMacro(vtkAsynchronousDecoderDelegate, vtkObject);
   void PrintSelf(ostream& os, vtkIndent indent) override;
   static vtkAsynchronousDecoderDelegate* New();
 
   using TaskQueueType = vtkThreadedTaskQueue<VTKVideoDecoderResultType, VTKVideoDecoderInputType>;
+
+  vtkSetMacro(BufferSize, int);
+  vtkGetMacro(BufferSize, int);
 
   vtkSetMacro(NumberOfTasks, int);
   vtkGetMacro(NumberOfTasks, int);
@@ -45,24 +49,27 @@ public:
   vtkGetMacro(StrictOrdering, int);
   vtkBooleanMacro(StrictOrdering, bool);
 
-  bool HasResult() override;
+  void InitializeWorker(VTKVideoDecodeWorkerType);
+  void Flush();
+  void Terminate();
+
+  void PushWorkUnit(vtkCompressedVideoPacket* frame);
+
+  VTKVideoDecoderResultType GetResult();
+  bool HasResult();
 
 protected:
   vtkAsynchronousDecoderDelegate();
   ~vtkAsynchronousDecoderDelegate() override;
 
-  VTKVideoDecoderResultType Result;
-  std::unique_ptr<TaskQueueType> TaskQueue;
-  int NumberOfTasks = 1;
   bool StrictOrdering = true;
+  int BufferSize = -1;
+  int NumberOfTasks = 1;
+  VTKVideoDecoderResultType Result;
   std::atomic<bool> TrySucceeded;
+  std::unique_ptr<TaskQueueType> TaskQueue;
 
-  void InitializeWorkerInternal(VTKVideoDecodeWorkerType) override;
-  void FlushInternal() override;
-  void TerminateInternal() override;
-
-  void PushWorkUnitInternal(vtkCompressedVideoPacket* frame) override;
-  VTKVideoDecoderResultType GetResultInternal() override;
+  void PreparePacket(vtkCompressedVideoPacket* packet, VTKVideoDecoderInputType& dstPacket);
 
 private:
   vtkAsynchronousDecoderDelegate(const vtkAsynchronousDecoderDelegate&) = delete;

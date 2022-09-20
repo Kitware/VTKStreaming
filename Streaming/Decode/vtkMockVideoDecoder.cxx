@@ -15,8 +15,12 @@
 
 #include "vtkMockVideoDecoder.h"
 #include "vtkCompressedVideoPacket.h"
+#include "vtkLogger.h"
 #include "vtkObjectFactory.h"
 #include "vtkVideoProcessingStatusTypes.h"
+
+#include <chrono>
+#include <thread>
 
 vtkStandardNewMacro(vtkMockVideoDecoder);
 
@@ -24,7 +28,10 @@ vtkStandardNewMacro(vtkMockVideoDecoder);
 vtkMockVideoDecoder::vtkMockVideoDecoder() = default;
 
 //------------------------------------------------------------------------------
-vtkMockVideoDecoder::~vtkMockVideoDecoder() = default;
+vtkMockVideoDecoder::~vtkMockVideoDecoder()
+{
+  this->Shutdown();
+}
 
 //------------------------------------------------------------------------------
 void vtkMockVideoDecoder::PrintSelf(ostream& os, vtkIndent indent)
@@ -35,7 +42,7 @@ void vtkMockVideoDecoder::PrintSelf(ostream& os, vtkIndent indent)
 //------------------------------------------------------------------------------
 vtkIdType vtkMockVideoDecoder::GetLastDecodeTimeNS() const noexcept
 {
-  return 0;
+  return this->MockDecodeInterval;
 }
 
 //------------------------------------------------------------------------------
@@ -71,8 +78,24 @@ VTKVideoDecoderResultType vtkMockVideoDecoder::GetResultInternal()
 //------------------------------------------------------------------------------
 VTKVideoDecoderResultType vtkMockVideoDecoder::DecodeInternal(vtkCompressedVideoPacket* packet)
 {
-  return VTKVideoDecoderResultType({ VTKVideoProcessingStatusType::VTKVPStatus_Success, {} });
+  vtkLogScopeFunction(TRACE);
+  if (this->PacketCounter % this->MockLargePacketPeriod)
+  {
+    std::this_thread::sleep_for(std::chrono::milliseconds(this->MockDecodeInterval));
+  }
+  else
+  {
+
+    std::this_thread::sleep_for(
+      std::chrono::milliseconds(this->MockDecodeInterval * this->MockLargePacketIntervalRatio));
+  }
+  auto data = packet->GetData();
+  this->PacketCounter++;
+  return { VTKVideoProcessingStatusType::VTKVPStatus_Success, {} };
 }
 
 //------------------------------------------------------------------------------
-void vtkMockVideoDecoder::DrainInternal() {}
+VTKVideoDecoderResultType vtkMockVideoDecoder::DrainInternal()
+{
+  return { VTKVideoProcessingStatusType::VTKVPStatus_Success, {} };
+}

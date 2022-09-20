@@ -43,7 +43,6 @@ public:
    * Implement public convenient methods.
    */
   bool SupportsAsynchronousDelegate() const noexcept override { return true; }
-  bool SupportsSynchronousDelegate() const noexcept override { return true; }
   bool IsHardwareAccelerated() const noexcept override { return false; }
   vtkIdType GetLastDecodeTimeNS() const noexcept override;
   vtkIdType GetLastScaleTimeNS() const noexcept override;
@@ -70,7 +69,7 @@ protected:
   VTKVideoProcessingStatusType PushInternal(vtkCompressedVideoPacket* packet) override;
   VTKVideoDecoderResultType GetResultInternal() override;
   VTKVideoDecoderResultType DecodeInternal(vtkCompressedVideoPacket* packet) override;
-  void DrainInternal() override;
+  VTKVideoDecoderResultType DrainInternal() override;
   ///@}
 
 private:

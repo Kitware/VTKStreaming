@@ -4,8 +4,6 @@ set(classes
 )
 
 set(priv_classes
-  vtkDecoderDelegate
-  vtkSynchronousDecoderDelegate
   vtkAsynchronousDecoderDelegate
 )
 

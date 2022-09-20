@@ -36,13 +36,13 @@ void vtkAsynchronousDecoderDelegate::PrintSelf(ostream& os, vtkIndent indent)
   os << "TaskQueueIsEmpty: " << this->TaskQueue->IsEmpty() << "\n";
 }
 
-void vtkAsynchronousDecoderDelegate::InitializeWorkerInternal(VTKVideoDecodeWorkerType workerFunc)
+void vtkAsynchronousDecoderDelegate::InitializeWorker(VTKVideoDecodeWorkerType workerFunc)
 {
   this->TaskQueue.reset(new TaskQueueType(
     workerFunc, this->StrictOrdering, this->BufferSize, static_cast<int>(this->NumberOfTasks)));
 }
 
-void vtkAsynchronousDecoderDelegate::FlushInternal()
+void vtkAsynchronousDecoderDelegate::Flush()
 {
   if (this->TaskQueue != nullptr)
   {
@@ -50,7 +50,7 @@ void vtkAsynchronousDecoderDelegate::FlushInternal()
   }
 }
 
-void vtkAsynchronousDecoderDelegate::TerminateInternal()
+void vtkAsynchronousDecoderDelegate::Terminate()
 {
   vtkLogScopeFunction(TRACE);
   if (this->TaskQueue != nullptr)
@@ -61,11 +61,11 @@ void vtkAsynchronousDecoderDelegate::TerminateInternal()
   this->TaskQueue.reset(nullptr);
 }
 
-void vtkAsynchronousDecoderDelegate::PushWorkUnitInternal(vtkCompressedVideoPacket* packet)
+void vtkAsynchronousDecoderDelegate::PushWorkUnit(vtkCompressedVideoPacket* packet)
 {
   vtkLogScopeFunction(TRACE);
   vtkSmartPointer<vtkCompressedVideoPacket> dstPacket;
-  this->PreparePacketInternal(packet, dstPacket);
+  this->PreparePacket(packet, dstPacket);
   this->TaskQueue->Push(std::move(dstPacket));
 }
 
@@ -75,7 +75,7 @@ bool vtkAsynchronousDecoderDelegate::HasResult()
   return this->TrySucceeded;
 }
 
-VTKVideoDecoderResultType vtkAsynchronousDecoderDelegate::GetResultInternal()
+VTKVideoDecoderResultType vtkAsynchronousDecoderDelegate::GetResult()
 {
   vtkLogScopeFunction(TRACE);
   if (this->TrySucceeded)
@@ -91,4 +91,23 @@ VTKVideoDecoderResultType vtkAsynchronousDecoderDelegate::GetResultInternal()
   }
   this->TaskQueue->Pop(this->Result);
   return this->Result;
+}
+
+void vtkAsynchronousDecoderDelegate::PreparePacket(
+  vtkCompressedVideoPacket* packet, VTKVideoDecoderInputType& dstPacket)
+{
+  vtkLogScopeFunction(TRACE);
+  dstPacket.TakeReference(vtkCompressedVideoPacket::New());
+  dstPacket->CopyMetadata(packet);
+  dstPacket->AllocateForCopy(packet);
+
+  unsigned char* srcData = nullptr;
+  unsigned char* dstData = nullptr;
+  const int srcSize = packet->GetData(srcData);
+  if (srcSize > 0)
+  {
+    const int dstSize = dstPacket->GetData(dstData);
+    assert(dstSize == srcSize);
+    dstPacket->CopyData(srcData, srcSize);
+  }
 }

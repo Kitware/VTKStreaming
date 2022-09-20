@@ -143,10 +143,38 @@ void vtkFFmpegSoftwareDecoder::ShutdownInternal()
 }
 
 //------------------------------------------------------------------------------
-void vtkFFmpegSoftwareDecoder::FlushInternal() {}
+void vtkFFmpegSoftwareDecoder::FlushInternal()
+{
+  vtkLogScopeFunction(TRACE);
+  this->DrainInternal();
+  auto& internals = *(this->Internals);
+  avcodec_flush_buffers(internals.DecodeCtx);
+}
 
 //------------------------------------------------------------------------------
-void vtkFFmpegSoftwareDecoder::DrainInternal() {}
+VTKVideoDecoderResultType vtkFFmpegSoftwareDecoder::DrainInternal()
+{
+  vtkLogScopeFunction(TRACE);
+  auto& internals = *(this->Internals);
+  VTKVideoDecoderResultType result;
+  int ret = avcodec_send_packet(internals.DecodeCtx, nullptr);
+  while (ret >= 0)
+  {
+    ret = avcodec_receive_frame(internals.DecodeCtx, internals.SoftwareFrame);
+    switch (ret)
+    {
+      case AVERROR(EAGAIN):
+      case AVERROR(EINVAL):
+      default:
+        break;
+      case AVERROR_EOF:
+        vtkLog(TRACE, "Draining complete");
+        ret = -1;
+        break;
+    }
+  }
+  return result;
+}
 
 //------------------------------------------------------------------------------
 VTKVideoProcessingStatusType vtkFFmpegSoftwareDecoder::PushInternal(
@@ -177,7 +205,8 @@ VTKVideoDecoderResultType vtkFFmpegSoftwareDecoder::GetResultInternal()
   if (!internals.SoftwareFrame)
   {
     vtkLog(ERROR, << "Frame is null. Cannot decode!");
-    result.first = VTKVideoProcessingStatusType::VTKVPStatus_UnknownError; // dunno why frame is null.
+    result.first =
+      VTKVideoProcessingStatusType::VTKVPStatus_UnknownError; // dunno why frame is null.
     result.second = {};
     return result;
   }
@@ -234,7 +263,8 @@ VTKVideoDecoderResultType vtkFFmpegSoftwareDecoder::DecodeInternal(vtkCompressed
   if (!internals.SoftwareFrame)
   {
     vtkLog(ERROR, << "Frame is null. Cannot decode!");
-    result.first = VTKVideoProcessingStatusType::VTKVPStatus_UnknownError; // dunno why frame is null.
+    result.first =
+      VTKVideoProcessingStatusType::VTKVPStatus_UnknownError; // dunno why frame is null.
     result.second = {};
     return result;
   }

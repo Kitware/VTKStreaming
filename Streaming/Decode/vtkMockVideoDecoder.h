@@ -27,9 +27,12 @@ public:
   void PrintSelf(ostream& os, vtkIndent indent) override;
   static vtkMockVideoDecoder* New();
 
+  void SetMockDecodeTimeMilliseconds(int value) { this->MockDecodeInterval = value; }
+  void SetMockLargePacketPeriod(int value) { this->MockLargePacketPeriod = value; }
+  void SetMockLargePacketIntervalRatio(int value) { this->MockLargePacketIntervalRatio = value; }
+
   bool IsHardwareAccelerated() const noexcept override { return false; }
   bool SupportsAsynchronousDelegate() const noexcept override { return true; }
-  bool SupportsSynchronousDelegate() const noexcept override { return true; }
   vtkIdType GetLastDecodeTimeNS() const noexcept override;
   vtkIdType GetLastScaleTimeNS() const noexcept override;
   bool SupportsCodec(VTKVideoCodecType codec) const noexcept override { return true; };
@@ -38,6 +41,12 @@ protected:
   vtkMockVideoDecoder();
   ~vtkMockVideoDecoder() override;
 
+  int MockDecodeInterval = 20;
+  int MockLargePacketPeriod = 20; // every so many packets, we'll simulate a large encode.
+  int MockLargePacketIntervalRatio =
+    100; // time to encode a large packet w.r.t to a regular packet.
+  int PacketCounter = 1;
+
   bool InitializeInternal() override;
   void ShutdownInternal() override;
   void FlushInternal() override;
@@ -45,7 +54,7 @@ protected:
   VTKVideoProcessingStatusType PushInternal(vtkCompressedVideoPacket* packet) override;
   VTKVideoDecoderResultType GetResultInternal() override;
   VTKVideoDecoderResultType DecodeInternal(vtkCompressedVideoPacket* packet) override;
-  void DrainInternal() override;
+  VTKVideoDecoderResultType DrainInternal() override;
 
 private:
   vtkMockVideoDecoder(const vtkMockVideoDecoder&) = delete;

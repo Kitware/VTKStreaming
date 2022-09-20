@@ -29,15 +29,7 @@
  * With both synchronous and asynchronous delegates, the 'real' decoding happens
  * during vtkVideoDecoder::GetResult().
  *
- * Here is an overview of the 3 important methods with different delegates.
- *
- * With synchronous delegate -:
- * 1. vtkVideoDecoder::Push() -
- *     does not block caller's thread.
- * 2. vtkVideoDecoder::GetResult() -
- *     starts and finishes decoding on the caller's thread.
- * 3. vtkVideoDecoder::HasResult() -
- *     always returns false.
+ * Here is an overview of the 3 important methods.
  *
  * With asynchronous delegate -:
  * 1. vtkVideoDecoder::Push() -
@@ -48,7 +40,7 @@
  *     returns true if any results are already available.
  *
  * You can avoid delegates if you prefer tighter control over the API. Ex -: implement your own task
- * queue management.
+ * queue management. Turn off async delegate with UseAsynchronousDelegateOff()
  * When the delegate is bypassed -:
  * 1. vtkVideoDecoder::Push() -
  *     blocks the caller's thread and decoding begins right away.
@@ -56,6 +48,12 @@
  *     finishes the decoding and returns the result.
  * 3. vtkVideoDecoder::HasResult() -
  *     always returns false.
+ *
+ * With an asynchronous delegate, if you prefer to be notified
+ * when a result is available, please listen to vtkCommand::ProgressEvent.
+ * This class emits an event when frames are available.
+ *
+ * Call vtkVideoDecoder::Shutdown() before the decoder is destroyed.
  *
  * @sa vtkRawVideoFrame, vtkCompressedVideoPacket
  */
@@ -66,12 +64,12 @@
 #include "vtkObject.h"
 
 #include "vtkPixelFormatTypes.h"             // for enum
+#include "vtkStreamingDecodeModule.h"        // for export macro
 #include "vtkVideoCodecTypes.h"              // for enum
-#include "vtkStreamingDecodeModule.h"            // for export macro
 #include "vtkVideoProcessingWorkUnitTypes.h" // for work unit
 
+class vtkAsynchronousDecoderDelegate;
 class vtkCompressedVideoPacket;
-class vtkDecoderDelegate;
 
 class VTKSTREAMINGDECODE_EXPORT vtkVideoDecoder : public vtkObject
 {
@@ -81,17 +79,13 @@ public:
 
   ///@{
   /**
-   * Switch between different delegates or bypass the delegates.
-   *
-   * DevNote: Concrete sub-classes should never know what delegate we're using,
-   *          hdece non-virtual set/get.
+   * Set/Get UseAsynchronousDelegate
    */
-  void UseAsynchronousDelegate();
-  void UseSynchronousDelegate(); // default
-  void SetBypassDelegate(bool val);
-  bool GetBypassDelegate();
-  void BypassDelegateOn();
-  void BypassDelegateOff();
+  void SetUseAsynchronousDelegate(bool val);
+  bool GetUseAsynchronousDelegate();
+  void UseAsynchronousDelegateOn();
+  void UseAsynchronousDelegateOff();
+  ///@}
 
   vtkSetEnumMacro(Codec, VTKVideoCodecType);
   vtkGetEnumMacro(Codec, VTKVideoCodecType);
@@ -121,18 +115,29 @@ public:
    * Public interface for the decoder. Concrete sub-classes are supposed to
    * implement the PushInternal() method.
    *
-   * vtkVideoDecoder::Push(vtkRawVideoFrame* frame) is the entry point
+   * vtkVideoDecoder::Push(vtkCompressedVideoPacket* packet) is the entry point
    * to start decoding. The `Push` method is non-blocking.
    * The return value is false when any stage of the push
    * process failed.
    *
    * Call vtkVideoDecoder::GetResult() to access the decoded video frames.
+   *
+   * Draining the decoder is different from a flush operation.
+   * Flush puts some decoder implementations in an uninitialized state whereas drain does not.
    */
-  void Drain();
   VTKVideoProcessingStatusType Push(vtkCompressedVideoPacket* packet);
+  VTKVideoDecoderResultType Decode(vtkCompressedVideoPacket* packet);
   bool HasResult(); // always returns false when not using an asynchronous delegate.
   VTKVideoDecoderResultType GetResult();
+  VTKVideoDecoderResultType Drain();
   ///@}
+
+  /**
+   * In asynchronous decoding, it may happen that a large number of frames are waiting in the task
+   * queue. This method lets us ignore further decode requests when flushing the task queue.
+   * vtkVideoDecoder::Push later resets the cancel flag.
+   */
+  void CancelPendingDecodeRequests();
 
   ///@{
   /**
@@ -140,7 +145,6 @@ public:
    */
   virtual bool IsHardwareAccelerated() const noexcept = 0;
   virtual bool SupportsAsynchronousDelegate() const noexcept = 0;
-  virtual bool SupportsSynchronousDelegate() const noexcept = 0;
   virtual vtkIdType GetLastDecodeTimeNS() const noexcept = 0;
   virtual vtkIdType GetLastScaleTimeNS() const noexcept = 0;
   virtual bool SupportsCodec(VTKVideoCodecType codec) const noexcept = 0;
@@ -152,9 +156,9 @@ protected:
 
   VTKVideoCodecType Codec = VTKVideoCodecType::VTKVC_VP9;
   bool Initialized = false;
+  bool IgnoreDecodeRequest = false;
   unsigned int BufferSize = 30;
-  vtkDecoderDelegate* Delegate = nullptr;
-  bool BypassDelegate = false;
+  vtkAsynchronousDecoderDelegate* Delegate = nullptr;
 
   ///@{
   /**
@@ -174,7 +178,7 @@ protected:
   virtual VTKVideoProcessingStatusType PushInternal(vtkCompressedVideoPacket* packet) = 0;
   virtual VTKVideoDecoderResultType GetResultInternal() = 0;
   virtual VTKVideoDecoderResultType DecodeInternal(vtkCompressedVideoPacket* packet) = 0;
-  virtual void DrainInternal() = 0;
+  virtual VTKVideoDecoderResultType DrainInternal() = 0;
   ///@}
 
 private:
