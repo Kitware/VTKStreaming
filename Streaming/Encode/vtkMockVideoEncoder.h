@@ -27,6 +27,10 @@ public:
   void PrintSelf(ostream& os, vtkIndent indent) override;
   static vtkMockVideoEncoder* New();
 
+  void SetMockEncodeTimeMilliseconds(int value) { this->MockEncodeInterval = value; }
+  void SetMockLargeFramePeriod(int value) { this->MockLargeFramePeriod = value; }
+  void SetMockLargeFrameIntervalRatio(int value) { this->MockLargeFrameIntervalRatio = value; }
+
   bool IsHardwareAccelerated() const noexcept override { return false; }
   bool SupportsAsynchronousDelegate() const noexcept override { return true; }
   bool SupportsSynchronousDelegate() const noexcept override { return true; }
@@ -37,6 +41,11 @@ public:
 protected:
   vtkMockVideoEncoder();
   ~vtkMockVideoEncoder() override;
+
+  int MockEncodeInterval = 20;
+  int MockLargeFramePeriod = 20;         // every so many frames, we'll simulate a large encode.
+  int MockLargeFrameIntervalRatio = 100; // time to encode a large frame w.r.t to a regular frame.
+  int FrameCounter = 1;
 
   bool InitializeInternal() override;
   void ShutdownInternal() override;

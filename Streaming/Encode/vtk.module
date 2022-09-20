@@ -12,3 +12,5 @@ PRIVATE_DEPENDS
   VTK::ParallelCore
 TEST_DEPENDS
   VTK::TestingCore
+  VTK::StreamingOpenGL2
+  VTK::RenderingOpenGL2

@@ -14,7 +14,11 @@
 =========================================================================*/
 
 #include "vtkMockVideoEncoder.h"
+#include "vtkCommand.h"
+#include "vtkLogger.h"
 #include "vtkObjectFactory.h"
+#include <chrono>
+#include <thread>
 
 vtkStandardNewMacro(vtkMockVideoEncoder);
 
@@ -33,7 +37,7 @@ void vtkMockVideoEncoder::PrintSelf(ostream& os, vtkIndent indent)
 //------------------------------------------------------------------------------
 vtkIdType vtkMockVideoEncoder::GetLastEncodeTimeNS() const noexcept
 {
-  return 0;
+  return this->MockEncodeInterval;
 }
 
 //------------------------------------------------------------------------------
@@ -84,6 +88,18 @@ VTKVideoEncoderResultType vtkMockVideoEncoder::GetResultInternal()
 //------------------------------------------------------------------------------
 VTKVideoEncoderResultType vtkMockVideoEncoder::EncodeInternal(vtkRawVideoFrame* frame)
 {
+  vtkLogScopeFunction(TRACE);
+  if (this->FrameCounter % this->MockLargeFramePeriod)
+  {
+    std::this_thread::sleep_for(std::chrono::milliseconds(this->MockEncodeInterval));
+  }
+  else
+  {
+    std::this_thread::sleep_for(
+      std::chrono::milliseconds(this->MockEncodeInterval * this->MockLargeFrameIntervalRatio));
+  }
+  auto data = frame->GetData();
+  this->FrameCounter++;
   return VTKVideoEncoderResultType({ VTKVideoProcessingStatusType::VTKVPStatus_Success, {} });
 }
 
