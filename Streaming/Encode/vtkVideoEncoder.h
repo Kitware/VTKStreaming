@@ -111,6 +111,16 @@ public:
 
   ///@{
   /**
+   * Set/Get the quality.
+   * 1: Low image quality, faster encoding
+   * 100: High image quality, slower encoding
+   */
+  vtkGetMacro(Quality, int);
+  vtkSetClampMacro(Quality, int, 1, 100);
+  ///@}
+
+  ///@{
+  /**
    * Set/Get codec used for video encoding.
    */
   vtkSetEnumMacro(Codec, VTKVideoCodecType);
@@ -296,6 +306,7 @@ protected:
   VTKVideoCodecType Codec = VTKVideoCodecType::VTKVC_VP9;
   bool ForceLowLatency = true;
   bool KeyFramesOnly = false;
+  int Quality = 100;
   // 2. Sequence parameters
   bool ForceIFrame = false;
   int TimeBaseStart = 1;

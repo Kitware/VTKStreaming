@@ -26,6 +26,7 @@ enum class VTKVideoCodecType
   VTKVC_AV1,
   VTKVC_H264,
   VTKVC_H265,
+  VTKVC_JPEG,
   VTKVC_MaxNumberOfSupportedCodecs
 };
 
@@ -43,6 +44,8 @@ struct VTKSTREAMINGCORE_EXPORT vtkVideoCodecTypeUtilities
         return "h.264";
       case VTKVideoCodecType::VTKVC_H265:
         return "h.265";
+      case VTKVideoCodecType::VTKVC_JPEG:
+        return "jpeg";
       default:
         return "unsupported codec";
     }

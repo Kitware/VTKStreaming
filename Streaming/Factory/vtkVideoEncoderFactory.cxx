@@ -16,10 +16,12 @@
 #include "vtkVideoEncoderFactory.h"
 #include "vtkFFmpegHardwareEncoder.h"
 #include "vtkFFmpegSoftwareEncoder.h"
+#include "vtkJPEGVideoEncoder.h"
 #include "vtkLogger.h"
 #include "vtkNew.h"
 #include "vtkObjectFactory.h"
 #include "vtkSmartPointer.h"
+#include "vtkVideoCodecTypes.h"
 
 #include <map>
 #include <set>
@@ -59,28 +61,11 @@ std::string EncoderTypeEnum2Str(int pref)
   return "None";
 }
 
-std::string CodecTypeEnum2Str(VTKVideoCodecType codec)
-{
-  switch (codec)
-  {
-    case VTKVideoCodecType::VTKVC_VP9:
-      return "VP9";
-    case VTKVideoCodecType::VTKVC_AV1:
-      return "AV1";
-    case VTKVideoCodecType::VTKVC_H264:
-      return "H264";
-    case VTKVideoCodecType::VTKVC_H265:
-      return "H265";
-    default:
-      return "None";
-  }
-}
-
 std::string CodecTypeEnum2Str(int codec)
 {
   if (codec >= 0 && codec <= static_cast<int>(VTKVideoCodecType::VTKVC_MaxNumberOfSupportedCodecs))
   {
-    return ::CodecTypeEnum2Str(static_cast<VTKVideoCodecType>(codec));
+    return vtkVideoCodecTypeUtilities::ToString(static_cast<VTKVideoCodecType>(codec));
   }
   return "None";
 }
@@ -132,7 +117,8 @@ void vtkVideoEncoderFactory::Initialize()
   auto& table = ::AvailableEncoders;
   for (int encoderType = 0; encoderType < ::EncoderTypeEnum::MaxTypes; ++encoderType)
   {
-    for (int codec = 0; codec < static_cast<int>(VTKVideoCodecType::VTKVC_MaxNumberOfSupportedCodecs); ++codec)
+    for (int codec = 0;
+         codec < static_cast<int>(VTKVideoCodecType::VTKVC_MaxNumberOfSupportedCodecs); ++codec)
     {
       const auto codecEnum = static_cast<VTKVideoCodecType>(codec);
       const auto encoderTypeEnum = static_cast<::EncoderTypeEnum>(encoderType);
@@ -162,7 +148,7 @@ void vtkVideoEncoderFactory::LogAvailableEncoders()
     vtkLog(INFO, << ::EncoderTypeEnum2Str(encoderType));
     for (const auto& codecType : codecs)
     {
-      vtkLog(INFO, << "|--" << ::CodecTypeEnum2Str(codecType));
+      vtkLog(INFO, << "|--" << vtkVideoCodecTypeUtilities::ToString(codecType));
     }
   }
 }
@@ -295,7 +281,7 @@ vtkVideoEncoder* vtkVideoEncoderFactory::NewEncoder(VTKVideoCodecType codec)
   }
 
   vtkLog(ERROR, << "Unable to find a suitable encoder on this system. Requested codec type - "
-                << ::CodecTypeEnum2Str(codec));
+                << vtkVideoCodecTypeUtilities::ToString(codec));
   return nullptr;
 }
 
@@ -323,7 +309,7 @@ vtkVideoEncoder* vtkVideoEncoderFactory::NewHardwareEncoder(VTKVideoCodecType co
   {
     vtkLog(
       ERROR, << "Unable to find a hardware accelerated encoder on this system. Requested codec - "
-             << ::CodecTypeEnum2Str(codec));
+             << vtkVideoCodecTypeUtilities::ToString(codec));
   }
 
   return result;
@@ -343,7 +329,7 @@ vtkVideoEncoder* vtkVideoEncoderFactory::NewSoftwareEncoder(VTKVideoCodecType co
   if (result == nullptr)
   {
     vtkLog(ERROR, << "Unable to find a software encoder on this system. Requested codec - "
-                  << ::CodecTypeEnum2Str(codec));
+                  << vtkVideoCodecTypeUtilities::ToString(codec));
   }
   return result;
 }
@@ -354,7 +340,7 @@ bool vtkVideoEncoderFactory::SupportsEncoderTypeWithCodec(
 {
   vtkLogScopeFunction(TRACE);
   vtkLogScopeF(TRACE, "Readiness check %s %s", ::EncoderTypeEnum2Str(encoderType).c_str(),
-    ::CodecTypeEnum2Str(codec).c_str());
+    vtkVideoCodecTypeUtilities::ToString(codec));
   bool success = false;
   switch (encoderType)
   {
@@ -394,6 +380,11 @@ bool vtkVideoEncoderFactory::SupportsEncoderTypeWithCodec(
     case ::EncoderTypeEnum::Software:
     default: // none fallback to software.
     {
+      if (codec == VTKVideoCodecType::VTKVC_JPEG)
+      {
+        success = true;
+        break;
+      }
       this->Internals->HWEncoder->ClearGPUPreference();
       this->Internals->SWEncoder->SetCodec(codec);
       success = this->Internals->SWEncoder->Initialize();
@@ -412,7 +403,8 @@ bool vtkVideoEncoderFactory::SupportsEncoderType(EncoderTypeEnum encoderType)
   vtkLog(TRACE, << "Trying video encoder type - " << ::EncoderTypeEnum2Str(encoderType) << "...");
 
   bool success = false;
-  for (int i = 0; i < static_cast<int>(VTKVideoCodecType::VTKVC_MaxNumberOfSupportedCodecs) && !success; ++i)
+  for (int i = 0;
+       i < static_cast<int>(VTKVideoCodecType::VTKVC_MaxNumberOfSupportedCodecs) && !success; ++i)
   {
     success = vtkVideoEncoderFactory::SupportsEncoderTypeWithCodec(
       encoderType, static_cast<VTKVideoCodecType>(i));
@@ -470,9 +462,18 @@ vtkVideoEncoder* vtkVideoEncoderFactory::CreateEncoderWithCodec(
     case ::EncoderTypeEnum::Software:
     default: // none fallback to software.
     {
-      auto enc = vtkFFmpegSoftwareEncoder::New();
-      enc->SetCodec(codec);
-      preferredEncoder = enc;
+      if (codec == VTKVideoCodecType::VTKVC_JPEG)
+      {
+        auto enc = vtkJPEGVideoEncoder::New();
+        enc->SetCodec(codec);
+        preferredEncoder = enc;
+      }
+      else
+      {
+        auto enc = vtkFFmpegSoftwareEncoder::New();
+        enc->SetCodec(codec);
+        preferredEncoder = enc;
+      }
       break;
     }
   }
@@ -488,7 +489,8 @@ vtkVideoEncoder* vtkVideoEncoderFactory::CreateEncoder(EncoderTypeEnum encoderTy
   auto& internals = (*this->Internals);
 
   vtkVideoEncoder* preferredEncoder = nullptr;
-  for (int i = 0; i < static_cast<int>(VTKVideoCodecType::VTKVC_MaxNumberOfSupportedCodecs) && preferredEncoder == nullptr;
+  for (int i = 0; i < static_cast<int>(VTKVideoCodecType::VTKVC_MaxNumberOfSupportedCodecs) &&
+       preferredEncoder == nullptr;
        ++i)
   {
     preferredEncoder = this->CreateEncoderWithCodec(encoderType, static_cast<VTKVideoCodecType>(i));

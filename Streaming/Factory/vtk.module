@@ -10,3 +10,4 @@ DEPENDS
   VTKStreaming::Core
 PRIVATE_DEPENDS
   VTKStreaming::FFmpegEncode
+  VTKStreaming::JPEGEncode
