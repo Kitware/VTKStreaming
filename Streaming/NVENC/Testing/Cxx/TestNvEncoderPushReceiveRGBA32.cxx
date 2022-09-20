@@ -68,7 +68,6 @@ int TestNvEncoderPushReceiveRGBA32(int argc, char* argv[])
   enc->InitializeOpenGLContext(renWin);
   enc->SetWidth(width);
   enc->SetHeight(height);
-  enc->BypassDelegateOn();
   enc->SetInputPixelFormat(VTKPixelFormatType::VTKPF_RGBA32);
 
   vtkNew<vtkOpenGLVideoFrame> dFrame;
