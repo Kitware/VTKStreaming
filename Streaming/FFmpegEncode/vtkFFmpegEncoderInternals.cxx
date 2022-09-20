@@ -396,7 +396,7 @@ void vtkFFmpegEncoderInternals::Tweak()
   }
   else if (codec->id == AV_CODEC_ID_AV1 && std::string(codec->name) == "libaom-av1")
   {
-    av_opt_set(ctx->priv_data, "cpu-used", "8", 0); // default is 1!
+    av_opt_set(ctx->priv_data, "cpu-used", "4", 0); // default is 1!
     av_opt_set(ctx->priv_data, "lag-in-frames", "0", 0);
     av_opt_set(ctx->priv_data, "usage", "realtime", 0); // default is good.
     av_opt_set(ctx->priv_data, "row-mt", "1", 0);       // default auto.
