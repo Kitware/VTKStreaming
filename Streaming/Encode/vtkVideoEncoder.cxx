@@ -16,6 +16,7 @@
 #include "vtkVideoEncoder.h"
 
 #include "vtkAsynchronousEncoderDelegate.h"
+#include "vtkCommand.h"
 #include "vtkEncoderDelegate.h"
 #include "vtkLogger.h"
 #include "vtkObjectFactory.h"
@@ -180,7 +181,7 @@ bool vtkVideoEncoder::Initialize()
   {
     // set the worker function to delegate processing of frames to the encoder delegate
     using namespace std::placeholders; // for _1
-    VTKVideoEncodeWorkerType worker = std::bind(&vtkVideoEncoder::EncodeInternal, this, _1);
+    VTKVideoEncodeWorkerType worker = std::bind(&vtkVideoEncoder::Encode, this, _1);
 
     // from this point on, delegate takes care of processing frames to compressed packets.
     this->Delegate->InitializeWorker(worker);
@@ -434,6 +435,15 @@ VTKVideoProcessingStatusType vtkVideoEncoder::Push(vtkRawVideoFrame* frame)
     this->Delegate->PushWorkUnit(frame);
     return VTKVideoProcessingStatusType::VTKVPStatus_Success;
   }
+}
+
+//------------------------------------------------------------------------------
+VTKVideoEncoderResultType vtkVideoEncoder::Encode(vtkRawVideoFrame* frame)
+{
+  vtkLogScopeFunction(TRACE);
+  auto result = this->EncodeInternal(frame);
+  this->InvokeEvent(vtkCommand::ProgressEvent);
+  return result;
 }
 
 //------------------------------------------------------------------------------

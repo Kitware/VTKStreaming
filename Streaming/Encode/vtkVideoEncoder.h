@@ -56,6 +56,9 @@
  * 3. vtkVideoEncoder::HasResult() -
  *     always returns false.
  *
+ * If you prefer to be notified of when a result will be available, please listen to
+ * vtkCommand::ProgressEvent. This class emits the event when packets are available.
+ *
  * @sa vtkRawVideoFrame, vtkCompressedVideoPacket
  */
 
@@ -266,6 +269,7 @@ public:
    */
   VTKVideoEncoderResultType Drain();
   VTKVideoProcessingStatusType Push(vtkRawVideoFrame* frame);
+  VTKVideoEncoderResultType Encode(vtkRawVideoFrame* frame);
   bool HasResult(); // always returns false when not using an asynchronous delegate.
   VTKVideoEncoderResultType GetResult();
   ///@}
