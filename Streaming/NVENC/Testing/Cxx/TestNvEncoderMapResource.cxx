@@ -58,7 +58,7 @@ int TestNvEncoderMapResource(int argc, char* argv[])
   enc->InitializeOpenGLContext(renWin);
   enc->SetWidth(w);
   enc->SetHeight(h);
-  enc->BypassDelegateOn();
+  enc->UseAsynchronousDelegateOn();
   enc->SetInputPixelFormat(VTKPixelFormatType::VTKPF_RGBA32);
 
   success &= (enc->Push(frame) == VTKVideoProcessingStatusType::VTKVPStatus_Success);

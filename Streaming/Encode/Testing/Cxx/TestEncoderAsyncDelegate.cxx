@@ -15,21 +15,16 @@
 // This test demonstrates the arrival of packets when a video encoder uses
 // asynchronous delegate. The mock video encoder simulates an encoder lag
 // by sleeping for a given time interval. You can increase the mock lag inteval
-// and notice that packets arrival interspersed with Push calls.
+// and notice that arrival of packets is interspersed with Push calls.
 
 #include "vtkCallbackCommand.h"
-#include "vtkCommand.h"
-#include "vtkIndent.h"
 #include "vtkLogger.h"
 #include "vtkMockVideoEncoder.h"
 #include "vtkOpenGLVideoFrame.h"
-#include "vtkPixelFormatTypes.h"
 #include "vtkRenderWindow.h"
 #include "vtkRenderer.h"
-#include "vtkSmartPointer.h"
 
 #include <chrono>
-#include <cstdlib>
 #include <thread>
 
 #define MAX_NUM_FRAMES 100
@@ -51,8 +46,7 @@ int TestEncoderAsyncDelegate(int argc, char* argv[])
   encoder->SetMockLargeFramePeriod(MAX_NUM_FRAMES / 20);
   encoder->SetMockLargeFrameIntervalRatio(MAX_NUM_FRAMES / 2);
 
-  encoder->BypassDelegateOff();
-  encoder->UseAsynchronousDelegate();
+  encoder->UseAsynchronousDelegateOn();
 
   vtkNew<vtkRenderWindow> window;
   vtkNew<vtkRenderer> renderer;
@@ -66,8 +60,8 @@ int TestEncoderAsyncDelegate(int argc, char* argv[])
   int pushCount = 0;
   for (const auto& frame : frames)
   {
-    frame->SetWidth(3440);
-    frame->SetHeight(3440);
+    frame->SetWidth(4096);
+    frame->SetHeight(2160);
     frame->SetPixelFormat(VTKPixelFormatType::VTKPF_RGBA32);
     frame->InitializeGraphicsResources(window);
     frame->ComputeDefaultStrides();
@@ -77,7 +71,6 @@ int TestEncoderAsyncDelegate(int argc, char* argv[])
   }
   std::this_thread::sleep_for(std::chrono::milliseconds(30));
   encoder->Flush();
-  encoder->Shutdown();
   success = readyCount == pushCount;
   if (!success)
   {

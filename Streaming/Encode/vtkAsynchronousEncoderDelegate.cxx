@@ -14,6 +14,7 @@
 =========================================================================*/
 
 #include "vtkAsynchronousEncoderDelegate.h"
+#include "vtkCPUVideoFrame.h"
 #include "vtkLogger.h"
 #include "vtkObjectFactory.h"
 
@@ -36,13 +37,13 @@ void vtkAsynchronousEncoderDelegate::PrintSelf(ostream& os, vtkIndent indent)
   os << "TaskQueueIsEmpty: " << this->TaskQueue->IsEmpty() << "\n";
 }
 
-void vtkAsynchronousEncoderDelegate::InitializeWorkerInternal(VTKVideoEncodeWorkerType workerFunc)
+void vtkAsynchronousEncoderDelegate::InitializeWorker(VTKVideoEncodeWorkerType workerFunc)
 {
   this->TaskQueue.reset(new TaskQueueType(
     workerFunc, this->StrictOrdering, this->BufferSize, static_cast<int>(this->NumberOfTasks)));
 }
 
-void vtkAsynchronousEncoderDelegate::FlushInternal()
+void vtkAsynchronousEncoderDelegate::Flush()
 {
   if (this->TaskQueue != nullptr)
   {
@@ -50,7 +51,7 @@ void vtkAsynchronousEncoderDelegate::FlushInternal()
   }
 }
 
-void vtkAsynchronousEncoderDelegate::TerminateInternal()
+void vtkAsynchronousEncoderDelegate::Terminate()
 {
   vtkLogScopeFunction(TRACE);
   if (this->TaskQueue != nullptr)
@@ -61,11 +62,11 @@ void vtkAsynchronousEncoderDelegate::TerminateInternal()
   this->TaskQueue.reset(nullptr);
 }
 
-void vtkAsynchronousEncoderDelegate::PushWorkUnitInternal(vtkRawVideoFrame* frame)
+void vtkAsynchronousEncoderDelegate::PushWorkUnit(vtkRawVideoFrame* frame)
 {
   vtkLogScopeFunction(TRACE);
   vtkSmartPointer<vtkRawVideoFrame> dstFrame;
-  this->PrepareFrameInternal(frame, dstFrame);
+  this->PrepareFrame(frame, dstFrame);
   this->TaskQueue->Push(std::move(dstFrame));
 }
 
@@ -75,7 +76,7 @@ bool vtkAsynchronousEncoderDelegate::HasResult()
   return this->TrySucceeded;
 }
 
-VTKVideoEncoderResultType vtkAsynchronousEncoderDelegate::GetResultInternal()
+VTKVideoEncoderResultType vtkAsynchronousEncoderDelegate::GetResult()
 {
   vtkLogScopeFunction(TRACE);
   if (this->TrySucceeded)
@@ -91,4 +92,14 @@ VTKVideoEncoderResultType vtkAsynchronousEncoderDelegate::GetResultInternal()
   }
   this->TaskQueue->Pop(this->Result);
   return this->Result;
+}
+
+void vtkAsynchronousEncoderDelegate::PrepareFrame(
+  vtkRawVideoFrame* frame, VTKVideoEncoderInputType& dstFrame)
+{
+  vtkLogScopeFunction(TRACE);
+  dstFrame = vtk::TakeSmartPointer(vtkCPUVideoFrame::New());
+  dstFrame->CopyMetadata(frame);
+  dstFrame->AllocateDataStore();
+  dstFrame->CopyFrameData(frame);
 }

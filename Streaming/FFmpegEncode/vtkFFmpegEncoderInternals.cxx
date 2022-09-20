@@ -15,7 +15,6 @@
 
 #include "vtkFFmpegEncoderInternals.h"
 #include "vtkCompressedVideoPacket.h"
-#include "vtkEncoderDelegate.h"
 #include "vtkLogger.h"
 #include "vtkRawVideoFrame.h"
 #include "vtkSmartPointer.h"

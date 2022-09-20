@@ -59,6 +59,7 @@ int TestNvEncoderPushReceiveNV12(int argc, char* argv[])
   enc->SetWidth(width);
   enc->SetHeight(height);
   enc->SetCodec(VTKVideoCodecType::VTKVC_H264);
+  enc->UseAsynchronousDelegateOn();
   enc->SetInputPixelFormat(VTKPixelFormatType::VTKPF_NV12);
 
   vtkNew<vtkOpenGLVideoFrame> nv12Picture;

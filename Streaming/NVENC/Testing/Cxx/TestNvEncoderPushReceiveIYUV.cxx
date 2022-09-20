@@ -59,6 +59,7 @@ int TestNvEncoderPushReceiveIYUV(int argc, char* argv[])
   enc->SetWidth(width);
   enc->SetHeight(height);
   enc->SetCodec(VTKVideoCodecType::VTKVC_H264);
+  enc->UseAsynchronousDelegateOn();
   enc->SetInputPixelFormat(VTKPixelFormatType::VTKPF_IYUV);
 
   vtkNew<vtkOpenGLVideoFrame> iyuvPicture;

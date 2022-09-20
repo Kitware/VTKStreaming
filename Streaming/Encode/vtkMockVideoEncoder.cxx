@@ -26,7 +26,10 @@ vtkStandardNewMacro(vtkMockVideoEncoder);
 vtkMockVideoEncoder::vtkMockVideoEncoder() = default;
 
 //------------------------------------------------------------------------------
-vtkMockVideoEncoder::~vtkMockVideoEncoder() = default;
+vtkMockVideoEncoder::~vtkMockVideoEncoder()
+{
+  this->Shutdown();
+}
 
 //------------------------------------------------------------------------------
 void vtkMockVideoEncoder::PrintSelf(ostream& os, vtkIndent indent)

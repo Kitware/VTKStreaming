@@ -47,7 +47,7 @@ vtkNvEncoderGL::vtkNvEncoderGL()
 //------------------------------------------------------------------------------
 vtkNvEncoderGL::~vtkNvEncoderGL()
 {
-  this->ShutdownInternal();
+  this->Shutdown();
 }
 
 //------------------------------------------------------------------------------

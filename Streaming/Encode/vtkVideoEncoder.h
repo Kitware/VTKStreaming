@@ -28,15 +28,7 @@
  * With both synchronous and asynchronous delegates, the 'real' encoding happens
  * during vtkVideoEncoder::GetResult().
  *
- * Here is an overview of the 3 important methods with different delegates.
- *
- * With synchronous delegate -:
- * 1. vtkVideoEncoder::Push() -
- *     does not block caller's thread.
- * 2. vtkVideoEncoder::GetResult() -
- *     starts and finishes encoding on the caller's thread.
- * 3. vtkVideoEncoder::HasResult() -
- *     always returns false.
+ * Here is an overview of the 3 important methods.
  *
  * With asynchronous delegate -:
  * 1. vtkVideoEncoder::Push() -
@@ -47,7 +39,7 @@
  *     returns true if any results are already available.
  *
  * You can avoid delegates if you prefer tighter control over the API. Ex -: implement your own task
- * queue management.
+ * queue management. Turn off async delegate with UseAsynchronousDelegateOff()
  * When the delegate is bypassed -:
  * 1. vtkVideoEncoder::Push() -
  *     blocks the caller's thread and encoding begins right away.
@@ -56,8 +48,11 @@
  * 3. vtkVideoEncoder::HasResult() -
  *     always returns false.
  *
- * If you prefer to be notified of when a result will be available, please listen to
- * vtkCommand::ProgressEvent. This class emits the event when packets are available.
+ * With an asynchronous delegate, if you prefer to be notified
+ * when a result is available, please listen to vtkCommand::ProgressEvent.
+ * This class emits an event when packets are available.
+ *
+ * Call vtkVideoEncoder::Shutdown() before the encoder is destroyed.
  *
  * @sa vtkRawVideoFrame, vtkCompressedVideoPacket
  */
@@ -73,8 +68,8 @@
 #include "vtkVideoProcessingStatusTypes.h"   // for enum
 #include "vtkVideoProcessingWorkUnitTypes.h" // for work unit
 
+class vtkAsynchronousEncoderDelegate;
 class vtkRawVideoFrame;
-class vtkEncoderDelegate;
 
 class VTKSTREAMINGENCODE_EXPORT vtkVideoEncoder : public vtkObject
 {
@@ -84,14 +79,12 @@ public:
 
   ///@{
   /**
-   * Switch between different delegates or bypass the delegates.
+   * Set/Get UseAsynchronousDelegate
    */
-  void UseAsynchronousDelegate();
-  void UseSynchronousDelegate(); // default
-  void SetBypassDelegate(bool val);
-  bool GetBypassDelegate();
-  void BypassDelegateOn();
-  void BypassDelegateOff();
+  void SetUseAsynchronousDelegate(bool val);
+  bool GetUseAsynchronousDelegate();
+  void UseAsynchronousDelegateOn();
+  void UseAsynchronousDelegateOff();
   ///@}
 
   ///@{
@@ -266,13 +259,23 @@ public:
    * to start encoding.
    *
    * Call vtkVideoEncoder::GetResult() to access the encoded video packets.
+   *
+   * Draining the encoder is different from a flush operation.
+   * Flush puts some encoder implementations in an uninitialized state whereas drain does not.
    */
-  VTKVideoEncoderResultType Drain();
   VTKVideoProcessingStatusType Push(vtkRawVideoFrame* frame);
   VTKVideoEncoderResultType Encode(vtkRawVideoFrame* frame);
   bool HasResult(); // always returns false when not using an asynchronous delegate.
   VTKVideoEncoderResultType GetResult();
+  VTKVideoEncoderResultType Drain();
   ///@}
+
+  /**
+   * In asynchronous encoding, it may happen that a large number of frames are waiting in the task
+   * queue. This method lets us ignore further encode requests when flushing the task queue.
+   * vtkVideoEncoder::Push resets the cancel flag.
+   */
+  void CancelPendingEncodeRequests();
 
   ///@{
   /**
@@ -280,7 +283,6 @@ public:
    */
   virtual bool IsHardwareAccelerated() const noexcept = 0;
   virtual bool SupportsAsynchronousDelegate() const noexcept = 0;
-  virtual bool SupportsSynchronousDelegate() const noexcept = 0;
   virtual vtkIdType GetLastEncodeTimeNS() const noexcept = 0;
   virtual vtkIdType GetLastScaleTimeNS() const noexcept = 0;
   virtual bool SupportsCodec(VTKVideoCodecType codec) const noexcept = 0;
@@ -312,11 +314,10 @@ protected:
   // 5. Parallelism
   unsigned int NumberOfEncoderThreads = 2; // conservative default.
   // 6. Processing delegate
-  vtkEncoderDelegate* Delegate = nullptr;
-  bool BypassDelegate = false;
-  bool TryIndefinitelyUntilReceiveValidPacket = false;
+  vtkAsynchronousEncoderDelegate* Delegate = nullptr;
 
   bool Initialized = false;
+  bool IgnoreEncodeRequest = false;
   vtkMTimeType LastSetupMTime = 0;
 
   ///@{

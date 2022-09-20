@@ -17,17 +17,12 @@
 
 #include "vtkAsynchronousEncoderDelegate.h"
 #include "vtkCommand.h"
-#include "vtkEncoderDelegate.h"
 #include "vtkLogger.h"
 #include "vtkObjectFactory.h"
 #include "vtkPixelFormatTypes.h"
 #include "vtkRawVideoFrame.h"
-#include "vtkSynchronousEncoderDelegate.h"
 #include "vtkVideoProcessingStatusTypes.h"
 #include "vtkVideoProcessingWorkUnitTypes.h"
-
-#include <chrono>
-#include <cstddef>
 
 //------------------------------------------------------------------------------
 vtkVideoEncoder::vtkVideoEncoder() = default;
@@ -47,13 +42,9 @@ vtkVideoEncoder::~vtkVideoEncoder()
 void vtkVideoEncoder::PrintSelf(ostream& os, vtkIndent indent)
 {
   this->Superclass::PrintSelf(os, indent);
-  os << "BypassDelegate : " << (this->BypassDelegate ? "yes" : "no") << '\n';
-  if (!this->BypassDelegate)
+  os << "UsingAsynchronousDelegate: " << (this->HasDelegate() ? "yes" : "no") << '\n';
+  if (this->HasDelegate())
   {
-    os << "UsingSynchronousDelegate: "
-       << (this->Delegate->IsA("vtkSynchronousEncoderDelegate") ? "yes" : "no") << '\n';
-    os << "UsingAsynchronousDelegate: "
-       << (this->Delegate->IsA("vtkAsynchronousEncoderDelegate") ? "yes" : "no") << '\n';
     this->Delegate->PrintSelf(os, indent.GetNextIndent());
   }
   os << "Codec: " << vtkVideoCodecTypeUtilities::ToString(this->Codec) << '\n';
@@ -86,64 +77,59 @@ bool vtkVideoEncoder::HasDelegate()
 }
 
 //------------------------------------------------------------------------------
-void vtkVideoEncoder::UseAsynchronousDelegate()
+void vtkVideoEncoder::SetUseAsynchronousDelegate(bool val)
 {
-  vtkLogScopeFunction(TRACE);
-  if (this->BypassDelegate)
+  vtkLogScopeF(TRACE, "%s val=%s", __func__, val ? "true" : "false");
+  if (!this->SupportsAsynchronousDelegate())
   {
     vtkLog(TRACE, << "Bypass the delegate.");
     return;
   }
-  if (!this->SupportsAsynchronousDelegate())
+
+  if (val)
   {
-    vtkLog(TRACE, << "Bypass the delegate since encoder does not support asynchronous delegate.");
-    this->BypassDelegateOn();
-    return;
+    if (this->HasDelegate())
+    {
+      return;
+    }
+    else if (this->Initialized)
+    {
+      this->Shutdown();
+    }
+    this->Delegate = vtkAsynchronousEncoderDelegate::New();
+    this->Delegate->SetBufferSize(-1);
+    this->Delegate->SetNumberOfTasks(1);
+    this->Delegate->SetStrictOrdering(true);
   }
-  if (this->HasDelegate() && !this->Delegate->IsA("vtkAsynchronousEncoderDelegate"))
+  else
   {
-    this->Shutdown();
-    this->Delegate->Delete();
-    this->Delegate = nullptr;
+    vtkLog(TRACE, << "Bypass the delegate.");
+    if (this->HasDelegate())
+    {
+      this->Shutdown();
+      this->Delegate->Delete();
+      this->Delegate = nullptr;
+      return;
+    }
   }
-  else if (this->HasDelegate() && this->Delegate->IsA("vtkAsynchronousEncoderDelegate"))
-  {
-    return;
-  }
-  auto asyncDelegate = vtkAsynchronousEncoderDelegate::New();
-  asyncDelegate->SetBufferSize(-1);
-  asyncDelegate->SetNumberOfTasks(1);
-  asyncDelegate->SetStrictOrdering(true);
-  this->Delegate = asyncDelegate;
 }
 
 //------------------------------------------------------------------------------
-void vtkVideoEncoder::UseSynchronousDelegate()
+bool vtkVideoEncoder::GetUseAsynchronousDelegate()
 {
-  vtkLogScopeFunction(TRACE);
-  if (this->BypassDelegate)
-  {
-    vtkLog(TRACE, << "Bypass the delegate.");
-    return;
-  }
-  if (!this->SupportsSynchronousDelegate())
-  {
-    vtkLog(TRACE, << "Bypass the delegate since encoder does not support synchronous delegate.");
-    this->BypassDelegateOn();
-    return;
-  }
-  if (this->HasDelegate() && !this->Delegate->IsA("vtkSynchronousEncoderDelegate"))
-  {
-    this->Shutdown();
-    this->Delegate->Delete();
-    this->Delegate = nullptr;
-  }
-  else if (this->HasDelegate() && this->Delegate->IsA("vtkSynchronousEncoderDelegate"))
-  {
-    return;
-  }
-  this->Delegate = vtkSynchronousEncoderDelegate::New();
-  this->Delegate->SetBufferSize(this->TimeBaseEnd > 1 ? this->TimeBaseEnd / 2 : 1);
+  return this->HasDelegate();
+}
+
+//------------------------------------------------------------------------------
+void vtkVideoEncoder::UseAsynchronousDelegateOn()
+{
+  this->SetUseAsynchronousDelegate(true);
+}
+
+//------------------------------------------------------------------------------
+void vtkVideoEncoder::UseAsynchronousDelegateOff()
+{
+  this->SetUseAsynchronousDelegate(false);
 }
 
 //------------------------------------------------------------------------------
@@ -160,31 +146,20 @@ bool vtkVideoEncoder::Initialize()
 
   this->Initialized = this->InitializeInternal();
 
-  if (this->BypassDelegate && this->HasDelegate())
+  if (this->HasDelegate())
   {
-    // do not use the delegate, terminate existing and delete it.
     this->Delegate->Terminate();
-    this->Delegate->Delete();
-    this->Delegate = nullptr;
-  }
-  else if (!this->HasDelegate() && !this->BypassDelegate)
-  {
-    // create default delegate if we don't have one but need one.
-    this->UseSynchronousDelegate();
-  }
-  if (this->BypassDelegate)
-  {
-    // Initialization complete.
+    // set the worker function to delegate processing of frames with an async encoder delegate
+    using namespace std::placeholders; // for _1
+    VTKVideoEncodeWorkerType worker = std::bind(&vtkVideoEncoder::Encode, this, _1);
+
+    // from this point on, async delegate takes care of processing frames into compressed packets.
+    this->Delegate->InitializeWorker(worker);
     return this->Initialized;
   }
   else
   {
-    // set the worker function to delegate processing of frames to the encoder delegate
-    using namespace std::placeholders; // for _1
-    VTKVideoEncodeWorkerType worker = std::bind(&vtkVideoEncoder::Encode, this, _1);
-
-    // from this point on, delegate takes care of processing frames to compressed packets.
-    this->Delegate->InitializeWorker(worker);
+    // Initialization complete.
     return this->Initialized;
   }
 }
@@ -197,8 +172,9 @@ void vtkVideoEncoder::Shutdown()
   {
     return;
   }
-  if (!this->BypassDelegate && this->HasDelegate())
+  if (this->HasDelegate())
   {
+    this->CancelPendingEncodeRequests();
     this->Delegate->Terminate();
   }
   this->ShutdownInternal();
@@ -209,43 +185,16 @@ void vtkVideoEncoder::Shutdown()
 void vtkVideoEncoder::Flush()
 {
   vtkLogScopeFunction(TRACE);
-  if (!this->BypassDelegate)
+  if (!this->Initialized)
   {
+    return;
+  }
+  if (this->HasDelegate())
+  {
+    // Prevent race conditions - flush pending tasks before draining the encoder.
     this->Delegate->Flush();
   }
   this->FlushInternal();
-}
-
-//------------------------------------------------------------------------------
-void vtkVideoEncoder::SetBypassDelegate(bool val)
-{
-  vtkLogScopeFunction(TRACE);
-  if (val != this->BypassDelegate)
-  {
-    this->BypassDelegate = val;
-    this->Modified();
-  }
-}
-
-//------------------------------------------------------------------------------
-bool vtkVideoEncoder::GetBypassDelegate()
-{
-  vtkLogScopeFunction(TRACE);
-  return this->BypassDelegate;
-}
-
-//------------------------------------------------------------------------------
-void vtkVideoEncoder::BypassDelegateOn()
-{
-  vtkLogScopeFunction(TRACE);
-  this->SetBypassDelegate(true);
-}
-
-//------------------------------------------------------------------------------
-void vtkVideoEncoder::BypassDelegateOff()
-{
-  vtkLogScopeFunction(TRACE);
-  this->SetBypassDelegate(false);
 }
 
 //------------------------------------------------------------------------------
@@ -369,6 +318,15 @@ void vtkVideoEncoder::ForceIFrameOff()
 VTKVideoEncoderResultType vtkVideoEncoder::Drain()
 {
   vtkLogScopeFunction(TRACE);
+  if (!this->Initialized)
+  {
+    return { VTKVideoProcessingStatusType::VTKVPStatus_Success, {} };
+  }
+  if (this->HasDelegate())
+  {
+    // Prevent race conditions - flush pending tasks before draining the encoder.
+    this->Delegate->Flush();
+  }
   return this->DrainInternal();
 }
 
@@ -425,15 +383,15 @@ VTKVideoProcessingStatusType vtkVideoEncoder::Push(vtkRawVideoFrame* frame)
     }
   }
 
-  if (this->BypassDelegate ||
-    (!this->SupportsAsynchronousDelegate() && !this->SupportsSynchronousDelegate()))
-  {
-    return this->PushInternal(frame);
-  }
-  else
+  this->IgnoreEncodeRequest = false;
+  if (this->HasDelegate())
   {
     this->Delegate->PushWorkUnit(frame);
     return VTKVideoProcessingStatusType::VTKVPStatus_Success;
+  }
+  else
+  {
+    return this->PushInternal(frame);
   }
 }
 
@@ -441,6 +399,11 @@ VTKVideoProcessingStatusType vtkVideoEncoder::Push(vtkRawVideoFrame* frame)
 VTKVideoEncoderResultType vtkVideoEncoder::Encode(vtkRawVideoFrame* frame)
 {
   vtkLogScopeFunction(TRACE);
+  if (this->IgnoreEncodeRequest)
+  {
+    vtkLog(TRACE, "Ignoring encode request.");
+    return { VTKVideoProcessingStatusType::VTKVPStatus_Success, {} };
+  }
   auto result = this->EncodeInternal(frame);
   this->InvokeEvent(vtkCommand::ProgressEvent);
   return result;
@@ -450,13 +413,18 @@ VTKVideoEncoderResultType vtkVideoEncoder::Encode(vtkRawVideoFrame* frame)
 bool vtkVideoEncoder::HasResult()
 {
   vtkLogScopeFunction(TRACE);
-  return this->BypassDelegate ? false : this->Delegate->HasResult();
+  return this->HasDelegate() ? this->Delegate->HasResult() : false;
 }
 
 //------------------------------------------------------------------------------
 VTKVideoEncoderResultType vtkVideoEncoder::GetResult()
 {
   vtkLogScopeFunction(TRACE);
-  auto result = this->BypassDelegate ? this->GetResultInternal() : this->Delegate->GetResult();
+  auto result = this->HasDelegate() ? this->Delegate->GetResult() : this->GetResultInternal();
   return result;
+}
+
+void vtkVideoEncoder::CancelPendingEncodeRequests()
+{
+  this->IgnoreEncodeRequest = true;
 }

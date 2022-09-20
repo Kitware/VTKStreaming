@@ -37,7 +37,6 @@ public:
 
   bool IsHardwareAccelerated() const noexcept override { return true; }
   bool SupportsAsynchronousDelegate() const noexcept override { return false; }
-  bool SupportsSynchronousDelegate() const noexcept override { return true; }
   vtkIdType GetLastEncodeTimeNS() const noexcept override;
   vtkIdType GetLastScaleTimeNS() const noexcept override;
   bool SupportsCodec(VTKVideoCodecType codec) const noexcept override;

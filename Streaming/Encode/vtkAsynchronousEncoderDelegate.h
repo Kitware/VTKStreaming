@@ -22,23 +22,27 @@
 #ifndef vtkAsynchronousEncoderDelegate_h
 #define vtkAsynchronousEncoderDelegate_h
 
-#include "vtkEncoderDelegate.h"
+#include "vtkObject.h"
 
-#include "vtkThreadedTaskQueue.h" // for taskqueue
+#include "vtkThreadedTaskQueue.h"            // for taskqueue
+#include "vtkVideoProcessingWorkUnitTypes.h" // for return value
 
 #include <atomic> // for ivar
 #include <memory> // for ivar
 
 class vtkRawVideoFrame;
 
-class vtkAsynchronousEncoderDelegate : public vtkEncoderDelegate
+class vtkAsynchronousEncoderDelegate : public vtkObject
 {
 public:
-  vtkTypeMacro(vtkAsynchronousEncoderDelegate, vtkEncoderDelegate);
+  vtkTypeMacro(vtkAsynchronousEncoderDelegate, vtkObject);
   void PrintSelf(ostream& os, vtkIndent indent) override;
   static vtkAsynchronousEncoderDelegate* New();
 
   using TaskQueueType = vtkThreadedTaskQueue<VTKVideoEncoderResultType, VTKVideoEncoderInputType>;
+
+  vtkSetMacro(BufferSize, int);
+  vtkGetMacro(BufferSize, int);
 
   vtkSetMacro(NumberOfTasks, int);
   vtkGetMacro(NumberOfTasks, int);
@@ -47,24 +51,26 @@ public:
   vtkGetMacro(StrictOrdering, int);
   vtkBooleanMacro(StrictOrdering, bool);
 
-  bool HasResult() override;
+  void InitializeWorker(VTKVideoEncodeWorkerType);
+  void Flush();
+  void Terminate();
+
+  void PushWorkUnit(vtkRawVideoFrame* frame);
+  VTKVideoEncoderResultType GetResult();
+  bool HasResult();
 
 protected:
   vtkAsynchronousEncoderDelegate();
   ~vtkAsynchronousEncoderDelegate() override;
 
-  VTKVideoEncoderResultType Result;
-  std::unique_ptr<TaskQueueType> TaskQueue;
-  int NumberOfTasks = 1;
   bool StrictOrdering = true;
+  int BufferSize = -1;
+  int NumberOfTasks = 1;
+  VTKVideoEncoderResultType Result;
   std::atomic<bool> TrySucceeded;
+  std::unique_ptr<TaskQueueType> TaskQueue;
 
-  void InitializeWorkerInternal(VTKVideoEncodeWorkerType) override;
-  void FlushInternal() override;
-  void TerminateInternal() override;
-
-  void PushWorkUnitInternal(vtkRawVideoFrame* frame) override;
-  VTKVideoEncoderResultType GetResultInternal() override;
+  void PrepareFrame(vtkRawVideoFrame* frame, VTKVideoEncoderInputType& dstFrame);
 
 private:
   vtkAsynchronousEncoderDelegate(const vtkAsynchronousEncoderDelegate&) = delete;
