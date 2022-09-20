@@ -340,7 +340,6 @@ void vtkOpenGLVideoFrame::CopyFrameDataInternal(vtkRawVideoFrame* from)
   }
   else
   {
-    // use an intermediate opengl frame to aid in the transfer.
     unsigned char* data = nullptr;
     const unsigned int size = from->GetData(data);
     this->CopyDataInternal(data, size);
