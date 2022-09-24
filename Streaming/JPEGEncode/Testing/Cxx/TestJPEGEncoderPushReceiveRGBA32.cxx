@@ -13,7 +13,7 @@
 
 =========================================================================*/
 // This test exercises JPEG video encoder with rgba32 inputs.
-// It is disabled because it requres human intervention right now. 
+// It is disabled because it requres human intervention right now.
 // The output chunks of this test will be inputs to TestJPEGDecoderPushReceiveRGBA32.
 
 #include "vtkActor.h"

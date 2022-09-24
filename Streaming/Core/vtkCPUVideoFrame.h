@@ -25,8 +25,8 @@
 
 #include "vtkRawVideoFrame.h"
 
-#include "vtkBuffer.h"          // for ivar
-#include "vtkNew.h"             // for vtkNew
+#include "vtkBuffer.h"              // for ivar
+#include "vtkNew.h"                 // for vtkNew
 #include "vtkStreamingCoreModule.h" // for export macro
 
 class VTKSTREAMINGCORE_EXPORT vtkCPUVideoFrame : public vtkRawVideoFrame

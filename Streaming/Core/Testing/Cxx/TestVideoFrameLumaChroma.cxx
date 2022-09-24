@@ -14,15 +14,15 @@
 =========================================================================*/
 // This test exercises the calculation and luma chroma offset and size of vtkRawVideoFrame
 
-#include "vtkLogger.h"
 #include "vtkCPUVideoFrame.h"
+#include "vtkLogger.h"
 #include "vtkPixelFormatTypes.h"
 
 int TestVideoFrameLumaChroma(int argc, char* argv[])
 {
   bool success = true;
-  (void) argc;
-  (void) argv;
+  (void)argc;
+  (void)argv;
   {
     const char* name = " 1. NV12, 4x4 estSize = 24";
     vtkLogF(TRACE, "%s", name);

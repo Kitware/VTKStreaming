@@ -1,3 +1,5 @@
+// XXX(kitware): Turn off clang-format.
+// clang-format off
 /*
  * This copyright notice applies to this header file only:
  *
