@@ -41,8 +41,7 @@ int TestCPUVideoFrameXferNoExternalStrides(int argc, char* argv[])
   srcFrame->CopyData(rawPixels.data(), rawPixels.size());
 
   vtkNew<vtkCPUVideoFrame> dstFrame;
-  dstFrame->CopyMetadata(srcFrame);
-  dstFrame->CopyFrameData(srcFrame);
+  dstFrame->DeepCopy(srcFrame);
 
   unsigned char* dstData = nullptr;
   assert(dstFrame->GetData(dstData) == 4 * width * height);

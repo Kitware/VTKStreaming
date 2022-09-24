@@ -63,7 +63,7 @@ int TestNvEncoderPushReceiveIYUV(int argc, char* argv[])
   enc->SetInputPixelFormat(VTKPixelFormatType::VTKPF_IYUV);
 
   vtkNew<vtkOpenGLVideoFrame> iyuvPicture;
-  iyuvPicture->InitializeGraphicsResources(renWin);
+  iyuvPicture->SetContext(renWin);
   iyuvPicture->SetWidth(width);
   iyuvPicture->SetHeight(height);
   iyuvPicture->SetPixelFormat(VTKPixelFormatType::VTKPF_IYUV);

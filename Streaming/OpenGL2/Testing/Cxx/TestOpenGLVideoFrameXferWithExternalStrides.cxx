@@ -46,7 +46,7 @@ int TestOpenGLVideoFrameXferWithExternalStrides(int argc, char* argv[])
   int strides[3] = { width + (240 - width), width + (240 - width), 0 };
   srcFrame->SetStrides(strides, 3);
 
-  srcFrame->InitializeGraphicsResources(renWin);
+  srcFrame->SetContext(renWin);
   srcFrame->AllocateDataStore();
   vtkOpenGLCheckErrors("ERROR allocating gl texture for source. ");
 
@@ -59,12 +59,12 @@ int TestOpenGLVideoFrameXferWithExternalStrides(int argc, char* argv[])
   vtkOpenGLCheckErrors("ERROR uploading pixels to gl texture for source. ");
 
   vtkNew<vtkOpenGLVideoFrame> dstFrame;
-  dstFrame->CopyMetadata(srcFrame);
 
-  dstFrame->InitializeGraphicsResources(renWin);
+  dstFrame->SetContext(renWin);
+  // deep copy allocates data if necessary, but do it explicitly so we catch errors.
   dstFrame->AllocateDataStore();
   vtkOpenGLCheckErrors("ERROR allocating gl texture for destination. ");
-  dstFrame->CopyFrameData(srcFrame);
+  dstFrame->DeepCopy(srcFrame);
   vtkOpenGLCheckErrors("ERROR fetching pixels from gl texture of source -> destination. ");
 
   unsigned char* hData = nullptr;

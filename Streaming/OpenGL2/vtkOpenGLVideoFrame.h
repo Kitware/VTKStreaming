@@ -14,9 +14,17 @@
 =========================================================================*/
 /**
  * @class   vtkOpenGLVideoFrame
- * @brief   class that represents a raw video frame with data in the host (CPU) address space.
+ * @brief   class that represents a raw video frame with data backed by OpenGL textures.
  *
- * @sa vtkCompressedVideoPacket, vtkVideoEncoder, vtkVideoDecoder, vtkPixelFormatTypes
+ * @warning: The Copy methods are safe only when either the
+ * source and destination frames' contexts are setup with
+ * OpenGL object sharing or, both frames share one OpenGL context.
+ *
+ * @warning: You may request this frame to copy data from another,
+ * OpenGL does not provide any guarantee that the copy is finished upon return.
+ * Use fences where appropriate.
+ *
+ * @sa vtkCompressedVideoPacket
  */
 
 #ifndef vtkOpenGLVideoFrame_h
@@ -25,7 +33,8 @@
 #include "vtkRawVideoFrame.h"
 
 #include "vtkStreamingOpenGL2Module.h" // for export macro
-#include "vtkUnsignedCharArray.h"      // for ivar
+
+#include <memory> // for ivar
 
 class vtkRenderWindow;
 class vtkOpenGLHelper;
@@ -37,6 +46,7 @@ class vtkOpenGLIYUVRenderDelegate;
 class vtkOpenGLNV12RenderDelegate;
 class vtkOpenGLRGB24RenderDelegate;
 class vtkOpenGLRGBA32RenderDelegate;
+class vtkOpenGLVideoFrameInternals;
 
 class VTKSTREAMINGOPENGL2_EXPORT vtkOpenGLVideoFrame : public vtkRawVideoFrame
 {
@@ -47,9 +57,9 @@ public:
 
   ///@{
   /**
-   * Initialize resources with window's OpenGL context.
+   * Initialize resources with the supplied window's OpenGL context.
    */
-  void InitializeGraphicsResources(vtkRenderWindow* window);
+  void SetContext(vtkOpenGLRenderWindow* window);
   void ReleaseGraphicsResources();
   ///@}
 
@@ -70,26 +80,24 @@ public:
 
   ///@{
   /**
-   * Methods to copy members and data. Subclasses may copy device <-> host memory.
-   * CopyData Assumes that underlying buffer is allocated.
+   * Copy members and shallow/deep copy the data.
+   * ShallowCopy: Assigns the source texture target and handle
+   *              to our texture.
+   * DeepCopy:    Copies the source texture data into our texture.
    */
-  void CopyMetadata(vtkRawVideoFrame* from) noexcept override;
+  void ShallowCopy(vtkRawVideoFrame* from) noexcept override;
+  void DeepCopy(vtkRawVideoFrame* from) override;
   ///@}
 
 protected:
   vtkOpenGLVideoFrame();
   ~vtkOpenGLVideoFrame() override;
 
-  vtkNew<vtkUnsignedCharArray> Cache;
   unsigned int ActualSize = 0;
-  vtkTextureObject* Texture = nullptr;
-  vtkOpenGLFramebufferObject* FBO = nullptr;
-
-  void UploadData(unsigned char* data);
 
   void CopyDataInternal(unsigned char* from, unsigned int size) override;
-  unsigned int GetDataInternal(unsigned char*& data) const override;
-  void CopyFrameDataInternal(vtkRawVideoFrame* from) override;
+  unsigned int GetDataInternal(unsigned char*& data) override;
+  void UploadData(unsigned char* data);
 
 private:
   vtkOpenGLVideoFrame(const vtkOpenGLVideoFrame&) = delete;
@@ -99,6 +107,7 @@ private:
   std::unique_ptr<vtkOpenGLNV12RenderDelegate> NV12Delegate;
   std::unique_ptr<vtkOpenGLRGB24RenderDelegate> RGB24Delegate;
   std::unique_ptr<vtkOpenGLRGBA32RenderDelegate> RGBA32Delegate;
+  std::unique_ptr<vtkOpenGLVideoFrameInternals> Internals;
 };
 
 #endif // vtkOpenGLVideoFrame

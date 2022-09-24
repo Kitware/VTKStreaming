@@ -63,7 +63,7 @@ int TestNvEncoderPushReceiveNV12(int argc, char* argv[])
   enc->SetInputPixelFormat(VTKPixelFormatType::VTKPF_NV12);
 
   vtkNew<vtkOpenGLVideoFrame> nv12Picture;
-  nv12Picture->InitializeGraphicsResources(renWin);
+  nv12Picture->SetContext(renWin);
   nv12Picture->SetWidth(width);
   nv12Picture->SetHeight(height);
   nv12Picture->SetPixelFormat(VTKPixelFormatType::VTKPF_NV12);

@@ -61,7 +61,7 @@ int TestIYUVSliceOrderTopDown(int argc, char* argv[])
   std::streamsize numRead = fpIn.read(reinterpret_cast<char*>(pixels.get()), estSize).gcount();
 
   vtkNew<vtkOpenGLVideoFrame> iyuvPicture;
-  iyuvPicture->InitializeGraphicsResources(renWin);
+  iyuvPicture->SetContext(renWin);
   iyuvPicture->SetWidth(width);
   iyuvPicture->SetHeight(height);
   iyuvPicture->SetPixelFormat(VTKPixelFormatType::VTKPF_IYUV);

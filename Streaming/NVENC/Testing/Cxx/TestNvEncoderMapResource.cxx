@@ -42,7 +42,7 @@ int TestNvEncoderMapResource(int argc, char* argv[])
   renWin->Render();
 
   vtkNew<vtkOpenGLVideoFrame> frame;
-  frame->InitializeGraphicsResources(renWin);
+  frame->SetContext(renWin);
   frame->SetWidth(w);
   frame->SetHeight(h);
   frame->SetPixelFormat(VTKPixelFormatType::VTKPF_RGBA32);

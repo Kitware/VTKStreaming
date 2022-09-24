@@ -27,11 +27,13 @@
 #include "vtkProperty.h"
 #include "vtkRawVideoFrame.h"
 #include "vtkRenderer.h"
+#include "vtkVideoCodecTypes.h"
 #include "vtkVideoProcessingStatusTypes.h"
 #include "vtkXOpenGLRenderWindow.h"
 #include "vtkXRenderWindowInteractor.h"
 #include <fstream>
 #include <iomanip>
+#include <vtkCallbackCommand.h>
 
 #define WRITE_CHUNKS 0
 
@@ -39,7 +41,7 @@ int TestNvEncoderPushReceiveRGBA32(int argc, char* argv[])
 {
   bool success = true;
   int width = 320, height = 240;
-
+  vtkLogger::SetStderrVerbosity(vtkLogger::VERBOSITY_9);
   vtkNew<vtkXRenderWindowInteractor> iren;
   vtkNew<vtkXOpenGLRenderWindow> renWin;
   vtkNew<vtkRenderer> ren;
@@ -66,53 +68,58 @@ int TestNvEncoderPushReceiveRGBA32(int argc, char* argv[])
 
   vtkNew<vtkNvEncoderGL> enc;
   enc->InitializeOpenGLContext(renWin);
+  enc->SetCodec(VTKVideoCodecType::VTKVC_H264);
   enc->SetWidth(width);
   enc->SetHeight(height);
   enc->SetInputPixelFormat(VTKPixelFormatType::VTKPF_RGBA32);
 
   vtkNew<vtkOpenGLVideoFrame> dFrame;
-  dFrame->InitializeGraphicsResources(renWin);
+  dFrame->SetContext(renWin);
   dFrame->SetPixelFormat(VTKPixelFormatType::VTKPF_RGBA32);
-  dFrame->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::BottomUp);
-  renWin->FramebufferFlipYOn();
-  dFrame->Attach(renWin);
+  dFrame->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::TopDown);
+
+  vtkNew<vtkCallbackCommand> exitCallback;
+  exitCallback->SetClientData(enc);
+  exitCallback->SetCallback(
+    [](vtkObject* iren_ptr, unsigned long, void* enc_ptr, void*)
+    {
+      // drain needs an opengl context so it can release the resources.
+      auto encoder = reinterpret_cast<vtkVideoEncoder*>(enc_ptr);
+      auto result = encoder->Drain();
+      (void)result;
+      auto iren = reinterpret_cast<vtkRenderWindowInteractor*>(iren_ptr);
+      encoder->Shutdown();
+      iren->TerminateApp();
+    });
+  iren->AddObserver(vtkCommand::ExitEvent, exitCallback);
 
 #if !WRITE_CHUNKS
   std::ofstream outFile("cylinder.h264", std::ofstream::out | std::ofstream::binary);
 #endif
 
   int frame = 0, lastw, lasth;
-  while (!iren->GetDone())
+  while (true)
   {
     iren->ProcessEvents();
+    if (iren->GetDone())
+    {
+      break;
+    }
 #if WRITE_CHUNKS
     std::stringstream filename;
     filename << "frame-" << std::setfill('0') << std::setw(3) << frame << ".bin";
     std::ofstream outFile(filename.str(), std::ofstream::out | std::ofstream::binary);
 #endif
-    if (iren->GetDone())
-    {
-      // drain needs an opengl context so it can release the resources.
-      iren->Initialize();
-      iren->Render();
-      auto result = enc->Drain();
-      if (!result.second.empty())
-      {
-        outFile.write(reinterpret_cast<char*>(result.second[0]->GetData()->GetPointer(0)),
-          result.second[0]->GetSize());
-        outFile.close();
-      }
-      enc->Shutdown();
-      outFile.close();
-      break;
-    }
     width = renWin->GetSize()[0];
     height = renWin->GetSize()[1];
     if (width != lastw || height != lasth)
     {
       dFrame->SetWidth(width);
       dFrame->SetHeight(height);
+      dFrame->ComputeDefaultStrides();
+      dFrame->AllocateDataStore();
     }
+    dFrame->Capture(renWin);
     lasth = height;
     lastw = width;
     vtkOpenGLCheckErrors("error uploading data to gl texture");

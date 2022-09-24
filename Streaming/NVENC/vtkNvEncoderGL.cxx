@@ -139,17 +139,7 @@ VTKVideoProcessingStatusType vtkNvEncoderGL::PushInternal(vtkRawVideoFrame* fram
   vtkLogScopeFunction(TRACE);
   auto& internals = (*this->Internals);
   auto input = this->Internals->GetNextInputFrame();
-  if (frame->GetAttachedRenderWindow() == this->Window)
-  {
-    // single gpu-copy:
-    //  'frame' does not have data. grab pixels from it's attached render window instead.
-    input->Capture(this->Window);
-  }
-  else
-  {
-    // initiate a cpu->gpu upload or a gpu->gpu copy.
-    input->CopyFrameData(frame);
-  }
+  input->DeepCopy(frame);
 
   return vtkNvEncoderInternals::ParseNvEncodeAPIStatus(internals.Send(this->ForceIFrame));
 }
@@ -179,7 +169,7 @@ VTKVideoEncoderResultType vtkNvEncoderGL::EncodeInternal(vtkRawVideoFrame* frame
     vtkLog(ERROR, << "Encoder does not have valid input frames. vtkOpenGLVideoFrame");
     return { VTKVideoProcessingStatusType::VTKVPStatus_InvalidValue, {} };
   }
-  input->CopyFrameData(frame);
+  input->DeepCopy(frame);
   auto status = internals.Send(this->ForceIFrame);
   std::vector<vtkSmartPointer<vtkCompressedVideoPacket>> packets;
   bool success = internals.Receive(packets);
@@ -229,7 +219,7 @@ bool vtkNvEncoderGL::AllocateInputBuffers()
     frame->SetPixelFormat(this->InputPixelFormat);
     frame->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::TopDown);
     frame->ComputeDefaultStrides();
-    frame->InitializeGraphicsResources(this->Window);
+    frame->SetContext(this->Window);
     frame->AllocateDataStore();
     widthBytes = vtkRawVideoFrame::GetWidthBytes(this->Width, this->InputPixelFormat);
     auto vtkTexture = reinterpret_cast<vtkTextureObject*>(frame->GetResourceHandle());
@@ -271,13 +261,9 @@ void vtkNvEncoderGL::ReleaseGLResources()
   auto& resources = internals.NvEncInputResources;
   for (std::size_t i = 0; i < frames.size(); ++i)
   {
-    // free the OpenGL resource if we own it.
-    if (frames[i]->GetAttachedRenderWindow() == nullptr)
+    if (auto glFrame = vtkOpenGLVideoFrame::SafeDownCast(frames[i]))
     {
-      if (auto glFrame = vtkOpenGLVideoFrame::SafeDownCast(frames[i]))
-      {
-        glFrame->ReleaseGraphicsResources();
-      }
+      glFrame->ReleaseGraphicsResources();
     }
     // free the encoder's reference to the resource.
     auto resource = reinterpret_cast<NV_ENC_INPUT_RESOURCE_OPENGL_TEX*>(resources[i]);

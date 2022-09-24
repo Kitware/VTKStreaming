@@ -60,7 +60,7 @@ int TestJPEGDecoderPushReceiveRGBA32(int argc, char* argv[])
 #endif
 
   vtkNew<vtkOpenGLVideoFrame> dstFrame;
-  dstFrame->InitializeGraphicsResources(renWin);
+  dstFrame->SetContext(renWin);
 
   std::ifstream inFile;
   for (int i = 0; i < 100; ++i)
@@ -98,9 +98,7 @@ int TestJPEGDecoderPushReceiveRGBA32(int argc, char* argv[])
     auto srcFrame = result.second.front();
     if (srcFrame != nullptr)
     {
-      dstFrame->CopyMetadata(srcFrame);
-      dstFrame->AllocateDataStore();
-      dstFrame->CopyFrameData(srcFrame);
+      dstFrame->DeepCopy(srcFrame);
       dstFrame->Render(renWin);
     }
   }
