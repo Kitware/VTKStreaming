@@ -1,0 +1,13 @@
+NAME
+  VTKStreaming::Factory
+LIBRARY_NAME
+  vtkStreamingFactory
+GROUPS
+  Streaming
+KIT
+  VTKStreaming::Factory
+DEPENDS
+  VTKStreaming::Core
+PRIVATE_DEPENDS
+  VTKStreaming::FFmpegEncode
+  VTKStreaming::JPEGEncode

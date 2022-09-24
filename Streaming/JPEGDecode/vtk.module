@@ -1,0 +1,18 @@
+NAME
+  VTKStreaming::JPEGDecode
+LIBRARY_NAME
+  vtkStreamingJPEGDecode
+GROUPS
+  Streaming
+KIT
+  VTKStreaming::JPEGDecode
+DEPENDS
+  VTKStreaming::Decode
+PRIVATE_DEPENDS
+  VTK::IOImage
+TEST_DEPENDS
+  VTKStreaming::OpenGL2
+  VTK::TestingCore
+  VTK::RenderingOpenGL2
+  VTK::RenderingUI
+  VTK::InteractionStyle

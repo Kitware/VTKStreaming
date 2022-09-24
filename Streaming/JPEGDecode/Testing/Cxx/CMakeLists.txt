@@ -1,0 +1,5 @@
+vtk_add_test_cxx(vtkStreamingJPEGDecodeCxxTests tests
+# TestJPEGDecoderPushReceiveRGBA32.cxx,NO_DATA,NO_VALID,NO_OUTPUT
+)
+
+vtk_test_cxx_executable(vtkStreamingJPEGDecodeCxxTests tests)
