@@ -24,52 +24,54 @@
 
 int TestEncoderDelegateUsage(int argc, char* argv[])
 {
-  // 1. UseAsynchronousDelegateOn
+  // 1. AsyncModeOn
   {
-    vtkLog(TRACE, << "1. UseAsynchronousDelegateOn");
+    vtkLog(TRACE, << "1. AsyncModeOn");
     vtkNew<vtkMockVideoEncoder> encoder;
     bool success = true;
 
-    encoder->UseAsynchronousDelegateOn();
+    encoder->AsyncModeOn();
     success &= encoder->HasDelegate();
     if (!success)
     {
-      vtkLog(ERROR, << "Failed 1. UseAsynchronousDelegateOn");
+      vtkLog(ERROR, << "Failed 1. AsyncModeOn");
       return 1;
     }
   }
 
-  // 2. UseAsynchronousDelegateOff
+  // 2. AsyncModeOff
   {
-    vtkLog(TRACE, << "2. UseAsynchronousDelegateOff");
+    vtkLog(TRACE, << "2. AsyncModeOff");
     vtkNew<vtkMockVideoEncoder> encoder;
     bool success = true;
 
-    encoder->UseAsynchronousDelegateOff();
+    encoder->AsyncModeOff();
     success &= !encoder->HasDelegate();
     if (!success)
     {
-      vtkLog(ERROR, << "Failed 2. UseAsynchronousDelegateOff");
+      vtkLog(ERROR, << "Failed 2. AsyncModeOff");
       return 1;
     }
   }
 
-  // 3. UseAsynchronousDelegateOn,Push,UseAsynchronousDelegateOff
+  // 3. AsyncModeOn,Push,AsyncModeOff
   {
-    vtkLog(TRACE, << "3. UseAsynchronousDelegateOn,Push,UseAsynchronousDelegateOff");
+    vtkLog(TRACE, << "3. AsyncModeOn,Push,AsyncModeOff");
     vtkNew<vtkMockVideoEncoder> encoder;
     vtkNew<vtkCPUVideoFrame> frame;
     frame->SetWidth(4);
     frame->SetHeight(4);
+    frame->ComputeDefaultStrides();
+    frame->AllocateDataStore();
 
     bool success = true;
-    encoder->UseAsynchronousDelegateOn();
+    encoder->AsyncModeOn();
     success &= encoder->HasDelegate();
 
     encoder->Push(frame);
     success &= encoder->HasDelegate();
 
-    encoder->UseAsynchronousDelegateOff();
+    encoder->AsyncModeOff();
     success &= !encoder->HasDelegate();
 
     encoder->Push(frame);
@@ -77,27 +79,29 @@ int TestEncoderDelegateUsage(int argc, char* argv[])
 
     if (!success)
     {
-      vtkLog(ERROR, << "Failed 3. UseAsynchronousDelegateOn,Push,UseAsynchronousDelegateOff");
+      vtkLog(ERROR, << "Failed 3. AsyncModeOn,Push,AsyncModeOff");
       return 1;
     }
   }
 
-  // 4. UseAsynchronousDelegateOff,Push,UseAsynchronousDelegateOn
+  // 4. AsyncModeOff,Push,AsyncModeOn
   {
-    vtkLog(TRACE, << "4. UseAsynchronousDelegateOff,Push,UseAsynchronousDelegateOn");
+    vtkLog(TRACE, << "4. AsyncModeOff,Push,AsyncModeOn");
     vtkNew<vtkMockVideoEncoder> encoder;
     vtkNew<vtkCPUVideoFrame> frame;
     frame->SetWidth(4);
     frame->SetHeight(4);
+    frame->ComputeDefaultStrides();
+    frame->AllocateDataStore();
 
     bool success = true;
-    encoder->UseAsynchronousDelegateOff();
+    encoder->AsyncModeOff();
     success &= !encoder->HasDelegate();
 
     encoder->Push(frame);
     success &= !encoder->HasDelegate();
 
-    encoder->UseAsynchronousDelegateOn();
+    encoder->AsyncModeOn();
     success &= encoder->HasDelegate();
 
     encoder->Push(frame);
@@ -105,7 +109,7 @@ int TestEncoderDelegateUsage(int argc, char* argv[])
 
     if (!success)
     {
-      vtkLog(ERROR, << "Failed 4. UseAsynchronousDelegateOff,Push,UseAsynchronousDelegateOn");
+      vtkLog(ERROR, << "Failed 4. AsyncModeOff,Push,AsyncModeOn");
       return 1;
     }
   }

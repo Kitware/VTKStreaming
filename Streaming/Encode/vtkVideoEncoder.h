@@ -20,12 +20,13 @@
  * Since the method is non-blocking, you have to call vtkVideoEncoder::GetResult
  * to obtain the compressed video packet.
  *
- * You are free to delete or modify the frame contents after calling `Push`.
+ * You are free to delete or modify the frame contents after calling `Push`
+ * only when using asynchronous delegate.
  *
  * The encoder can use a processing delegate to queue frames into work units
  * which are eventually encoded.
  *
- * With both synchronous and asynchronous delegates, the 'real' encoding happens
+ * With asynchronous delegates, the 'real' encoding happens
  * during vtkVideoEncoder::GetResult().
  *
  * Here is an overview of the 3 important methods.
@@ -39,7 +40,7 @@
  *     returns true if any results are already available.
  *
  * You can avoid delegates if you prefer tighter control over the API. Ex -: implement your own task
- * queue management. Turn off async delegate with UseAsynchronousDelegateOff()
+ * queue management. Turn off async delegate with AsyncModeOff()
  * When the delegate is bypassed -:
  * 1. vtkVideoEncoder::Push() -
  *     blocks the caller's thread and encoding begins right away.
@@ -79,12 +80,25 @@ public:
 
   ///@{
   /**
-   * Set/Get UseAsynchronousDelegate
+   * Set/Get a graphics context. Some hardware encoders
+   * may need it to initialize frames based on that graphics context.
+   * When the encoder is in async mode, it maintains a thread-local
+   * context. You can access it with `GetDelegateContext()`
    */
-  void SetUseAsynchronousDelegate(bool val);
-  bool GetUseAsynchronousDelegate();
-  void UseAsynchronousDelegateOn();
-  void UseAsynchronousDelegateOff();
+  void SetContext(vtkRenderWindow* context);
+  vtkRenderWindow* GetContext() const;
+  vtkRenderWindow* GetDelegateContext() const;
+  ///@}
+
+
+  ///@{
+  /**
+   * Set/Get async mode
+   */
+  void SetAsyncMode(bool val);
+  bool GetAsyncMode();
+  void AsyncModeOn();
+  void AsyncModeOff();
   ///@}
 
   ///@{
@@ -326,6 +340,8 @@ protected:
   unsigned int NumberOfEncoderThreads = 2; // conservative default.
   // 6. Processing delegate
   vtkAsynchronousEncoderDelegate* Delegate = nullptr;
+  // 7. Context
+  vtkRenderWindow* Context = nullptr;
 
   bool Initialized = false;
   bool IgnoreEncodeRequest = false;

@@ -323,6 +323,7 @@ void* vtkOpenGLVideoFrame::GetResourceHandle() noexcept
 //------------------------------------------------------------------------------
 void vtkOpenGLVideoFrame::ShallowCopy(vtkRawVideoFrame* from) noexcept
 {
+  vtkLogScopeF(TRACE, "%s->%s", vtkLogIdentifier(this), __func__);
   this->Superclass::ShallowCopy(from);
 
   if (auto glFrame = vtkOpenGLVideoFrame::SafeDownCast(from))
@@ -359,6 +360,7 @@ void vtkOpenGLVideoFrame::ShallowCopy(vtkRawVideoFrame* from) noexcept
 //------------------------------------------------------------------------------
 void vtkOpenGLVideoFrame::DeepCopy(vtkRawVideoFrame* from)
 {
+  vtkLogScopeF(TRACE, "%s->%s", vtkLogIdentifier(this), __func__);
   this->Superclass::DeepCopy(from);
 
   vtkSmartPointer<vtkTextureObject> srcTexture = nullptr;

@@ -92,14 +92,18 @@ VTKVideoEncoderResultType vtkMockVideoEncoder::GetResultInternal()
 VTKVideoEncoderResultType vtkMockVideoEncoder::EncodeInternal(vtkRawVideoFrame* frame)
 {
   vtkLogScopeFunction(TRACE);
-  if (this->FrameCounter % this->MockLargeFramePeriod)
+  if (this->MockLargeFramePeriod && this->FrameCounter % this->MockLargeFramePeriod)
   {
     std::this_thread::sleep_for(std::chrono::milliseconds(this->MockEncodeInterval));
   }
-  else
+  else if (this->MockLargeFramePeriod > 0)
   {
     std::this_thread::sleep_for(
       std::chrono::milliseconds(this->MockEncodeInterval * this->MockLargeFrameIntervalRatio));
+  }
+  else
+  {
+    std::this_thread::sleep_for(std::chrono::milliseconds(this->MockEncodeInterval));
   }
   auto data = frame->GetData();
   this->FrameCounter++;

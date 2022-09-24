@@ -21,6 +21,8 @@
 #include "vtkObjectFactory.h"
 #include "vtkPixelFormatTypes.h"
 #include "vtkRawVideoFrame.h"
+#include "vtkRenderWindow.h"
+#include "vtkSmartPointer.h"
 #include "vtkVideoProcessingStatusTypes.h"
 #include "vtkVideoProcessingWorkUnitTypes.h"
 
@@ -71,13 +73,31 @@ void vtkVideoEncoder::PrintSelf(ostream& os, vtkIndent indent)
 }
 
 //------------------------------------------------------------------------------
+void vtkVideoEncoder::SetContext(vtkRenderWindow* context)
+{
+  this->Context = context;
+}
+
+//------------------------------------------------------------------------------
+vtkRenderWindow* vtkVideoEncoder::GetContext() const
+{
+  return this->Context;
+}
+
+//------------------------------------------------------------------------------
+vtkRenderWindow* vtkVideoEncoder::GetDelegateContext() const
+{
+  return this->Delegate ? this->Delegate->GetWorkerGfxContext() : nullptr;
+}
+
+//------------------------------------------------------------------------------
 bool vtkVideoEncoder::HasDelegate()
 {
   return this->Delegate != nullptr;
 }
 
 //------------------------------------------------------------------------------
-void vtkVideoEncoder::SetUseAsynchronousDelegate(bool val)
+void vtkVideoEncoder::SetAsyncMode(bool val)
 {
   vtkLogScopeF(TRACE, "%s val=%s", __func__, val ? "true" : "false");
   if (!this->SupportsAsynchronousDelegate())
@@ -97,9 +117,6 @@ void vtkVideoEncoder::SetUseAsynchronousDelegate(bool val)
       this->Shutdown();
     }
     this->Delegate = vtkAsynchronousEncoderDelegate::New();
-    this->Delegate->SetBufferSize(-1);
-    this->Delegate->SetNumberOfTasks(1);
-    this->Delegate->SetStrictOrdering(true);
   }
   else
   {
@@ -115,21 +132,21 @@ void vtkVideoEncoder::SetUseAsynchronousDelegate(bool val)
 }
 
 //------------------------------------------------------------------------------
-bool vtkVideoEncoder::GetUseAsynchronousDelegate()
+bool vtkVideoEncoder::GetAsyncMode()
 {
   return this->HasDelegate();
 }
 
 //------------------------------------------------------------------------------
-void vtkVideoEncoder::UseAsynchronousDelegateOn()
+void vtkVideoEncoder::AsyncModeOn()
 {
-  this->SetUseAsynchronousDelegate(true);
+  this->SetAsyncMode(true);
 }
 
 //------------------------------------------------------------------------------
-void vtkVideoEncoder::UseAsynchronousDelegateOff()
+void vtkVideoEncoder::AsyncModeOff()
 {
-  this->SetUseAsynchronousDelegate(false);
+  this->SetAsyncMode(false);
 }
 
 //------------------------------------------------------------------------------
@@ -154,7 +171,7 @@ bool vtkVideoEncoder::Initialize()
     VTKVideoEncodeWorkerType worker = std::bind(&vtkVideoEncoder::Encode, this, _1);
 
     // from this point on, async delegate takes care of processing frames into compressed packets.
-    this->Delegate->InitializeWorker(worker);
+    this->Delegate->InitializeWorker(worker, this->Context);
     return this->Initialized;
   }
   else
