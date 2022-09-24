@@ -99,7 +99,5 @@ void vtkAsynchronousEncoderDelegate::PrepareFrame(
 {
   vtkLogScopeFunction(TRACE);
   dstFrame = vtk::TakeSmartPointer(vtkCPUVideoFrame::New());
-  dstFrame->CopyMetadata(frame);
-  dstFrame->AllocateDataStore();
-  dstFrame->CopyFrameData(frame);
+  dstFrame->DeepCopy(frame);
 }

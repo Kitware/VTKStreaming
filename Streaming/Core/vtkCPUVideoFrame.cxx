@@ -79,7 +79,7 @@ void vtkCPUVideoFrame::CopyDataInternal(unsigned char* from, unsigned int size)
 }
 
 //------------------------------------------------------------------------------
-unsigned int vtkCPUVideoFrame::GetDataInternal(unsigned char*& data) const
+unsigned int vtkCPUVideoFrame::GetDataInternal(unsigned char*& data)
 {
   vtkLogScopeFunction(TRACE);
   data = this->Buffer->GetBuffer();
@@ -102,16 +102,24 @@ void vtkCPUVideoFrame::AllocateDataStore()
 }
 
 //------------------------------------------------------------------------------
-void vtkCPUVideoFrame::CopyMetadata(vtkRawVideoFrame* from) noexcept
+void vtkCPUVideoFrame::ShallowCopy(vtkRawVideoFrame* from) noexcept
 {
   vtkLogScopeFunction(TRACE);
-  this->Superclass::CopyMetadata(from);
+  this->Superclass::ShallowCopy(from);
+
+  unsigned char* srcData = nullptr;
+  auto size = from->GetData(srcData);
+
+  this->Buffer->SetBuffer(srcData, size);
+  this->Buffer->SetFreeFunction(true, nullptr);
 }
 
 //------------------------------------------------------------------------------
-void vtkCPUVideoFrame::CopyFrameDataInternal(vtkRawVideoFrame* from)
+void vtkCPUVideoFrame::DeepCopy(vtkRawVideoFrame* from)
 {
   vtkLogScopeFunction(TRACE);
+  this->Superclass::DeepCopy(from);
+
   unsigned char* srcData = nullptr;
   const unsigned int srcSize = from->GetData(srcData);
   if (this->SliceOrder == from->GetSliceOrderType())

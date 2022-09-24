@@ -56,7 +56,7 @@ int TestOpenGLVideoFrameXferNoExternalStrides(int argc, char* argv[])
   auto pixels = renWin->GetRGBACharPixelData(0, 0, width - 1, height - 1, 1);
 
   vtkNew<vtkOpenGLVideoFrame> srcFrame;
-  srcFrame->InitializeGraphicsResources(renWin);
+  srcFrame->SetContext(renWin);
   srcFrame->SetWidth(width);
   srcFrame->SetHeight(height);
   srcFrame->SetPixelFormat(VTKPixelFormatType::VTKPF_RGBA32);
@@ -68,11 +68,12 @@ int TestOpenGLVideoFrameXferNoExternalStrides(int argc, char* argv[])
   vtkOpenGLCheckErrors("ERROR uploading pixels to gl texture. ");
 
   vtkNew<vtkOpenGLVideoFrame> dstFrame;
-  dstFrame->InitializeGraphicsResources(renWin);
-  dstFrame->CopyMetadata(srcFrame);
+  dstFrame->SetContext(renWin);
   dstFrame->ComputeDefaultStrides();
+  // deep copy allocates data if necessary, but do it explicitly so we catch errors.
   dstFrame->AllocateDataStore();
-  dstFrame->CopyFrameData(srcFrame);
+  vtkOpenGLCheckErrors("ERROR allocating gl texture for destination. ");
+  dstFrame->DeepCopy(srcFrame);
   vtkOpenGLCheckErrors("ERROR fetching pixels from gl texture. ");
 
   unsigned char* srcData = nullptr;

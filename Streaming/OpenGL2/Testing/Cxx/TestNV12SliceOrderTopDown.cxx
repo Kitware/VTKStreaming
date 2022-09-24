@@ -61,7 +61,7 @@ int TestNV12SliceOrderTopDown(int argc, char* argv[])
   std::streamsize numRead = fpIn.read(reinterpret_cast<char*>(pixels.get()), estSize).gcount();
 
   vtkNew<vtkOpenGLVideoFrame> nv12Picture;
-  nv12Picture->InitializeGraphicsResources(renWin);
+  nv12Picture->SetContext(renWin);
   nv12Picture->SetWidth(width);
   nv12Picture->SetHeight(height);
   nv12Picture->SetPixelFormat(VTKPixelFormatType::VTKPF_NV12);

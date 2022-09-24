@@ -15,9 +15,6 @@
 
 #include "vtkRawVideoFrame.h"
 #include "vtkLogger.h"
-#include "vtkPixelFormatTypes.h"
-#include "vtkSmartPointer.h"
-#include "vtkUnsignedCharArray.h"
 
 #include <algorithm>
 #include <fstream>
@@ -36,7 +33,6 @@ void vtkRawVideoFrame::PrintSelf(ostream& os, vtkIndent indent)
   os << "Width: " << this->Width << "\n";
   os << "Height: " << this->Height << "\n";
   os << "PixelFormat: " << vtkPixelFormatTypeUtilities::ToString(this->PixelFormat) << '\n';
-  os << "AttachedWindow: " << this->AttachedWindow << '\n';
   os << "SliceOrder: ";
   switch (this->SliceOrder)
   {
@@ -103,6 +99,7 @@ void vtkRawVideoFrame::SetSliceOrderType(vtkRawVideoFrame::SliceOrderType value)
 {
   vtkLogScopeFunction(TRACE);
   this->SliceOrder = value;
+  this->Modified();
 }
 
 //------------------------------------------------------------------------------
@@ -287,6 +284,7 @@ void vtkRawVideoFrame::SetStrides(int stride0, int stride1, int stride2)
   this->Strides[0] = stride0;
   this->Strides[1] = stride1;
   this->Strides[2] = stride2;
+  this->Modified();
 }
 
 //------------------------------------------------------------------------------
@@ -294,9 +292,10 @@ void vtkRawVideoFrame::CopyData(unsigned char* from, unsigned int size)
 {
   vtkLogScopeFunction(TRACE);
   this->CopyDataInternal(from, size);
+  this->Modified();
 }
 
-unsigned int vtkRawVideoFrame::GetData(unsigned char*& data) const
+unsigned int vtkRawVideoFrame::GetData(unsigned char*& data)
 {
   vtkLogScopeFunction(TRACE);
   return this->GetDataInternal(data);
@@ -314,7 +313,7 @@ void vtkRawVideoFrame::CopyData(vtkUnsignedCharArray* from)
 }
 
 //------------------------------------------------------------------------------
-vtkSmartPointer<vtkUnsignedCharArray> vtkRawVideoFrame::GetData() const
+vtkSmartPointer<vtkUnsignedCharArray> vtkRawVideoFrame::GetData()
 {
   vtkLogScopeFunction(TRACE);
   auto data = vtk::TakeSmartPointer(vtkUnsignedCharArray::New());
@@ -328,46 +327,33 @@ vtkSmartPointer<vtkUnsignedCharArray> vtkRawVideoFrame::GetData() const
 }
 
 //------------------------------------------------------------------------------
-void vtkRawVideoFrame::CopyFrameData(vtkRawVideoFrame* from)
+void vtkRawVideoFrame::ShallowCopy(vtkRawVideoFrame* from) noexcept
 {
   vtkLogScopeFunction(TRACE);
-  if (this->AttachedWindow != nullptr)
+  this->Width = from->Width;
+  this->Height = from->Height;
+  this->PixelFormat = from->PixelFormat;
+  this->SliceOrder = from->SliceOrder;
+  for (int i = 0; i < 3; ++i)
   {
-    vtkLogF(WARNING, "Ignored copy request because frame has a render window attachment.");
-    return;
+    this->Strides[i] = from->Strides[i];
   }
-  if (this->PixelFormat != from->PixelFormat)
-  {
-    vtkLogF(ERROR, "Pixel formats differ. From=%s, To=%s",
-      vtkPixelFormatTypeUtilities::ToString(from->PixelFormat),
-      vtkPixelFormatTypeUtilities::ToString(this->PixelFormat));
-    return;
-  }
-  if (this->Width != from->Width)
-  {
-    vtkLogF(ERROR, "Picture width not equal. From=%ud, To=%ud", from->Width, this->Width);
-    return;
-  }
-  if (this->Height != from->Height)
-  {
-    vtkLogF(ERROR, "Picture height not equal. From=%ud, To=%ud", from->Height, this->Height);
-    return;
-  }
-  this->CopyFrameDataInternal(from);
+  this->Modified();
 }
 
 //------------------------------------------------------------------------------
-void vtkRawVideoFrame::CopyMetadata(vtkRawVideoFrame* other) noexcept
+void vtkRawVideoFrame::DeepCopy(vtkRawVideoFrame* from)
 {
   vtkLogScopeFunction(TRACE);
-  this->Width = other->Width;
-  this->Height = other->Height;
-  this->PixelFormat = other->PixelFormat;
-  this->SliceOrder = other->SliceOrder;
+  this->Width = from->Width;
+  this->Height = from->Height;
+  this->PixelFormat = from->PixelFormat;
+  this->SliceOrder = from->SliceOrder;
   for (int i = 0; i < 3; ++i)
   {
-    this->Strides[i] = other->Strides[i];
+    this->Strides[i] = from->Strides[i];
   }
+  this->AllocateDataStore();
   this->Modified();
 }
 
@@ -379,19 +365,4 @@ void vtkRawVideoFrame::Save(const char* filename)
   unsigned char* data = nullptr;
   const unsigned int size = this->GetData(data);
   file.write(reinterpret_cast<char*>(data), size);
-}
-
-//------------------------------------------------------------------------------
-void vtkRawVideoFrame::Attach(vtkRenderWindow* window) noexcept
-{
-  vtkLogScopeF(TRACE, "%s->%s, window=%p", vtkLogIdentifier(this), __func__, window);
-  this->AttachedWindow = window;
-}
-
-//------------------------------------------------------------------------------
-void vtkRawVideoFrame::Detach() noexcept
-{
-  vtkLogScopeF(TRACE, "%s->%s, this->AttachedWindow=%p", vtkLogIdentifier(this), __func__,
-    this->AttachedWindow);
-  this->AttachedWindow = nullptr;
 }

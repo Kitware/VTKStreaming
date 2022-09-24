@@ -18,43 +18,32 @@
 #include "vtkLogger.h"
 #include "vtkObjectFactory.h"
 #include "vtkOpenGLError.h"
-#include "vtkOpenGLFramebufferObject.h"
-#include "vtkOpenGLHelper.h"
 #include "vtkOpenGLIYUVRenderDelegate.h"
 #include "vtkOpenGLNV12RenderDelegate.h"
 #include "vtkOpenGLRGB24RenderDelegate.h"
 #include "vtkOpenGLRGBA32RenderDelegate.h"
 #include "vtkOpenGLRenderUtilities.h"
 #include "vtkOpenGLRenderWindow.h"
-#include "vtkOpenGLShaderCache.h"
 #include "vtkOpenGLState.h"
-#include "vtkPixelBufferObject.h"
+#include "vtkOpenGLVideoFrameInternals.h"
 #include "vtkPixelFormatTypes.h"
-#include "vtkRawVideoFrame.h"
-#include "vtkRenderWindow.h"
-#include "vtkShaderProgram.h"
 #include "vtkSmartPointer.h"
-#include "vtkTextureObject.h"
-#include "vtkType.h"
 
-#include <cstddef>
+#include <sstream>
 #include <vtk_glew.h>
 
 #include <algorithm>
-#include <cassert>
-#include <string>
 
 vtkStandardNewMacro(vtkOpenGLVideoFrame);
 
 //------------------------------------------------------------------------------
 vtkOpenGLVideoFrame::vtkOpenGLVideoFrame()
-  : Texture(vtkTextureObject::New())
-  , FBO(vtkOpenGLFramebufferObject::New())
-  , IYUVDelegate(std::unique_ptr<vtkOpenGLIYUVRenderDelegate>(new vtkOpenGLIYUVRenderDelegate()))
+  : IYUVDelegate(std::unique_ptr<vtkOpenGLIYUVRenderDelegate>(new vtkOpenGLIYUVRenderDelegate()))
   , NV12Delegate(std::unique_ptr<vtkOpenGLNV12RenderDelegate>(new vtkOpenGLNV12RenderDelegate()))
   , RGB24Delegate(std::unique_ptr<vtkOpenGLRGB24RenderDelegate>(new vtkOpenGLRGB24RenderDelegate()))
   , RGBA32Delegate(
       std::unique_ptr<vtkOpenGLRGBA32RenderDelegate>(new vtkOpenGLRGBA32RenderDelegate()))
+  , Internals(std::unique_ptr<vtkOpenGLVideoFrameInternals>(new vtkOpenGLVideoFrameInternals()))
 {
 }
 
@@ -62,16 +51,6 @@ vtkOpenGLVideoFrame::vtkOpenGLVideoFrame()
 vtkOpenGLVideoFrame::~vtkOpenGLVideoFrame()
 {
   this->ReleaseGraphicsResources();
-  if (this->Texture != nullptr)
-  {
-    this->Texture->Delete();
-    this->Texture = nullptr;
-  }
-  if (this->FBO != nullptr)
-  {
-    this->FBO->Delete();
-    this->FBO = nullptr;
-  }
 }
 
 //------------------------------------------------------------------------------
@@ -79,51 +58,69 @@ void vtkOpenGLVideoFrame::PrintSelf(ostream& os, vtkIndent indent)
 {
   this->Superclass::PrintSelf(os, indent);
   os << "Size: " << this->GetActualSize() << '\n';
+
+  os << "Texture: \n";
+  this->Internals->VtkTexture->PrintSelf(os, indent.GetNextIndent());
+
+  os << "FrameBuffer: \n";
+  this->Internals->VtkFrameBuffer->PrintSelf(os, indent.GetNextIndent());
+
+  os << "Cache: \n";
+  this->Internals->Cache->PrintSelf(os, indent.GetNextIndent());
+
+  os << "Context: \n";
+  if (this->Internals->VtkTexture->GetContext())
+  {
+    this->Internals->VtkTexture->GetContext()->PrintSelf(os, indent.GetNextIndent());
+  }
 }
 
 //------------------------------------------------------------------------------
-void vtkOpenGLVideoFrame::InitializeGraphicsResources(vtkRenderWindow* window)
+void vtkOpenGLVideoFrame::SetContext(vtkOpenGLRenderWindow* window)
 {
-  vtkLogScopeF(TRACE, "%s, window=%s", __func__, vtkLogIdentifier(window));
-  if (this->Texture->GetContext() != nullptr && this->FBO->GetContext() != nullptr)
-  {
-    this->ReleaseGraphicsResources();
-  }
-  auto oglRenWin = vtkOpenGLRenderWindow::SafeDownCast(window);
-  this->Texture->SetContext(oglRenWin);
-  this->FBO->SetContext(oglRenWin);
-  this->FBO->Bind(GL_READ_FRAMEBUFFER);
-  this->FBO->UnBind(GL_READ_FRAMEBUFFER);
+  auto& internals = (*this->Internals);
+  vtkLogScopeF(
+    TRACE, "%s->%s, window=%s", vtkLogIdentifier(this), __func__, vtkLogIdentifier(window));
+
+  internals.VtkTexture->SetContext(window);
+  internals.VtkFrameBuffer->SetContext(window);
+
+  // CreateFBO is a protected method.
+  // indirectly invoke it by binding and unbind right after.
+  internals.VtkFrameBuffer->Bind(GL_READ_FRAMEBUFFER);
+  internals.VtkFrameBuffer->UnBind(GL_READ_FRAMEBUFFER);
+  this->Modified();
 }
 
 //------------------------------------------------------------------------------
 void vtkOpenGLVideoFrame::ReleaseGraphicsResources()
 {
-  auto oglRenWin = this->Texture->GetContext();
-  if (oglRenWin == nullptr)
+  auto& internals = (*this->Internals);
+  auto myWindow = internals.VtkTexture->GetContext();
+  vtkLogScopeF(
+    TRACE, "%s->%s, myWindow=%s", vtkLogIdentifier(this), __func__, vtkLogIdentifier(myWindow));
+  if (myWindow == nullptr)
   {
     return;
   }
-  this->Texture->ReleaseGraphicsResources(oglRenWin);
-  this->FBO->ReleaseGraphicsResources(oglRenWin);
+  internals.VtkTexture->ReleaseGraphicsResources(myWindow);
+  internals.VtkFrameBuffer->ReleaseGraphicsResources(myWindow);
   this->ActualSize = 0;
+  this->Modified();
 }
 
 //------------------------------------------------------------------------------
 void vtkOpenGLVideoFrame::Capture(vtkRenderWindow* window)
 {
+  auto& internals = (*this->Internals);
   auto oglRenWin = vtkOpenGLRenderWindow::SafeDownCast(window);
-  vtkLogScopeF(TRACE, "%s->%s, currentContext=%s, window=%s", vtkLogIdentifier(this), __func__,
-    vtkLogIdentifier(this->Texture->GetContext()), vtkLogIdentifier(oglRenWin));
-  if (this->Texture->GetContext() != oglRenWin)
-  {
-    vtkLogF(TRACE, "Invalid opengl context %s. Current context = %s", vtkLogIdentifier(oglRenWin),
-      vtkLogIdentifier(this->Texture->GetContext()));
-    return;
-  }
+  vtkLogScopeF(TRACE, "%s->%s, handle=%d, myWindow=%s, window=%s", vtkLogIdentifier(this), __func__,
+    internals.VtkTexture->GetHandle(), vtkLogIdentifier(internals.VtkTexture->GetContext()),
+    vtkLogIdentifier(oglRenWin));
+
   if (this->PixelFormat != VTKPixelFormatType::VTKPF_RGBA32)
   {
-    vtkLogF(ERROR, "Capture API supports only RGBA32 pictures.");
+    vtkLogF(ERROR, "Capture API only supports RGBA32 pixel format.");
     return;
   }
 
@@ -132,10 +129,12 @@ void vtkOpenGLVideoFrame::Capture(vtkRenderWindow* window)
   oglRenWin->GetDisplayFramebuffer()->Bind(GL_READ_FRAMEBUFFER);
   oglRenWin->GetDisplayFramebuffer()->ActivateReadBuffer(0);
 
-  this->Texture->Bind();
+  internals.VtkTexture->Bind();
+
   if (this->SliceOrder == vtkRawVideoFrame::SliceOrderType::BottomUp)
   {
-    glCopyTexSubImage2D(this->Texture->GetTarget(), 0, 0, 0, 0, 0, this->Width, this->Height);
+    glCopyTexSubImage2D(
+      internals.VtkTexture->GetTarget(), 0, 0, 0, 0, 0, this->Width, this->Height);
   }
   else
   {
@@ -148,36 +147,45 @@ void vtkOpenGLVideoFrame::Capture(vtkRenderWindow* window)
       int ysrc = i1;
       int width = this->Width;
       int height = 1;
-      glCopyTexSubImage2D(this->Texture->GetTarget(), 0, xofst, yofst, xsrc, ysrc, width, height);
+      glCopyTexSubImage2D(
+        internals.VtkTexture->GetTarget(), 0, xofst, yofst, xsrc, ysrc, width, height);
     }
   }
-  vtkOpenGLCheckErrorMacro("FBO->Texture xfer failed ");
-
+  vtkOpenGLCheckErrorMacro("FBO->Internals->VtkTexture xfer failed ");
+  glBindTexture(internals.VtkTexture->GetTarget(), 0);
   oglRenWin->GetState()->PopReadFramebufferBinding();
+  this->Modified();
 }
 
 //------------------------------------------------------------------------------
 void vtkOpenGLVideoFrame::UploadData(unsigned char* data)
 {
-  vtkLogScopeF(TRACE, "%s->%s currentContext=%s, Texture=%d", vtkLogIdentifier(this), __func__,
-    vtkLogIdentifier(this->Texture->GetContext()), this->Texture->GetHandle());
+  auto& internals = (*this->Internals);
+  vtkLogScopeF(TRACE, "%s->%s myWindow=%s, Texture=%d", vtkLogIdentifier(this), __func__,
+    vtkLogIdentifier(internals.VtkTexture->GetContext()), internals.VtkTexture->GetHandle());
+
   // recover key attributes of the texture.
-  auto tex = this->Texture;
-  tex->Bind();
+  auto& tex = internals.VtkTexture;
   const GLenum& target = tex->GetTarget();
   const GLenum& format = tex->GetFormat(tex->GetVTKDataType(), tex->GetComponents(), false);
   const GLenum& datatype = tex->GetDataType(tex->GetVTKDataType());
   const auto& width = tex->GetWidth();
   const auto& height = tex->GetHeight();
+  tex->GetContext()->MakeCurrent();
+  tex->Bind();
   glTexSubImage2D(target, 0, 0, 0, width, height, format, datatype, data);
+  glBindTexture(target, 0);
   this->Modified();
 }
 
 //------------------------------------------------------------------------------
 void vtkOpenGLVideoFrame::CopyDataInternal(unsigned char* data, unsigned int size)
 {
-  vtkLogScopeF(TRACE, "%s->%s currentContext=%s, Texture=%d Size=%d", vtkLogIdentifier(this),
-    __func__, vtkLogIdentifier(this->Texture->GetContext()), this->Texture->GetHandle(), size);
+  const auto& internals = (*this->Internals);
+
+  vtkLogScopeF(TRACE, "%s->%s myWindow=%s, Texture=%d Size=%d", vtkLogIdentifier(this), __func__,
+    vtkLogIdentifier(internals.VtkTexture->GetContext()), internals.VtkTexture->GetHandle(), size);
+
   const int allocSize = this->GetActualSize();
   if (size > allocSize)
   {
@@ -203,27 +211,31 @@ void vtkOpenGLVideoFrame::CopyDataInternal(unsigned char* data, unsigned int siz
 }
 
 //------------------------------------------------------------------------------
-unsigned int vtkOpenGLVideoFrame::GetDataInternal(unsigned char*& data) const
+unsigned int vtkOpenGLVideoFrame::GetDataInternal(unsigned char*& data)
 {
-  vtkLogScopeF(TRACE, "%p->%s currentContext=%s, Texture=%d", this, __func__,
-    vtkLogIdentifier(this->Texture->GetContext()), this->Texture->GetHandle());
+  auto& internals = (*this->Internals);
+  vtkLogScopeF(TRACE, "%s->%s myWindow=%s, handle=%d", vtkLogIdentifier(this), __func__,
+    vtkLogIdentifier(internals.VtkTexture->GetContext()), internals.VtkTexture->GetHandle());
 
-  if (this->Cache->GetMTime() > this->MTime)
+  if (internals.Cache->GetMTime() > this->MTime)
   {
-    data = this->Cache->GetPointer(0);
-    return this->Cache->GetNumberOfValues();
+    data = internals.Cache->GetPointer(0);
+    return internals.Cache->GetNumberOfValues();
   }
-  vtkLogF(TRACE, "Resource Hdl (%d)", this->Texture->GetHandle());
-  this->Cache->SetNumberOfValues(this->ActualSize);
-  data = this->Cache->GetPointer(0);
+  internals.Cache->SetNumberOfValues(this->ActualSize);
+  data = internals.Cache->GetPointer(0);
   std::fill(data, data + this->ActualSize, 0);
 
-  this->Texture->Bind();
-  const GLenum& target = this->Texture->GetTarget();
-  const GLenum& format = this->Texture->GetFormat(
-    this->Texture->GetVTKDataType(), this->Texture->GetComponents(), false);
-  const GLenum& datatype = this->Texture->GetDataType(this->Texture->GetVTKDataType());
+  auto& tex = internals.VtkTexture;
+  tex->GetContext()->MakeCurrent();
+  tex->Activate();
+  const GLenum& target = tex->GetTarget();
+  const GLenum& format = tex->GetFormat(tex->GetVTKDataType(), tex->GetComponents(), false);
+  const GLenum& datatype = tex->GetDataType(tex->GetVTKDataType());
+  vtkLogF(TRACE, "Fetch %d bytes..", this->ActualSize);
   glGetTexImage(target, 0, format, datatype, data);
+  vtkOpenGLCheckErrorMacro("Failed after glGetTexImage. ");
+  tex->Deactivate();
   return this->ActualSize;
 }
 
@@ -236,10 +248,11 @@ unsigned int vtkOpenGLVideoFrame::GetActualSize() const
 //------------------------------------------------------------------------------
 void vtkOpenGLVideoFrame::AllocateDataStore()
 {
-  vtkLogScopeF(TRACE, "%s->%s currentContext=%s, Texture=%d", vtkLogIdentifier(this), __func__,
-    vtkLogIdentifier(this->Texture->GetContext()), this->Texture->GetHandle());
-  auto oglRenWin = this->Texture->GetContext();
-  if (oglRenWin == nullptr)
+  auto& internals = (*this->Internals);
+  vtkLogScopeF(TRACE, "%s->%s myWindow=%s, handle=%d", vtkLogIdentifier(this), __func__,
+    vtkLogIdentifier(internals.VtkTexture->GetContext()), internals.VtkTexture->GetHandle());
+  auto myWindow = internals.VtkTexture->GetContext();
+  if (myWindow == nullptr)
   {
     vtkLog(
       ERROR, << "An OpenGL render window is required. Call ::InitializeGraphicsResources with a "
@@ -259,31 +272,33 @@ void vtkOpenGLVideoFrame::AllocateDataStore()
   const unsigned int widthBytes = vtkRawVideoFrame::GetWidthBytes(this->Width, this->PixelFormat);
   const int dataType = VTK_UNSIGNED_CHAR;
 
-  this->Texture->SetMagnificationFilter(vtkTextureObject::Nearest);
-  this->Texture->SetMinificationFilter(vtkTextureObject::Nearest);
-  this->Texture->SetWrapS(vtkTextureObject::ClampToEdge);
-  this->Texture->SetWrapT(vtkTextureObject::ClampToEdge);
+  internals.VtkTexture->SetMagnificationFilter(vtkTextureObject::Nearest);
+  internals.VtkTexture->SetMinificationFilter(vtkTextureObject::Nearest);
+  internals.VtkTexture->SetWrapS(vtkTextureObject::Repeat);
+  internals.VtkTexture->SetWrapT(vtkTextureObject::Repeat);
 
   switch (this->PixelFormat)
   {
     case VTKPixelFormatType::VTKPF_RGBA32:
-      this->Texture->Allocate2D(this->Width, this->Height, 4, dataType, 0);
+      internals.VtkTexture->Allocate2D(this->Width, this->Height, 4, dataType, 0);
       this->ActualSize = widthBytes * this->Height;
       vtkLogF(TRACE, "WidthBytes: %d, Height: %d", widthBytes, this->Height);
       break;
     case VTKPixelFormatType::VTKPF_RGB24:
-      this->Texture->Allocate2D(this->Width, this->Height, 3, dataType, 0);
+      internals.VtkTexture->Allocate2D(this->Width, this->Height, 3, dataType, 0);
       this->ActualSize = widthBytes * this->Height;
       vtkLogF(TRACE, "WidthBytes: %d, Height: %d", widthBytes, this->Height);
       break;
     case VTKPixelFormatType::VTKPF_NV12:
-      this->Texture->Allocate2D(this->Strides[0], this->Height + chromaHeight, 1, dataType, 0);
+      internals.VtkTexture->Allocate2D(
+        this->Strides[0], this->Height + chromaHeight, 1, dataType, 0);
       this->ActualSize = this->Strides[0] * (this->Height + chromaHeight);
       vtkLogF(TRACE, "Strides: %d|%d|%d, Height: %d", this->Strides[0], this->Strides[1],
         this->Strides[2], this->Height);
       break;
     case VTKPixelFormatType::VTKPF_IYUV:
-      this->Texture->Allocate2D(this->Strides[0], this->Height + chromaHeight, 1, dataType, 0);
+      internals.VtkTexture->Allocate2D(
+        this->Strides[0], this->Height + chromaHeight, 1, dataType, 0);
       this->ActualSize = this->Strides[0] * (this->Height + chromaHeight);
       vtkLogF(TRACE, "Strides: %d|%d|%d, Height: %d", this->Strides[0], this->Strides[1],
         this->Strides[2], this->Height);
@@ -291,8 +306,9 @@ void vtkOpenGLVideoFrame::AllocateDataStore()
   }
   vtkLogF(TRACE, "ActualSize: %d", this->ActualSize);
 
-  vtkLogF(TRACE, "tex=%d, internalformat=%06x, format=%06x ", this->Texture->GetHandle(),
-    this->Texture->GetInternalFormat(dataType, 1, 0), this->Texture->GetFormat(dataType, 1, 0));
+  vtkLogF(TRACE, "handle=%d, internalformat=%06x, format=%06x ", internals.VtkTexture->GetHandle(),
+    internals.VtkTexture->GetInternalFormat(dataType, 1, 0),
+    internals.VtkTexture->GetFormat(dataType, 1, 0));
 
   this->Modified();
 }
@@ -300,43 +316,56 @@ void vtkOpenGLVideoFrame::AllocateDataStore()
 //------------------------------------------------------------------------------
 void* vtkOpenGLVideoFrame::GetResourceHandle() noexcept
 {
-  if (this->AttachedWindow == nullptr)
+  auto& internals = (*this->Internals);
+  return internals.VtkTexture;
+}
+
+//------------------------------------------------------------------------------
+void vtkOpenGLVideoFrame::ShallowCopy(vtkRawVideoFrame* from) noexcept
+{
+  this->Superclass::ShallowCopy(from);
+
+  if (auto glFrame = vtkOpenGLVideoFrame::SafeDownCast(from))
   {
-    return this->Texture;
+    auto& internals = (*this->Internals);
+    // recover key attributes of the texture.
+    auto& tex = glFrame->Internals->VtkTexture;
+    const auto& handle = tex->GetHandle();
+    const GLenum& target = tex->GetTarget();
+    const GLenum& format = tex->GetFormat(tex->GetVTKDataType(), tex->GetComponents(), false);
+    const GLenum& internalFormat =
+      tex->GetInternalFormat(tex->GetVTKDataType(), tex->GetComponents(), false);
+    const GLenum& dataType = tex->GetDataType(tex->GetVTKDataType());
+    const auto& width = tex->GetWidth();
+    const auto& height = tex->GetHeight();
+
+    internals.VtkTexture->GetContext()->MakeCurrent();
+    internals.VtkTexture->ReleaseGraphicsResources(internals.VtkTexture->GetContext());
+    // reference the source texture.
+    internals.VtkTexture->AssignToExistingTexture(handle, target);
+    internals.VtkTexture->Resize(width, height);
+    internals.VtkTexture->SetFormat(format);
+    internals.VtkTexture->SetInternalFormat(internalFormat);
+    internals.VtkTexture->SetDataType(dataType);
+    this->ActualSize = glFrame->ActualSize;
   }
   else
   {
-    auto oglRenWin = vtkOpenGLRenderWindow::SafeDownCast(this->AttachedWindow);
-    return oglRenWin->GetDisplayFramebuffer()->GetColorAttachmentAsTextureObject(0);
+    // cannot shallow copy.
+    this->DeepCopy(from);
   }
 }
 
 //------------------------------------------------------------------------------
-void vtkOpenGLVideoFrame::CopyMetadata(vtkRawVideoFrame* from) noexcept
+void vtkOpenGLVideoFrame::DeepCopy(vtkRawVideoFrame* from)
 {
-  this->Superclass::CopyMetadata(from);
-  if (auto glFrame = vtkOpenGLVideoFrame::SafeDownCast(from))
-  {
-    if (glFrame->Texture->GetContext() == this->Texture->GetContext())
-    {
-      return;
-    }
-    else
-    {
-      this->ReleaseGraphicsResources();
-      this->InitializeGraphicsResources(glFrame->Texture->GetContext());
-    }
-  }
-}
+  this->Superclass::DeepCopy(from);
 
-//------------------------------------------------------------------------------
-void vtkOpenGLVideoFrame::CopyFrameDataInternal(vtkRawVideoFrame* from)
-{
   vtkSmartPointer<vtkTextureObject> srcTexture = nullptr;
 
   if (auto glInput = vtkOpenGLVideoFrame::SafeDownCast(from))
   {
-    srcTexture = vtk::MakeSmartPointer(glInput->Texture);
+    srcTexture = vtk::MakeSmartPointer(glInput->Internals->VtkTexture.GetPointer());
   }
   else
   {
@@ -346,26 +375,30 @@ void vtkOpenGLVideoFrame::CopyFrameDataInternal(vtkRawVideoFrame* from)
     return;
   }
 
-  const auto& width = this->Texture->GetWidth();
-  const auto& height = this->Texture->GetHeight();
+  auto& internals = (*this->Internals);
+  const auto& width = internals.VtkTexture->GetWidth();
+  const auto& height = internals.VtkTexture->GetHeight();
 
-  this->FBO->SaveCurrentBindingsAndBuffers();
-  this->FBO->AddColorAttachment(0, srcTexture, 0, srcTexture->GetTarget(), 0);
+  internals.VtkFrameBuffer->SaveCurrentBindingsAndBuffers();
+  internals.VtkFrameBuffer->AddColorAttachment(0, srcTexture, 0, srcTexture->GetTarget(), 0);
   vtkOpenGLCheckErrorMacro("Failed to add input texture to read framebuffer. ");
 
-  this->FBO->CheckFrameBufferStatus(GL_FRAMEBUFFER);
-  this->FBO->Bind(GL_READ_FRAMEBUFFER);
+  internals.VtkFrameBuffer->CheckFrameBufferStatus(GL_FRAMEBUFFER);
+  internals.VtkFrameBuffer->Bind(GL_READ_FRAMEBUFFER);
   vtkOpenGLCheckErrorMacro("Failed to bind read framebuffer. ");
 
-  this->FBO->ActivateReadBuffer(0);
+  internals.VtkFrameBuffer->ActivateReadBuffer(0);
   vtkOpenGLCheckErrorMacro("Failed to activate read framebuffer. ");
 
-  this->Texture->Bind();
+  internals.VtkTexture->Bind();
   vtkOpenGLCheckErrorMacro("Failed to bind destination texture. ");
+
+  vtkLogF(TRACE, "Copy %d bytes from texture %d -> %d", from->GetActualSize(),
+    srcTexture->GetHandle(), internals.VtkTexture->GetHandle());
 
   if (this->SliceOrder == from->GetSliceOrderType())
   {
-    glCopyTexSubImage2D(this->Texture->GetTarget(), 0, 0, 0, 0, 0, width, height);
+    glCopyTexSubImage2D(internals.VtkTexture->GetTarget(), 0, 0, 0, 0, 0, width, height);
   }
   else
   {
@@ -378,39 +411,46 @@ void vtkOpenGLVideoFrame::CopyFrameDataInternal(vtkRawVideoFrame* from)
       int ysrc = i1;
       int width = this->Width;
       int height = 1;
-      glCopyTexSubImage2D(this->Texture->GetTarget(), 0, xofst, yofst, xsrc, ysrc, width, height);
+      glCopyTexSubImage2D(
+        internals.VtkTexture->GetTarget(), 0, xofst, yofst, xsrc, ysrc, width, height);
     }
   }
-  vtkOpenGLCheckErrorMacro("FBO->Texture xfer failed ");
-  this->FBO->RemoveColorAttachments(0);
-  this->FBO->RestorePreviousBindingsAndBuffers();
+  vtkOpenGLCheckErrorMacro("FBO->Internals->VtkTexture  xfer failed ");
+  glBindTexture(internals.VtkTexture->GetTarget(), 0);
+  internals.VtkFrameBuffer->RemoveColorAttachments(0);
+  internals.VtkFrameBuffer->RestorePreviousBindingsAndBuffers();
 }
 
 //------------------------------------------------------------------------------
 void vtkOpenGLVideoFrame::Render(vtkRenderWindow* window)
 {
+  auto& internals = (*this->Internals);
   auto oglRenWin = vtkOpenGLRenderWindow::SafeDownCast(window);
   if (oglRenWin == nullptr)
   {
     return;
   }
+  vtkLogScopeF(TRACE, "%s->%s myWindow=%s, renderInto=%s", vtkLogIdentifier(this), __func__,
+    vtkLogIdentifier(internals.VtkTexture->GetContext()), vtkLogIdentifier(window));
+
   // when rendering into opengl, we may want to invert along Y dimension.
   bool invert_y = this->SliceOrder == vtkRawVideoFrame::SliceOrderType::TopDown;
   const int chromaHeight = vtkRawVideoFrame::GetChromaHeight(this->Height, this->PixelFormat);
+  auto& tex = internals.VtkTexture;
 
   switch (this->PixelFormat)
   {
     case VTKPixelFormatType::VTKPF_RGBA32:
-      this->RGBA32Delegate->Render(this->Texture, oglRenWin, invert_y);
+      this->RGBA32Delegate->Render(tex, oglRenWin, invert_y);
       break;
     case VTKPixelFormatType::VTKPF_RGB24:
-      this->RGB24Delegate->Render(this->Texture, oglRenWin, invert_y);
+      this->RGB24Delegate->Render(tex, oglRenWin, invert_y);
       break;
     case VTKPixelFormatType::VTKPF_NV12:
-      this->NV12Delegate->Render(this->Texture, oglRenWin, this->Strides, chromaHeight, invert_y);
+      this->NV12Delegate->Render(tex, oglRenWin, this->Strides, chromaHeight, invert_y);
       break;
     case VTKPixelFormatType::VTKPF_IYUV:
-      this->IYUVDelegate->Render(this->Texture, oglRenWin, this->Strides, chromaHeight, invert_y);
+      this->IYUVDelegate->Render(tex, oglRenWin, this->Strides, chromaHeight, invert_y);
       break;
   }
 }

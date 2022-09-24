@@ -58,9 +58,10 @@ public:
 
   ///@{
   /**
-   * Shallow copy members except the data. Calls parent class method.
+   * shallow/deep copy the data.
    */
-  void CopyMetadata(vtkRawVideoFrame* from) noexcept override;
+  void ShallowCopy(vtkRawVideoFrame* from) noexcept override;
+  void DeepCopy(vtkRawVideoFrame* from) override;
   ///@}
 
 protected:
@@ -74,8 +75,7 @@ protected:
    * Implement parent class Copy/Get API.
    */
   void CopyDataInternal(unsigned char* from, unsigned int size) override;
-  unsigned int GetDataInternal(unsigned char*& data) const override;
-  void CopyFrameDataInternal(vtkRawVideoFrame* from) override;
+  unsigned int GetDataInternal(unsigned char*& data) override;
   ///@}
 
 private:

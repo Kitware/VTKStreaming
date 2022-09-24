@@ -29,11 +29,14 @@
 #include "vtkProperty.h"
 #include "vtkRawVideoFrame.h"
 #include "vtkRenderer.h"
+#include "vtkVideoEncoder.h"
 #include "vtkVideoProcessingStatusTypes.h"
 #include "vtkXOpenGLRenderWindow.h"
 #include "vtkXRenderWindowInteractor.h"
 #include <fstream>
 #include <iomanip>
+#include <vtkCallbackCommand.h>
+#include <vtkCommand.h>
 
 #define WRITE_CHUNKS 1
 
@@ -69,42 +72,43 @@ int TestJPEGEncoderPushReceiveRGBA32(int argc, char* argv[])
   vtkNew<vtkJPEGVideoEncoder> enc;
   enc->SetWidth(width);
   enc->SetHeight(height);
+  enc->UseAsynchronousDelegateOn();
   enc->SetInputPixelFormat(VTKPixelFormatType::VTKPF_RGBA32);
 
   vtkNew<vtkOpenGLVideoFrame> dFrame;
-  dFrame->InitializeGraphicsResources(renWin);
+  dFrame->SetContext(renWin);
   dFrame->SetPixelFormat(VTKPixelFormatType::VTKPF_RGBA32);
   dFrame->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::BottomUp);
 
-#if !WRITE_CHUNKS
-  std::ofstream outFile("cylinder.h264", std::ofstream::out | std::ofstream::binary);
-#endif
+  vtkNew<vtkCallbackCommand> exitCallback;
+  exitCallback->SetClientData(enc);
+  exitCallback->SetCallback(
+    [](vtkObject* iren_ptr, unsigned long, void* enc_ptr, void*)
+    {
+      // drain needs an opengl context so it can release the resources.
+      auto encoder = reinterpret_cast<vtkVideoEncoder*>(enc_ptr);
+      auto result = encoder->Drain();
+      (void)result;
+      auto iren = reinterpret_cast<vtkRenderWindowInteractor*>(iren_ptr);
+      encoder->Shutdown();
+      iren->TerminateApp();
+    });
+  iren->AddObserver(vtkCommand::ExitEvent, exitCallback);
 
   int frame = 0, lastw, lasth;
-  while (!iren->GetDone())
+  while (true)
   {
     iren->ProcessEvents();
+    if (iren->GetDone())
+    {
+      break;
+      ;
+    }
 #if WRITE_CHUNKS
     std::stringstream filename;
     filename << "frame-" << std::setfill('0') << std::setw(3) << frame << ".jpeg";
     std::ofstream outFile(filename.str(), std::ofstream::out | std::ofstream::binary);
 #endif
-    if (iren->GetDone())
-    {
-      // drain needs an opengl context so it can release the resources.
-      iren->Initialize();
-      iren->Render();
-      auto result = enc->Drain();
-      if (!result.second.empty())
-      {
-        outFile.write(reinterpret_cast<char*>(result.second[0]->GetData()->GetPointer(0)),
-          result.second[0]->GetSize());
-        outFile.close();
-      }
-      enc->Shutdown();
-      outFile.close();
-      break;
-    }
     width = renWin->GetSize()[0];
     height = renWin->GetSize()[1];
     if (width != lastw || height != lasth)
@@ -123,6 +127,8 @@ int TestJPEGEncoderPushReceiveRGBA32(int argc, char* argv[])
     vtkLog(TRACE, << vtkVideoProcessingStatusTypeUtilities::ToString(status));
     auto result = enc->GetResult();
     vtkLog(TRACE, << vtkVideoProcessingStatusTypeUtilities::ToString(result.first));
+    cout << "write " << filename.str() << " - " << result.second[0]->GetData()->GetNumberOfValues()
+         << " bytes\n";
     outFile.write(reinterpret_cast<char*>(result.second[0]->GetData()->GetPointer(0)),
       result.second[0]->GetSize());
 #if WRITE_CHUNKS
@@ -130,9 +136,6 @@ int TestJPEGEncoderPushReceiveRGBA32(int argc, char* argv[])
 #endif
     ++frame;
   }
-#if !WRITE_CHUNKS
-  outFile.close();
-#endif
 
   return 0;
 }

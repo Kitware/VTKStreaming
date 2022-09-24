@@ -119,18 +119,6 @@ public:
   virtual void Render(vtkRenderWindow* window) = 0;
   ///@}
 
-  ///@{
-  /**
-   * Methods that help encoding with a single GPU->GPU copy.
-   *
-   * When an encoder finds an attached render window, it shall use ::Capture(attachedWindow)
-   * to get the pixels in a single GPU->GPU tranfser.
-   */
-  void Attach(vtkRenderWindow* window) noexcept;
-  void Detach() noexcept;
-  vtkRenderWindow* GetAttachedRenderWindow() const noexcept { return this->AttachedWindow; };
-  ///@}
-
   /**
    * Convenient method that writes out underlying memory to a file.
    */
@@ -143,22 +131,26 @@ public:
 
   /**
    * Get a pointer to underlying data. returns the size in bytes.
+   * Subsequent calls to this function may not return the same memory address.
    */
-  unsigned int GetData(unsigned char*& data) const;
+  unsigned int GetData(unsigned char*& data);
 
   ///@{
   /**
    * Copy/Get the pixel data from/to a vtkUnsignedCharArray.
    */
   void CopyData(vtkUnsignedCharArray* from);
-  vtkSmartPointer<vtkUnsignedCharArray> GetData() const;
+  vtkSmartPointer<vtkUnsignedCharArray> GetData();
   ///@}
 
+  ///@{
   /**
-   * Copy another frame's data into our frame.
-   * If none of the pixel-format and dimensions are equal, it will fail.
+   * Methods to copy members and the pixels.
+   * ShallowCopy must **not** raise an exception.
    */
-  void CopyFrameData(vtkRawVideoFrame* from);
+  virtual void ShallowCopy(vtkRawVideoFrame* from) noexcept;
+  virtual void DeepCopy(vtkRawVideoFrame* from);
+  ///@}
 
   /**
    * Get the actual size instead of estimated size. Often, the data can be
@@ -177,11 +169,6 @@ public:
    * It can be anything you want it to be to help your encoder/decoder implementation.
    */
   virtual void* GetResourceHandle() noexcept = 0;
-
-  /**
-   * Copy members except the underlying buffer contents.
-   */
-  virtual void CopyMetadata(vtkRawVideoFrame* from) noexcept;
 
   ///@{
   /**
@@ -207,15 +194,13 @@ protected:
 
   int Width = 0;
   int Height = 0;
-  int Strides[3];
+  int Strides[3] = {};
   bool IsKeyFrame = false;
   VTKPixelFormatType PixelFormat = VTKPixelFormatType::VTKPF_NV12;
   SliceOrderType SliceOrder = SliceOrderType::TopDown;
-  vtkRenderWindow* AttachedWindow = nullptr;
 
   virtual void CopyDataInternal(unsigned char* from, unsigned int size) = 0;
-  virtual unsigned int GetDataInternal(unsigned char*& data) const = 0;
-  virtual void CopyFrameDataInternal(vtkRawVideoFrame* from) = 0;
+  virtual unsigned int GetDataInternal(unsigned char*& data) = 0;
 
 private:
   vtkRawVideoFrame(const vtkRawVideoFrame&) = delete;

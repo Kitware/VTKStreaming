@@ -9,6 +9,9 @@ set(priv_classes
   vtkOpenGLRGBA32RenderDelegate
 )
 
+set(priv_headers
+  vtkOpenGLVideoFrameInternals
+)
 
 set(shader_files
   glsl/vtkIYUVRenderFS.glsl

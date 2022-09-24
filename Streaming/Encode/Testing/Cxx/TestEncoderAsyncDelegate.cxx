@@ -26,6 +26,7 @@
 
 #include <chrono>
 #include <thread>
+#include <vtkOpenGLRenderWindow.h>
 
 #define MAX_NUM_FRAMES 100
 
@@ -63,7 +64,7 @@ int TestEncoderAsyncDelegate(int argc, char* argv[])
     frame->SetWidth(4096);
     frame->SetHeight(2160);
     frame->SetPixelFormat(VTKPixelFormatType::VTKPF_RGBA32);
-    frame->InitializeGraphicsResources(window);
+    frame->SetContext(vtkOpenGLRenderWindow::SafeDownCast(window));
     frame->ComputeDefaultStrides();
     frame->AllocateDataStore();
     vtkLogF(INFO, "Push %d", pushCount++);

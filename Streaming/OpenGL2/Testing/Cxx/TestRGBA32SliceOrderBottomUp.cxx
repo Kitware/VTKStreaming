@@ -65,7 +65,7 @@ int TestRGBA32SliceOrderBottomUp(int argc, char* argv[])
   renWin->Render();
 
   vtkNew<vtkOpenGLVideoFrame> rgba32Picture;
-  rgba32Picture->InitializeGraphicsResources(renWin);
+  rgba32Picture->SetContext(renWin);
   rgba32Picture->SetWidth(width);
   rgba32Picture->SetHeight(height);
   rgba32Picture->SetPixelFormat(VTKPixelFormatType::VTKPF_RGBA32);
