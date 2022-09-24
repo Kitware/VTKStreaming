@@ -27,7 +27,7 @@ int TestCPUVideoFrameXferWithExternalStrides(int argc, char* argv[])
   srcFrame->SetWidth(width);
   srcFrame->SetHeight(height);
   srcFrame->SetPixelFormat(VTKPixelFormatType::VTKPF_IYUV);
-  int strides[3] = { width + 21, (width + 21) >> 2, (width + 21) >> 2};
+  int strides[3] = { width + 21, (width + 21) >> 2, (width + 21) >> 2 };
   srcFrame->SetStrides(strides, 3);
   srcFrame->AllocateDataStore();
 

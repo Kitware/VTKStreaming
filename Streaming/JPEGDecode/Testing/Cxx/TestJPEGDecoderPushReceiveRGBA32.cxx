@@ -13,7 +13,7 @@
 
 =========================================================================*/
 // This test exercises JPEG video decoder with rgba32 outputs.
-// It is disabled because it requres human intervention right now. 
+// It is disabled because it requres human intervention right now.
 // The output jpeg files of TestJPEGDecoderPushReceiveRGBA32 will be inputs
 // for this test.
 

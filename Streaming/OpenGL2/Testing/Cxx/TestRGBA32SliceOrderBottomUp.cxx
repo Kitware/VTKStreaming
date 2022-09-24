@@ -20,13 +20,13 @@
 #include "vtkLogger.h"
 #include "vtkOpenGLError.h"
 #include "vtkOpenGLVideoFrame.h"
+#include "vtkPNGWriter.h"
 #include "vtkPixelFormatTypes.h"
 #include "vtkPointData.h"
 #include "vtkPolyDataMapper.h"
 #include "vtkProperty.h"
 #include "vtkRenderer.h"
 #include "vtkTestUtilities.h"
-#include "vtkPNGWriter.h"
 #include "vtkUnsignedCharArray.h"
 #include "vtkXOpenGLRenderWindow.h"
 #include "vtkXRenderWindowInteractor.h"
@@ -57,7 +57,6 @@ int TestRGBA32SliceOrderBottomUp(int argc, char* argv[])
   renWin->Initialize();
   renWin->Render();
 
-
   vtkNew<vtkUnsignedCharArray> pixels;
   renWin->GetRGBACharPixelData(0, 0, width - 1, height - 1, 1, pixels);
   // now let's remove it.
@@ -72,10 +71,10 @@ int TestRGBA32SliceOrderBottomUp(int argc, char* argv[])
   rgba32Picture->SetPixelFormat(VTKPixelFormatType::VTKPF_RGBA32);
   rgba32Picture->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::BottomUp);
   rgba32Picture->ComputeDefaultStrides();
-  
+
   rgba32Picture->AllocateDataStore();
   vtkOpenGLCheckErrors("ERROR allocating gl texture. ");
-  
+
   rgba32Picture->CopyData(pixels->GetPointer(0), 4 * width * height);
   vtkOpenGLCheckErrors("ERROR uploading pixels to gl texture. ");
 

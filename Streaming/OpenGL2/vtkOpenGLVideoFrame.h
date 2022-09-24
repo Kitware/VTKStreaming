@@ -24,8 +24,8 @@
 
 #include "vtkRawVideoFrame.h"
 
-#include "vtkUnsignedCharArray.h" // for ivar
 #include "vtkStreamingOpenGL2Module.h" // for export macro
+#include "vtkUnsignedCharArray.h"      // for ivar
 
 class vtkRenderWindow;
 class vtkOpenGLHelper;

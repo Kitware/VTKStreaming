@@ -29,10 +29,10 @@
 
 #include "vtkObject.h"
 
-#include "vtkPixelFormatTypes.h"  // for pixel type enum
-#include "vtkSmartPointer.h"      // for return value
-#include "vtkUnsignedCharArray.h" // for return value
-#include "vtkStreamingCoreModule.h"   // for export macro
+#include "vtkPixelFormatTypes.h"    // for pixel type enum
+#include "vtkSmartPointer.h"        // for return value
+#include "vtkStreamingCoreModule.h" // for export macro
+#include "vtkUnsignedCharArray.h"   // for return value
 
 class vtkRenderWindow;
 

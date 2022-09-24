@@ -66,7 +66,8 @@ void vtkCPUVideoFrame::CopyDataInternal(unsigned char* from, unsigned int size)
   {
     vtkLog(TRACE, << "Padding reason: Given data size " << size << " smaller than frame size "
                   << allocSize << " - " << this->Strides[0] << "x" << this->Height
-                  << " for pixel format " << vtkPixelFormatTypeUtilities::ToString(this->PixelFormat));
+                  << " for pixel format "
+                  << vtkPixelFormatTypeUtilities::ToString(this->PixelFormat));
     std::copy(from, from + size, this->Buffer->GetBuffer());
     // pad with zeros.
     std::fill(this->Buffer->GetBuffer() + size, this->Buffer->GetBuffer() + allocSize, 0);
