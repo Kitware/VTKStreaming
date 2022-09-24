@@ -20,39 +20,6 @@
  *
  * You can push compressed video packets with the vtkVideoDecoder::Push method.
  * Call vtkVideoDecoder::GetResult to obtain the uncompressed video frame.
- *
- * You are free to delete or modify the packet contents after calling `Push`.
- *
- * The decoder can use a processing delegate to queue packets into work units
- * which are eventually decoded.
- *
- * With both synchronous and asynchronous delegates, the 'real' decoding happens
- * during vtkVideoDecoder::GetResult().
- *
- * Here is an overview of the 3 important methods.
- *
- * With asynchronous delegate -:
- * 1. vtkVideoDecoder::Push() -
- *     does not block caller's thread. May start decoding when thread resources become available.
- * 2. vtkVideoDecoder::GetResult() -
- *     only attempts to get a result. May start decoding in worker thread if not already started.
- * 3. vtkVideoDecoder::HasResult() -
- *     returns true if any results are already available.
- *
- * You can avoid delegates if you prefer tighter control over the API. Ex -: implement your own task
- * queue management. Turn off async delegate with UseAsynchronousDelegateOff()
- * When the delegate is bypassed -:
- * 1. vtkVideoDecoder::Push() -
- *     blocks the caller's thread and decoding begins right away.
- * 2. vtkVideoDecoder::GetResult() -
- *     finishes the decoding and returns the result.
- * 3. vtkVideoDecoder::HasResult() -
- *     always returns false.
- *
- * With an asynchronous delegate, if you prefer to be notified
- * when a result is available, please listen to vtkCommand::ProgressEvent.
- * This class emits an event when frames are available.
- *
  * Call vtkVideoDecoder::Shutdown() before the decoder is destroyed.
  *
  * @sa vtkRawVideoFrame, vtkCompressedVideoPacket
@@ -77,27 +44,8 @@ public:
   vtkTypeMacro(vtkVideoDecoder, vtkObject);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  ///@{
-  /**
-   * Set/Get UseAsynchronousDelegate
-   */
-  void SetUseAsynchronousDelegate(bool val);
-  bool GetUseAsynchronousDelegate();
-  void UseAsynchronousDelegateOn();
-  void UseAsynchronousDelegateOff();
-  ///@}
-
   vtkSetEnumMacro(Codec, VTKVideoCodecType);
   vtkGetEnumMacro(Codec, VTKVideoCodecType);
-
-  ///@{
-  /**
-   * Set the size of input buffers for the synchronous delegate.
-   * Option has no effect for async delegate or when the delegates are bypassed.
-   */
-  vtkSetMacro(BufferSize, unsigned int);
-  vtkGetMacro(BufferSize, unsigned int);
-  ///@}
 
   ///@{
   /**
@@ -107,7 +55,6 @@ public:
   bool Initialize();
   void Shutdown();
   void Flush();
-  bool HasDelegate();
   ///@}
 
   ///@{
@@ -132,13 +79,6 @@ public:
   VTKVideoDecoderResultType Drain();
   ///@}
 
-  /**
-   * In asynchronous decoding, it may happen that a large number of frames are waiting in the task
-   * queue. This method lets us ignore further decode requests when flushing the task queue.
-   * vtkVideoDecoder::Push later resets the cancel flag.
-   */
-  void CancelPendingDecodeRequests();
-
   ///@{
   /**
    * Convenient functions implemented by concrete subclasses.
@@ -156,9 +96,6 @@ protected:
 
   VTKVideoCodecType Codec = VTKVideoCodecType::VTKVC_VP9;
   bool Initialized = false;
-  bool IgnoreDecodeRequest = false;
-  unsigned int BufferSize = 30;
-  vtkAsynchronousDecoderDelegate* Delegate = nullptr;
 
   ///@{
   /**
