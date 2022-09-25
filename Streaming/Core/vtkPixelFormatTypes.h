@@ -28,22 +28,7 @@ enum class VTKPixelFormatType
 
 struct VTKSTREAMINGCORE_EXPORT vtkPixelFormatTypeUtilities
 {
-  static const char* ToString(VTKPixelFormatType pixelFormat)
-  {
-    switch (pixelFormat)
-    {
-      case VTKPixelFormatType::VTKPF_RGBA32:
-        return "rgba32";
-      case VTKPixelFormatType::VTKPF_RGB24:
-        return "rgb24";
-      case VTKPixelFormatType::VTKPF_NV12:
-        return "nv12";
-      case VTKPixelFormatType::VTKPF_IYUV:
-        return "iyuv";
-      default:
-        return "unsupported pixel format";
-    }
-  }
+  static const char* ToString(VTKPixelFormatType pixelFormat);
 };
 
 #endif // vtkPixelFormatTypes_h
