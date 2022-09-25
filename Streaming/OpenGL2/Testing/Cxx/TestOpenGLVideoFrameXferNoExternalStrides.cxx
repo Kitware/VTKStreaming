@@ -22,8 +22,8 @@
 #include "vtkPixelFormatTypes.h"
 #include "vtkPolyDataMapper.h"
 #include "vtkProperty.h"
-#include "vtkRenderer.h"
 #include "vtkRenderWindow.h"
+#include "vtkRenderer.h"
 #include "vtkTestUtilities.h"
 
 int TestOpenGLVideoFrameXferNoExternalStrides(int argc, char* argv[])
