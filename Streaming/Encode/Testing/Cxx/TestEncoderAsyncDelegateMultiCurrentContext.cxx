@@ -14,7 +14,7 @@
 =========================================================================*/
 // This test rigorously verifies that the async encoder delegate
 // indeed uses a separate thread-local OpenGL context shared
-// with the main thread's OpenGL context. 
+// with the main thread's OpenGL context.
 // Similar to a real-life use case - live encoding VTK renders.
 
 #include "vtkCallbackCommand.h"
@@ -32,7 +32,8 @@
 #define MAX_NUM_FRAMES 100
 
 static int readyCount = 0;
-void TestEncoderAsyncDelegateMultiCurrentContext_callback(vtkObject* enc, unsigned long, void*, void*)
+void TestEncoderAsyncDelegateMultiCurrentContext_callback(
+  vtkObject* enc, unsigned long, void*, void*)
 {
   vtkLogF(INFO, "=> ready %d", readyCount++);
   auto encoder = vtkVideoEncoder::SafeDownCast(enc);

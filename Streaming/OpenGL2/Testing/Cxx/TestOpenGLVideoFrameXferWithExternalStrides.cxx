@@ -20,8 +20,8 @@
 #include "vtkOpenGLRenderWindow.h"
 #include "vtkOpenGLVideoFrame.h"
 #include "vtkPixelFormatTypes.h"
-#include "vtkRenderer.h"
 #include "vtkRenderWindow.h"
+#include "vtkRenderer.h"
 #include <vector>
 
 int TestOpenGLVideoFrameXferWithExternalStrides(int argc, char* argv[])
