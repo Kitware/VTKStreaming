@@ -75,6 +75,8 @@ protected:
   VTKVideoEncoderResultType EncodeInternal(vtkRawVideoFrame* frame) override;
   ///@}
 
+  VTKVideoEncoderResultType EncodeScreenInternal(vtkRenderWindow* window) override { return {}; }
+
 private:
   vtkFFmpegSoftwareEncoder(const vtkFFmpegSoftwareEncoder&) = delete;
   void operator=(const vtkFFmpegSoftwareEncoder&) = delete;

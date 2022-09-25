@@ -360,44 +360,10 @@ VTKVideoProcessingStatusType vtkVideoEncoder::Push(vtkRawVideoFrame* frame)
   const int& width = frame->GetWidth();
   const int& height = frame->GetHeight();
 
-  bool success = true;
-  // check if we've to setup a new frame.
-  if (this->NeedsNewEncoderFrame(width, height) || this->LastSetupMTime < this->GetMTime())
+  auto ctxStatus = this->UpdateEncoderContext(width, height);
+  if (ctxStatus != VTKVideoProcessingStatusType::VTKVPStatus_Success)
   {
-    // When the dimensions change, a new context is required. Otherwise, a listening decoder will be
-    // oblivious to the change in dimensions. Some encoders are capable of dynamic resizing but
-    // they're few.
-    this->Shutdown();
-    success = this->Initialize();
-    if (!success)
-    {
-      return VTKVideoProcessingStatusType::VTKVPStatus_UnknownError;
-    }
-
-    success = this->SetupEncoderFrame(width, height);
-    this->LastSetupMTime = success ? this->GetMTime() : -1;
-
-    if (!success)
-    {
-      vtkLog(ERROR, << "Failed to setup an encoder frame");
-      return VTKVideoProcessingStatusType::VTKVPStatus_UnknownError;
-    }
-  }
-  else if (!this->Initialized)
-  {
-    if (!this->Initialize())
-    {
-      vtkLog(ERROR, "Failed to initialize encoding context.");
-      return VTKVideoProcessingStatusType::VTKVPStatus_UnknownError;
-    }
-    success = this->SetupEncoderFrame(width, height);
-    this->LastSetupMTime = success ? this->GetMTime() : -1;
-
-    if (!success)
-    {
-      vtkLog(ERROR, << "Failed to setup an encoder frame");
-      return VTKVideoProcessingStatusType::VTKVPStatus_UnknownError;
-    }
+    return ctxStatus;
   }
 
   this->IgnoreEncodeRequest = false;
@@ -441,7 +407,81 @@ VTKVideoEncoderResultType vtkVideoEncoder::GetResult()
   return result;
 }
 
+//------------------------------------------------------------------------------
 void vtkVideoEncoder::CancelPendingEncodeRequests()
 {
   this->IgnoreEncodeRequest = true;
+}
+
+//------------------------------------------------------------------------------
+VTKVideoEncoderResultType vtkVideoEncoder::EncodeScreen(vtkRenderWindow* window)
+{
+  vtkLogScopeF(TRACE, "%s window=%s", __func__, vtkLogIdentifier(window));
+
+  if (this->GetAsyncMode())
+  {
+    vtkLog(ERROR, "The encoder is in async mode. Please use Push/GetResult API.");
+    return { VTKVideoProcessingStatusType::VTKVPStatus_InvalidValue, {} };
+  }
+  else
+  {
+    const int& width = window->GetSize()[0];
+    const int& height = window->GetSize()[1];
+
+    auto ctxStatus = this->UpdateEncoderContext(width, height);
+    if (ctxStatus == VTKVideoProcessingStatusType::VTKVPStatus_Success)
+    {
+      return this->EncodeScreenInternal(window);
+    }
+    else
+    {
+      return { ctxStatus, {} };
+    }
+  }
+}
+
+//------------------------------------------------------------------------------
+VTKVideoProcessingStatusType vtkVideoEncoder::UpdateEncoderContext(int width, int height)
+{
+  vtkLogScopeF(TRACE, "%s %dx%d", __func__, width, height);
+  bool success = true;
+  // check if we've to setup a new frame.
+  if (this->NeedsNewEncoderFrame(width, height) || this->LastSetupMTime < this->GetMTime())
+  {
+    // When the dimensions change, a new context is required. Otherwise, a listening decoder will
+    // be oblivious to the change in dimensions. Some encoders are capable of dynamic resizing but
+    // they're few.
+    this->Shutdown();
+    success = this->Initialize();
+    if (!success)
+    {
+      return VTKVideoProcessingStatusType::VTKVPStatus_UnknownError;
+    }
+
+    success = this->SetupEncoderFrame(width, height);
+    this->LastSetupMTime = success ? this->GetMTime() : -1;
+
+    if (!success)
+    {
+      vtkLog(ERROR, << "Failed to setup an encoder frame");
+      return VTKVideoProcessingStatusType::VTKVPStatus_UnknownError;
+    }
+  }
+  else if (!this->Initialized)
+  {
+    if (!this->Initialize())
+    {
+      vtkLog(ERROR, "Failed to initialize encoding context.");
+      return VTKVideoProcessingStatusType::VTKVPStatus_UnknownError;
+    }
+    success = this->SetupEncoderFrame(width, height);
+    this->LastSetupMTime = success ? this->GetMTime() : -1;
+
+    if (!success)
+    {
+      vtkLog(ERROR, << "Failed to setup an encoder frame");
+      return VTKVideoProcessingStatusType::VTKVPStatus_UnknownError;
+    }
+  }
+  return VTKVideoProcessingStatusType::VTKVPStatus_Success;
 }

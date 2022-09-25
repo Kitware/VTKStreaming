@@ -70,6 +70,8 @@ protected:
   VTKVideoEncoderResultType EncodeInternal(vtkRawVideoFrame* frame) override;
   ///@}
 
+  VTKVideoEncoderResultType EncodeScreenInternal(vtkRenderWindow* window) override { return {}; }
+
 private:
   vtkJPEGVideoEncoder(const vtkJPEGVideoEncoder&) = delete;
   void operator=(const vtkJPEGVideoEncoder&) = delete;

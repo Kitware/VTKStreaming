@@ -15,7 +15,6 @@
 // This test exercises NvEnc h.264 encoder with RGBA32 inputs.
 
 #include "vtkActor.h"
-#include "vtkCPUVideoFrame.h"
 #include "vtkCallbackCommand.h"
 #include "vtkCylinderSource.h"
 #include "vtkLogger.h"
@@ -23,7 +22,6 @@
 #include "vtkNvEncoderGL.h"
 #include "vtkOpenGLError.h"
 #include "vtkOpenGLRenderWindow.h"
-#include "vtkOpenGLVideoFrame.h"
 #include "vtkPixelFormatTypes.h"
 #include "vtkPolyDataMapper.h"
 #include "vtkProperty.h"
@@ -41,7 +39,7 @@
 int TestNvEncoderPushReceiveRGBA32(int argc, char* argv[])
 {
   bool success = true;
-  int width = 320, height = 240;
+  int width = 1920, height = 1200;
   vtkLogger::SetStderrVerbosity(vtkLogger::VERBOSITY_9);
   vtkNew<vtkRenderWindowInteractor> iren;
   vtkNew<vtkRenderWindow> win;
@@ -76,11 +74,6 @@ int TestNvEncoderPushReceiveRGBA32(int argc, char* argv[])
   enc->AsyncModeOff();
   enc->SetInputPixelFormat(VTKPixelFormatType::VTKPF_RGBA32);
 
-  vtkNew<vtkOpenGLVideoFrame> dFrame;
-  dFrame->SetContext(renWin);
-  dFrame->SetPixelFormat(VTKPixelFormatType::VTKPF_RGBA32);
-  dFrame->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::TopDown);
-
   vtkNew<vtkCallbackCommand> exitCallback;
   exitCallback->SetClientData(enc);
   exitCallback->SetCallback(
@@ -100,7 +93,7 @@ int TestNvEncoderPushReceiveRGBA32(int argc, char* argv[])
   std::ofstream outFile("cylinder.h264", std::ofstream::out | std::ofstream::binary);
 #endif
 
-  int frame = 0, lastw = 0, lasth = 0;
+  int frame = 0;
   while (true)
   {
     iren->ProcessEvents();
@@ -113,24 +106,15 @@ int TestNvEncoderPushReceiveRGBA32(int argc, char* argv[])
     filename << "frame-" << std::setfill('0') << std::setw(3) << frame << ".bin";
     std::ofstream outFile(filename.str(), std::ofstream::out | std::ofstream::binary);
 #endif
-    width = renWin->GetSize()[0];
-    height = renWin->GetSize()[1];
-    if (width != lastw || height != lasth)
-    {
-      dFrame->SetWidth(width);
-      dFrame->SetHeight(height);
-      dFrame->ComputeDefaultStrides();
-      dFrame->AllocateDataStore();
-    }
-    dFrame->Capture(renWin);
-    lasth = height;
-    lastw = width;
     vtkOpenGLCheckErrors("error uploading data to gl texture");
 
-    auto status = enc->Push(dFrame);
-    vtkLog(TRACE, << vtkVideoProcessingStatusTypeUtilities::ToString(status));
-    auto result = enc->GetResult();
+    auto result = enc->EncodeScreen(renWin);
+
     vtkLog(TRACE, << vtkVideoProcessingStatusTypeUtilities::ToString(result.first));
+    if (result.second.empty() || result.second[0] == nullptr)
+    {
+      continue;
+    }
     outFile.write(reinterpret_cast<char*>(result.second[0]->GetData()->GetPointer(0)),
       result.second[0]->GetSize());
 #if WRITE_CHUNKS
