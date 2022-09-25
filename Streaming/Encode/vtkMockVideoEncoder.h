@@ -59,6 +59,8 @@ protected:
   VTKVideoEncoderResultType EncodeInternal(vtkRawVideoFrame* frame) override;
   VTKVideoEncoderResultType DrainInternal() override;
 
+  VTKVideoEncoderResultType EncodeScreenInternal(vtkRenderWindow* window) override { return {}; }
+
 private:
   vtkMockVideoEncoder(const vtkMockVideoEncoder&) = delete;
   void operator=(const vtkMockVideoEncoder&) = delete;

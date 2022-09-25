@@ -165,10 +165,40 @@ VTKVideoEncoderResultType vtkNvEncoderGL::EncodeInternal(vtkRawVideoFrame* frame
   auto status = internals.Send(this->ForceIFrame);
   std::vector<vtkSmartPointer<vtkCompressedVideoPacket>> packets;
   bool success = internals.Receive(packets);
-  return VTKVideoEncoderResultType(
-    { success ? VTKVideoProcessingStatusType::VTKVPStatus_Success
-              : VTKVideoProcessingStatusType::VTKVPStatus_UnknownError,
-      packets });
+  if (success)
+  {
+    return { VTKVideoProcessingStatusType::VTKVPStatus_Success, packets };
+  }
+  else
+  {
+    return { VTKVideoProcessingStatusType::VTKVPStatus_UnknownError, packets };
+  }
+}
+
+//------------------------------------------------------------------------------
+VTKVideoEncoderResultType vtkNvEncoderGL::EncodeScreenInternal(vtkRenderWindow* window)
+{
+  vtkLogScopeFunction(TRACE);
+  auto& internals = (*this->Internals);
+  auto input = this->Internals->GetNextInputFrame();
+  auto glFrame = vtkOpenGLVideoFrame::SafeDownCast(input);
+  if (glFrame == nullptr)
+  {
+    vtkLog(ERROR, << "Encoder does not have valid input frames. vtkOpenGLVideoFrame");
+    return { VTKVideoProcessingStatusType::VTKVPStatus_InvalidValue, {} };
+  }
+  input->Capture(window);
+  auto status = internals.Send(this->ForceIFrame);
+  std::vector<vtkSmartPointer<vtkCompressedVideoPacket>> packets;
+  bool success = internals.Receive(packets);
+  if (success)
+  {
+    return { VTKVideoProcessingStatusType::VTKVPStatus_Success, packets };
+  }
+  else
+  {
+    return { VTKVideoProcessingStatusType::VTKVPStatus_UnknownError, packets };
+  }
 }
 
 //------------------------------------------------------------------------------

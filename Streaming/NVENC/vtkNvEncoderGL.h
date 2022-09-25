@@ -56,6 +56,8 @@ protected:
   VTKVideoEncoderResultType EncodeInternal(vtkRawVideoFrame* frame) override;
   VTKVideoEncoderResultType DrainInternal() override;
 
+  VTKVideoEncoderResultType EncodeScreenInternal(vtkRenderWindow* window) override;
+
   bool AllocateInputBuffers();
   void ReleaseInputBuffers();
   void ReleaseGLResources();

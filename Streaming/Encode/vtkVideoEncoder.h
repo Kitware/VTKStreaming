@@ -71,6 +71,7 @@
 
 class vtkAsynchronousEncoderDelegate;
 class vtkRawVideoFrame;
+class vtkRenderWindow;
 
 class VTKSTREAMINGENCODE_EXPORT vtkVideoEncoder : public vtkObject
 {
@@ -89,7 +90,6 @@ public:
   vtkRenderWindow* GetContext() const;
   vtkRenderWindow* GetDelegateContext() const;
   ///@}
-
 
   ///@{
   /**
@@ -294,6 +294,15 @@ public:
   VTKVideoEncoderResultType Drain();
   ///@}
 
+  ///@{
+  /**
+   * Capture the screen and encode the image.
+   * Some synchronous hardware encoders can do zero-copy encoding.
+   * Hardware encoders are usually fast enough to be non-blocking.
+   */
+  VTKVideoEncoderResultType EncodeScreen(vtkRenderWindow* window);
+  ///@}
+
   /**
    * In asynchronous encoding, it may happen that a large number of frames are waiting in the task
    * queue. This method lets us ignore further encode requests when flushing the task queue.
@@ -382,6 +391,10 @@ protected:
   virtual VTKVideoEncoderResultType EncodeInternal(vtkRawVideoFrame* frame) = 0;
   virtual VTKVideoEncoderResultType DrainInternal() = 0;
   ///@}
+
+  virtual VTKVideoEncoderResultType EncodeScreenInternal(vtkRenderWindow* window) = 0;
+
+  VTKVideoProcessingStatusType UpdateEncoderContext(int width, int height);
 
 private:
   vtkVideoEncoder(const vtkVideoEncoder&) = delete;
