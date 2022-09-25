@@ -50,12 +50,6 @@ vtkNvEncoderGL::~vtkNvEncoderGL()
 }
 
 //------------------------------------------------------------------------------
-void vtkNvEncoderGL::InitializeOpenGLContext(vtkOpenGLRenderWindow* window)
-{
-  this->Window = window;
-}
-
-//------------------------------------------------------------------------------
 vtkIdType vtkNvEncoderGL::GetLastEncodeTimeNS() const noexcept
 {
   return 0;
@@ -101,7 +95,6 @@ void vtkNvEncoderGL::ShutdownInternal()
 {
   this->ReleaseGLResources();
   this->Internals->Shutdown();
-  this->Initialized = false;
 }
 
 //------------------------------------------------------------------------------
@@ -218,7 +211,8 @@ bool vtkNvEncoderGL::AllocateInputBuffers()
     frame->SetPixelFormat(this->InputPixelFormat);
     frame->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::TopDown);
     frame->ComputeDefaultStrides();
-    frame->SetContext(this->Window);
+    auto context = this->HasDelegate() ? this->GetDelegateContext() : this->Context;
+    frame->SetContext(vtkOpenGLRenderWindow::SafeDownCast(context));
     frame->AllocateDataStore();
     widthBytes = vtkRawVideoFrame::GetWidthBytes(this->Width, this->InputPixelFormat);
     auto vtkTexture = reinterpret_cast<vtkTextureObject*>(frame->GetResourceHandle());

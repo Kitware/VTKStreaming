@@ -10,7 +10,9 @@ DEPENDS
   VTKStreaming::Core
 PRIVATE_DEPENDS
   VTK::ParallelCore
+  VTK::RenderingOpenGL2
+  VTKStreaming::OpenGL2
 TEST_DEPENDS
   VTK::TestingCore
-  VTKStreaming::OpenGL2
   VTK::RenderingOpenGL2
+  VTKStreaming::OpenGL2

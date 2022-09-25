@@ -56,10 +56,10 @@ int TestNvEncoderMapResource(int argc, char* argv[])
 
   vtkNew<vtkNvEncoderGL> enc;
   enc->SetCodec(VTKVideoCodecType::VTKVC_H264);
-  enc->InitializeOpenGLContext(renWin);
+  enc->SetContext(renWin);
   enc->SetWidth(w);
   enc->SetHeight(h);
-  enc->UseAsynchronousDelegateOn();
+  enc->AsyncModeOn();
   enc->SetInputPixelFormat(VTKPixelFormatType::VTKPF_RGBA32);
 
   success &= (enc->Push(frame) == VTKVideoProcessingStatusType::VTKVPStatus_Success);

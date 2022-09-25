@@ -69,10 +69,11 @@ int TestNvEncoderPushReceiveRGBA32(int argc, char* argv[])
   iren->Render();
 
   vtkNew<vtkNvEncoderGL> enc;
-  enc->InitializeOpenGLContext(renWin);
+  enc->SetContext(renWin);
   enc->SetCodec(VTKVideoCodecType::VTKVC_H264);
   enc->SetWidth(width);
   enc->SetHeight(height);
+  enc->AsyncModeOff();
   enc->SetInputPixelFormat(VTKPixelFormatType::VTKPF_RGBA32);
 
   vtkNew<vtkOpenGLVideoFrame> dFrame;

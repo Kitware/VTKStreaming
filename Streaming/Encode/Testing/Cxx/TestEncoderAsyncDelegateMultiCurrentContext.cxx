@@ -1,7 +1,7 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    TestEncoderDelegateUsage.cxx
+  Module:    TestEncoderAsyncDelegateMultiCurrentContext.cxx
 
   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
   All rights reserved.
@@ -12,10 +12,10 @@
      PURPOSE.  See the above copyright notice for more information.
 
 =========================================================================*/
-// This test demonstrates the arrival of packets when a video encoder uses
-// asynchronous delegate. The mock video encoder simulates an encoder lag
-// by sleeping for a given time interval. You can increase the mock lag inteval
-// and notice that arrival of packets is interspersed with Push calls.
+// This test rigorously verifies that the async encoder delegate
+// indeed uses a separate thread-local OpenGL context shared
+// with the main thread's OpenGL context. 
+// Similar to a real-life use case - live encoding VTK renders.
 
 #include "vtkCallbackCommand.h"
 #include "vtkLogger.h"
@@ -32,13 +32,13 @@
 #define MAX_NUM_FRAMES 100
 
 static int readyCount = 0;
-void TestEncoderAsyncDelegate_callback(vtkObject* enc, unsigned long, void*, void*)
+void TestEncoderAsyncDelegateMultiCurrentContext_callback(vtkObject* enc, unsigned long, void*, void*)
 {
   vtkLogF(INFO, "=> ready %d", readyCount++);
   auto encoder = vtkVideoEncoder::SafeDownCast(enc);
 }
 
-int TestEncoderAsyncDelegate(int argc, char* argv[])
+int TestEncoderAsyncDelegateMultiCurrentContext(int argc, char* argv[])
 {
   vtkNew<vtkMockVideoEncoder> encoder;
   bool success = true;
@@ -57,7 +57,7 @@ int TestEncoderAsyncDelegate(int argc, char* argv[])
   window->Render();
 
   vtkNew<vtkCallbackCommand> cmd;
-  cmd->SetCallback(TestEncoderAsyncDelegate_callback);
+  cmd->SetCallback(TestEncoderAsyncDelegateMultiCurrentContext_callback);
   encoder->AddObserver(vtkCommand::ProgressEvent, cmd);
 
   encoder->SetContext(window);
@@ -72,6 +72,7 @@ int TestEncoderAsyncDelegate(int argc, char* argv[])
     frame->AllocateDataStore();
     vtkLogF(INFO, "Push %d", pushCount++);
     encoder->Push(frame);
+    window->Render();
   }
   std::this_thread::sleep_for(std::chrono::milliseconds(30));
   encoder->Flush();

@@ -33,8 +33,6 @@ public:
   void PrintSelf(ostream& os, vtkIndent indent) override{};
   static vtkNvEncoderGL* New();
 
-  void InitializeOpenGLContext(vtkOpenGLRenderWindow* window);
-
   bool IsHardwareAccelerated() const noexcept override { return true; }
   bool SupportsAsynchronousDelegate() const noexcept override { return false; }
   vtkIdType GetLastEncodeTimeNS() const noexcept override;
@@ -61,8 +59,6 @@ protected:
   bool AllocateInputBuffers();
   void ReleaseInputBuffers();
   void ReleaseGLResources();
-
-  vtkOpenGLRenderWindow* Window = nullptr;
 
 private:
   vtkNvEncoderGL(const vtkNvEncoderGL&) = delete;
