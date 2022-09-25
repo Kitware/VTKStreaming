@@ -22,15 +22,16 @@
 #include "vtkJPEGVideoDecoder.h"
 #include "vtkLogger.h"
 #include "vtkOpenGLError.h"
+#include "vtkOpenGLRenderWindow.h"
 #include "vtkOpenGLVideoFrame.h"
 #include "vtkPixelFormatTypes.h"
 #include "vtkPolyDataMapper.h"
 #include "vtkProperty.h"
 #include "vtkRawVideoFrame.h"
+#include "vtkRenderWindowInteractor.h"
 #include "vtkRenderer.h"
 #include "vtkVideoProcessingStatusTypes.h"
-#include "vtkXOpenGLRenderWindow.h"
-#include "vtkXRenderWindowInteractor.h"
+
 #include <fstream>
 #include <iomanip>
 #include <ios>
@@ -43,9 +44,10 @@ int TestJPEGDecoderPushReceiveRGBA32(int argc, char* argv[])
   bool success = true;
   int width = 320, height = 240;
 
-  vtkNew<vtkXRenderWindowInteractor> iren;
-  vtkNew<vtkXOpenGLRenderWindow> renWin;
+  vtkNew<vtkRenderWindowInteractor> iren;
+  vtkNew<vtkRenderWindow> win;
   vtkNew<vtkRenderer> ren;
+  auto renWin = vtkOpenGLRenderWindow::SafeDownCast(win);
   renWin->AddRenderer(ren);
   renWin->SetSize(width, height);
   ren->SetBackground(0, 0, 0);

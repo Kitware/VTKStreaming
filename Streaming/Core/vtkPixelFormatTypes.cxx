@@ -1,7 +1,7 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    vtkVideoCodecTypes.h
+  Module:    vtkPixelFormatTypes.cxx
 
   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
   All rights reserved.
@@ -13,27 +13,21 @@
 
 =========================================================================*/
 
-#ifndef vtkVideoCodecTypes_h
-#define vtkVideoCodecTypes_h
+#include "vtkPixelFormatTypes.h"
 
-#include "vtkStreamingCoreModule.h"
-
-// For new codecs, please insert above MaxNumberOfSupportedCodecs
-
-enum class VTKVideoCodecType
+const char* vtkPixelFormatTypeUtilities::ToString(VTKPixelFormatType pixelFormat)
 {
-  VTKVC_VP9,
-  VTKVC_AV1,
-  VTKVC_H264,
-  VTKVC_H265,
-  VTKVC_JPEG,
-  VTKVC_MaxNumberOfSupportedCodecs
-};
-
-struct VTKSTREAMINGCORE_EXPORT vtkVideoCodecTypeUtilities
-{
-  static const char* ToString(VTKVideoCodecType codec);
-};
-
-#endif // vtkVideoCodecTypes_h
-// VTK-HeaderTest-Exclude: vtkVideoCodecTypes.h
+  switch (pixelFormat)
+  {
+    case VTKPixelFormatType::VTKPF_RGBA32:
+      return "rgba32";
+    case VTKPixelFormatType::VTKPF_RGB24:
+      return "rgb24";
+    case VTKPixelFormatType::VTKPF_NV12:
+      return "nv12";
+    case VTKPixelFormatType::VTKPF_IYUV:
+      return "iyuv";
+    default:
+      return "unsupported pixel format";
+  }
+}

@@ -17,22 +17,21 @@
 #include "vtkCylinderSource.h"
 #include "vtkLogger.h"
 #include "vtkOpenGLError.h"
+#include "vtkOpenGLRenderWindow.h"
 #include "vtkOpenGLVideoFrame.h"
 #include "vtkPixelFormatTypes.h"
 #include "vtkPolyDataMapper.h"
 #include "vtkProperty.h"
 #include "vtkRenderer.h"
+#include "vtkRenderWindow.h"
 #include "vtkTestUtilities.h"
-#include "vtkXOpenGLRenderWindow.h"
-#include "vtkXRenderWindowInteractor.h"
-#include <sstream>
 
 int TestOpenGLVideoFrameXferNoExternalStrides(int argc, char* argv[])
 {
   bool success = true;
   const int width = 240, height = 240;
 
-  vtkNew<vtkXOpenGLRenderWindow> renWin;
+  vtkNew<vtkRenderWindow> win;
   vtkNew<vtkRenderer> ren;
   vtkNew<vtkCylinderSource> cyl;
   vtkNew<vtkPolyDataMapper> mapper;
@@ -47,6 +46,7 @@ int TestOpenGLVideoFrameXferNoExternalStrides(int argc, char* argv[])
   ren->AddActor(actor);
   ren->SetBackground(0.2, 0.2, 0.2);
 
+  auto renWin = vtkOpenGLRenderWindow::SafeDownCast(win);
   renWin->AddRenderer(ren);
   renWin->SetSize(width, height);
 

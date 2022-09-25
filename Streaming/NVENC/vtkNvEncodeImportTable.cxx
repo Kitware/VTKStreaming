@@ -56,9 +56,20 @@ bool vtkNvEncodeImportTable::LoadFunctionsTable()
   }
 
   vtksys::SystemInformation sysImpl;
-  const char* libName = sysImpl.GetOSIsWindows() ? "nvEncodeAPI.dll" : "libnvidia-encode.so";
-
+#if defined(_WIN32)
+#if defined(_WIN64)
+  const char* libName = "nvEncodeAPI64.dll";
+  HMODULE hModule = LoadLibrary(TEXT(libName));
+  this->LibraryHandle = hModule;
+#else
+  const char* libName = "nvEncodeAPI.dll";
+  HMODULE hModule = LoadLibrary(TEXT(libName));
+  this->LibraryHandle = hModule;
+#endif
+#else
+  const char* libName = "libnvidia-encode.so";
   this->LibraryHandle = vtkDynamicLoader::OpenLibrary(libName);
+#endif
   if (this->LibraryHandle == nullptr)
   {
     vtkLogF(ERROR,

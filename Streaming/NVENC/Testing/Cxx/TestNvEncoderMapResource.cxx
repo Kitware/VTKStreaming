@@ -19,22 +19,23 @@
 #include "vtkLogger.h"
 #include "vtkNvEncoderGL.h"
 #include "vtkOpenGLError.h"
+#include "vtkOpenGLRenderWindow.h"
 #include "vtkOpenGLVideoFrame.h"
 #include "vtkPixelFormatTypes.h"
 #include "vtkRawVideoFrame.h"
 #include "vtkRenderer.h"
 #include "vtkVideoProcessingStatusTypes.h"
-#include "vtkXOpenGLRenderWindow.h"
 
 int TestNvEncoderMapResource(int argc, char* argv[])
 {
   bool success = true;
   const int w = 480, h = 480;
 
-  vtkNew<vtkXOpenGLRenderWindow> renWin;
+  vtkNew<vtkRenderWindow> win;
   vtkNew<vtkRenderer> ren;
   ren->SetBackground(0.5, 0.5, 0.5);
 
+  auto renWin = vtkOpenGLRenderWindow::SafeDownCast(win);
   renWin->AddRenderer(ren);
   renWin->SetSize(w, h);
 

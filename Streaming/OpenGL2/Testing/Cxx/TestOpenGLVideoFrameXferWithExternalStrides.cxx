@@ -17,11 +17,11 @@
 #include "vtkCPUVideoFrame.h"
 #include "vtkLogger.h"
 #include "vtkOpenGLError.h"
+#include "vtkOpenGLRenderWindow.h"
 #include "vtkOpenGLVideoFrame.h"
 #include "vtkPixelFormatTypes.h"
 #include "vtkRenderer.h"
-#include "vtkXOpenGLRenderWindow.h"
-#include "vtkXRenderWindowInteractor.h"
+#include "vtkRenderWindow.h"
 #include <vector>
 
 int TestOpenGLVideoFrameXferWithExternalStrides(int argc, char* argv[])
@@ -29,8 +29,10 @@ int TestOpenGLVideoFrameXferWithExternalStrides(int argc, char* argv[])
   bool success = true;
   const int width = 239, height = 240;
 
-  vtkNew<vtkXOpenGLRenderWindow> renWin;
+  vtkNew<vtkRenderWindow> win;
   vtkNew<vtkRenderer> ren;
+
+  auto renWin = vtkOpenGLRenderWindow::SafeDownCast(win);
   renWin->AddRenderer(ren);
   renWin->SetSize(width, height);
   ren->SetBackground(0.5, 0.5, 0.5);

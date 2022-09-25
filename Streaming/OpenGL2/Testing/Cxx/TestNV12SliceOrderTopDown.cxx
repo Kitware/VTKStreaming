@@ -20,6 +20,7 @@
 #include "vtkImageDifference.h"
 #include "vtkLogger.h"
 #include "vtkOpenGLError.h"
+#include "vtkOpenGLRenderWindow.h"
 #include "vtkOpenGLVideoFrame.h"
 #include "vtkPNGReader.h"
 #include "vtkPixelFormatTypes.h"
@@ -29,8 +30,6 @@
 #include "vtkRawVideoFrame.h"
 #include "vtkRenderer.h"
 #include "vtkTestUtilities.h"
-#include "vtkXOpenGLRenderWindow.h"
-#include "vtkXRenderWindowInteractor.h"
 
 int TestNV12SliceOrderTopDown(int argc, char* argv[])
 {
@@ -46,10 +45,11 @@ int TestNV12SliceOrderTopDown(int argc, char* argv[])
   }
   delete[] filename;
 
-  vtkNew<vtkXOpenGLRenderWindow> renWin;
+  vtkNew<vtkRenderWindow> win;
   vtkNew<vtkRenderer> ren;
 
   ren->SetBackground(0, 0, 0);
+  auto renWin = vtkOpenGLRenderWindow::SafeDownCast(win);
   renWin->AddRenderer(ren);
   renWin->SetSize(width, height);
   renWin->Initialize();

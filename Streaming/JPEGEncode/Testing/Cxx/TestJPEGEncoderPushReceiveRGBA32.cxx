@@ -18,25 +18,25 @@
 
 #include "vtkActor.h"
 #include "vtkCPUVideoFrame.h"
+#include "vtkCallbackCommand.h"
 #include "vtkCylinderSource.h"
 #include "vtkJPEGVideoEncoder.h"
 #include "vtkLogger.h"
 #include "vtkNamedColors.h"
 #include "vtkOpenGLError.h"
+#include "vtkOpenGLRenderWindow.h"
 #include "vtkOpenGLVideoFrame.h"
 #include "vtkPixelFormatTypes.h"
 #include "vtkPolyDataMapper.h"
 #include "vtkProperty.h"
 #include "vtkRawVideoFrame.h"
+#include "vtkRenderWindowInteractor.h"
 #include "vtkRenderer.h"
 #include "vtkVideoEncoder.h"
 #include "vtkVideoProcessingStatusTypes.h"
-#include "vtkXOpenGLRenderWindow.h"
-#include "vtkXRenderWindowInteractor.h"
+
 #include <fstream>
 #include <iomanip>
-#include <vtkCallbackCommand.h>
-#include <vtkCommand.h>
 
 #define WRITE_CHUNKS 1
 
@@ -45,8 +45,8 @@ int TestJPEGEncoderPushReceiveRGBA32(int argc, char* argv[])
   bool success = true;
   int width = 320, height = 240;
 
-  vtkNew<vtkXRenderWindowInteractor> iren;
-  vtkNew<vtkXOpenGLRenderWindow> renWin;
+  vtkNew<vtkRenderWindowInteractor> iren;
+  vtkNew<vtkRenderWindow> win;
   vtkNew<vtkRenderer> ren;
   vtkNew<vtkCylinderSource> cyl;
   vtkNew<vtkPolyDataMapper> mapper;
@@ -62,6 +62,7 @@ int TestJPEGEncoderPushReceiveRGBA32(int argc, char* argv[])
   ren->AddActor(actor);
   ren->SetBackground(0.2, 0.2, 0.2);
 
+  auto renWin = vtkOpenGLRenderWindow::SafeDownCast(win);
   renWin->AddRenderer(ren);
   renWin->SetSize(width, height);
   ren->SetBackground(0.5, 0.5, 0.5);
@@ -95,7 +96,7 @@ int TestJPEGEncoderPushReceiveRGBA32(int argc, char* argv[])
     });
   iren->AddObserver(vtkCommand::ExitEvent, exitCallback);
 
-  int frame = 0, lastw, lasth;
+  int frame = 0, lastw = 0, lasth = 0;
   while (true)
   {
     iren->ProcessEvents();
