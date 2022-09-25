@@ -32,7 +32,6 @@
 #include "vtkVideoProcessingStatusTypes.h"
 #include "vtk_glew.h"
 
-#include <GL/gl.h>
 #include <memory>
 #include <vector>
 

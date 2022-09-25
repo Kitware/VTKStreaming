@@ -16,24 +16,25 @@
 
 #include "vtkActor.h"
 #include "vtkCPUVideoFrame.h"
+#include "vtkCallbackCommand.h"
 #include "vtkCylinderSource.h"
 #include "vtkLogger.h"
 #include "vtkNamedColors.h"
 #include "vtkNvEncoderGL.h"
 #include "vtkOpenGLError.h"
+#include "vtkOpenGLRenderWindow.h"
 #include "vtkOpenGLVideoFrame.h"
 #include "vtkPixelFormatTypes.h"
 #include "vtkPolyDataMapper.h"
 #include "vtkProperty.h"
 #include "vtkRawVideoFrame.h"
+#include "vtkRenderWindowInteractor.h"
 #include "vtkRenderer.h"
 #include "vtkVideoCodecTypes.h"
 #include "vtkVideoProcessingStatusTypes.h"
-#include "vtkXOpenGLRenderWindow.h"
-#include "vtkXRenderWindowInteractor.h"
+
 #include <fstream>
 #include <iomanip>
-#include <vtkCallbackCommand.h>
 
 #define WRITE_CHUNKS 0
 
@@ -42,8 +43,8 @@ int TestNvEncoderPushReceiveRGBA32(int argc, char* argv[])
   bool success = true;
   int width = 320, height = 240;
   vtkLogger::SetStderrVerbosity(vtkLogger::VERBOSITY_9);
-  vtkNew<vtkXRenderWindowInteractor> iren;
-  vtkNew<vtkXOpenGLRenderWindow> renWin;
+  vtkNew<vtkRenderWindowInteractor> iren;
+  vtkNew<vtkRenderWindow> win;
   vtkNew<vtkRenderer> ren;
   vtkNew<vtkCylinderSource> cyl;
   vtkNew<vtkPolyDataMapper> mapper;
@@ -59,6 +60,7 @@ int TestNvEncoderPushReceiveRGBA32(int argc, char* argv[])
   ren->AddActor(actor);
   ren->SetBackground(0.2, 0.2, 0.2);
 
+  auto renWin = vtkOpenGLRenderWindow::SafeDownCast(win);
   renWin->AddRenderer(ren);
   renWin->SetSize(width, height);
   ren->SetBackground(0.5, 0.5, 0.5);
@@ -97,7 +99,7 @@ int TestNvEncoderPushReceiveRGBA32(int argc, char* argv[])
   std::ofstream outFile("cylinder.h264", std::ofstream::out | std::ofstream::binary);
 #endif
 
-  int frame = 0, lastw, lasth;
+  int frame = 0, lastw = 0, lasth = 0;
   while (true)
   {
     iren->ProcessEvents();

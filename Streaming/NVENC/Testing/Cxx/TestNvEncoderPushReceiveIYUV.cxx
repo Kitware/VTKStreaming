@@ -21,6 +21,7 @@
 #include "vtkNamedColors.h"
 #include "vtkNvEncoderGL.h"
 #include "vtkOpenGLError.h"
+#include "vtkOpenGLRenderWindow.h"
 #include "vtkOpenGLVideoFrame.h"
 #include "vtkPixelFormatTypes.h"
 #include "vtkPolyDataMapper.h"
@@ -29,7 +30,6 @@
 #include "vtkRenderer.h"
 #include "vtkTestUtilities.h"
 #include "vtkVideoProcessingStatusTypes.h"
-#include "vtkXOpenGLRenderWindow.h"
 
 #include <fstream>
 
@@ -48,8 +48,9 @@ int TestNvEncoderPushReceiveIYUV(int argc, char* argv[])
   }
   delete[] filename;
 
-  vtkNew<vtkXOpenGLRenderWindow> renWin;
+  vtkNew<vtkRenderWindow> win;
   vtkNew<vtkRenderer> ren;
+  auto renWin = vtkOpenGLRenderWindow::SafeDownCast(win);
   renWin->SetSize(width, height);
   renWin->Initialize();
   renWin->Render();

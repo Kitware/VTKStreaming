@@ -19,6 +19,7 @@
 #include "vtkImageDifference.h"
 #include "vtkLogger.h"
 #include "vtkOpenGLError.h"
+#include "vtkOpenGLRenderWindow.h"
 #include "vtkOpenGLVideoFrame.h"
 #include "vtkPNGWriter.h"
 #include "vtkPixelFormatTypes.h"
@@ -28,15 +29,13 @@
 #include "vtkRenderer.h"
 #include "vtkTestUtilities.h"
 #include "vtkUnsignedCharArray.h"
-#include "vtkXOpenGLRenderWindow.h"
-#include "vtkXRenderWindowInteractor.h"
 
 int TestRGBA32SliceOrderBottomUp(int argc, char* argv[])
 {
   bool success = true;
   const int width = 240, height = 240;
 
-  vtkNew<vtkXOpenGLRenderWindow> renWin;
+  vtkNew<vtkRenderWindow> win;
   vtkNew<vtkRenderer> ren;
   vtkNew<vtkCylinderSource> cyl;
   vtkNew<vtkPolyDataMapper> mapper;
@@ -51,6 +50,7 @@ int TestRGBA32SliceOrderBottomUp(int argc, char* argv[])
   ren->AddActor(actor);
   ren->SetBackground(0.2, 0.2, 0.2);
 
+  auto renWin = vtkOpenGLRenderWindow::SafeDownCast(win);
   renWin->AddRenderer(ren);
   renWin->SetSize(width, height);
 
