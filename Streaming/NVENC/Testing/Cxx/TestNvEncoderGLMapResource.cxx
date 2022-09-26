@@ -1,7 +1,7 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    TestNvEncoderMapResource.cxx
+  Module:    TestNvEncoderGLMapResource.cxx
 
   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
   All rights reserved.
@@ -26,7 +26,7 @@
 #include "vtkRenderer.h"
 #include "vtkVideoProcessingStatusTypes.h"
 
-int TestNvEncoderMapResource(int argc, char* argv[])
+int TestNvEncoderGLMapResource(int argc, char* argv[])
 {
   bool success = true;
   const int w = 480, h = 480;

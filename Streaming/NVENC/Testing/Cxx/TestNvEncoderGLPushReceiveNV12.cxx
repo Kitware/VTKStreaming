@@ -1,7 +1,7 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    TestNvEncoderPushReceiveH264.cxx
+  Module:    TestNvEncoderGLPushReceiveH264.cxx
 
   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
   All rights reserved.
@@ -12,7 +12,7 @@
      PURPOSE.  See the above copyright notice for more information.
 
 =========================================================================*/
-// This test exercises NvEnc h.264 encoder with IYUV inputs.
+// This test exercises NvEnc h.264 encoder with NV12 inputs.
 
 #include "vtkActor.h"
 #include "vtkCPUVideoFrame.h"
@@ -33,12 +33,12 @@
 
 #include <fstream>
 
-int TestNvEncoderPushReceiveIYUV(int argc, char* argv[])
+int TestNvEncoderGLPushReceiveNV12(int argc, char* argv[])
 {
   bool success = true;
   const int width = 320, height = 240;
 
-  char* filename = vtkTestUtilities::ExpandDataFileName(argc, argv, "Data/cars_320x240.iyuv");
+  char* filename = vtkTestUtilities::ExpandDataFileName(argc, argv, "Data/cars_320x240.nv12");
   vtkLogF(INFO, "Read %s", filename);
   std::ifstream fpIn(filename, std::ifstream::in | std::ifstream::binary);
   if (!fpIn)
@@ -61,18 +61,18 @@ int TestNvEncoderPushReceiveIYUV(int argc, char* argv[])
   enc->SetHeight(height);
   enc->SetCodec(VTKVideoCodecType::VTKVC_H264);
   enc->AsyncModeOff();
-  enc->SetInputPixelFormat(VTKPixelFormatType::VTKPF_IYUV);
+  enc->SetInputPixelFormat(VTKPixelFormatType::VTKPF_NV12);
 
-  vtkNew<vtkOpenGLVideoFrame> iyuvPicture;
-  iyuvPicture->SetContext(renWin);
-  iyuvPicture->SetWidth(width);
-  iyuvPicture->SetHeight(height);
-  iyuvPicture->SetPixelFormat(VTKPixelFormatType::VTKPF_IYUV);
-  iyuvPicture->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::TopDown);
-  iyuvPicture->ComputeDefaultStrides();
+  vtkNew<vtkOpenGLVideoFrame> nv12Picture;
+  nv12Picture->SetContext(renWin);
+  nv12Picture->SetWidth(width);
+  nv12Picture->SetHeight(height);
+  nv12Picture->SetPixelFormat(VTKPixelFormatType::VTKPF_NV12);
+  nv12Picture->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::TopDown);
+  nv12Picture->ComputeDefaultStrides();
 
   std::ofstream outFile("cars.h264", std::ofstream::out | std::ofstream::binary);
-  auto estSize = vtkRawVideoFrame::GetEstimatedSize(width, height, VTKPixelFormatType::VTKPF_IYUV);
+  auto estSize = vtkRawVideoFrame::GetEstimatedSize(width, height, VTKPixelFormatType::VTKPF_NV12);
   while (true)
   {
     std::unique_ptr<uint8_t[]> pixels(new uint8_t[estSize]);
@@ -91,12 +91,12 @@ int TestNvEncoderPushReceiveIYUV(int argc, char* argv[])
       outFile.close();
       break;
     }
-    iyuvPicture->CopyData(pixels.get(), numRead);
+    nv12Picture->CopyData(pixels.get(), numRead);
     vtkOpenGLCheckErrors("ERROR uploading data to gl texture");
 
-    iyuvPicture->Render(renWin);
+    nv12Picture->Render(renWin);
 
-    auto status = enc->Push(iyuvPicture);
+    auto status = enc->Push(nv12Picture);
     vtkOpenGLCheckErrors("ERROR fetching data from gl texture");
     vtkLogF(TRACE, "Push - %s", vtkVideoProcessingStatusTypeUtilities::ToString(status));
 

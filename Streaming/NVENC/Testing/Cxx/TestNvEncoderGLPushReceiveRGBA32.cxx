@@ -1,7 +1,7 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    TestNvEncoderPushReceiveRGBA32.cxx
+  Module:    TestNvEncoderGLPushReceiveRGBA32.cxx
 
   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
   All rights reserved.
@@ -36,7 +36,7 @@
 
 #define WRITE_CHUNKS 0
 
-int TestNvEncoderPushReceiveRGBA32(int argc, char* argv[])
+int TestNvEncoderGLPushReceiveRGBA32(int argc, char* argv[])
 {
   bool success = true;
   int width = 1920, height = 1200;
