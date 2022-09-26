@@ -4,7 +4,8 @@ This experimental module provides classes to encode and stream frames from a VTK
 
 # Build
 
-Requires a VTK installation. Please point `VTK_DIR` cmake variable to a VTK root directory.
+If you plan on developing, `git-lfs` is needed to download the test images, videos.
+Please point `VTK_DIR` cmake variable to a VTK root directory.
 
 1. Clone the repository, run `Utilities/SetupForDevelopment.sh` if you plan on contributing.
 2. `$ mkdir build && cd build`
