@@ -1,7 +1,7 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    TestNvEncoderGLPushReceiveH264.cxx
+  Module:    TestNvEncoderGLPushReceiveIYUV.cxx
 
   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
   All rights reserved.
@@ -31,7 +31,9 @@
 #include "vtkTestUtilities.h"
 #include "vtkVideoProcessingStatusTypes.h"
 
+#include <cstdint>
 #include <fstream>
+#include <ios>
 
 int TestNvEncoderGLPushReceiveIYUV(int argc, char* argv[])
 {
@@ -46,6 +48,9 @@ int TestNvEncoderGLPushReceiveIYUV(int argc, char* argv[])
     vtkLogF(ERROR, "Unable to open %s", filename);
     return 1;
   }
+  delete[] filename;
+  filename = vtkTestUtilities::ExpandDataFileName(argc, argv, "Data/cars_320x240.h264");
+  std::string baselineFile = filename;
   delete[] filename;
 
   vtkNew<vtkRenderWindow> win;
@@ -71,8 +76,8 @@ int TestNvEncoderGLPushReceiveIYUV(int argc, char* argv[])
   iyuvPicture->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::TopDown);
   iyuvPicture->ComputeDefaultStrides();
 
-  std::ofstream outFile("cars.h264", std::ofstream::out | std::ofstream::binary);
   auto estSize = vtkRawVideoFrame::GetEstimatedSize(width, height, VTKPixelFormatType::VTKPF_IYUV);
+  std::vector<uint8_t> bitstream;
   while (true)
   {
     std::unique_ptr<uint8_t[]> pixels(new uint8_t[estSize]);
@@ -83,12 +88,14 @@ int TestNvEncoderGLPushReceiveIYUV(int argc, char* argv[])
       auto result = enc->Drain();
       if (!result.second.empty())
       {
-        outFile.write(reinterpret_cast<char*>(result.second[0]->GetData()->GetPointer(0)),
-          result.second[0]->GetSize());
-        outFile.close();
+        auto data = reinterpret_cast<char*>(result.second[0]->GetData()->GetPointer(0));
+        auto size = result.second[0]->GetSize();
+        for (int i = 0; i < size; ++i)
+        {
+          bitstream.push_back(data[i]);
+        }
       }
       enc->Shutdown();
-      outFile.close();
       break;
     }
     iyuvPicture->CopyData(pixels.get(), numRead);
@@ -107,10 +114,41 @@ int TestNvEncoderGLPushReceiveIYUV(int argc, char* argv[])
     {
       auto data = reinterpret_cast<char*>(result.second[0]->GetData()->GetPointer(0));
       auto size = result.second[0]->GetSize();
-      outFile.write(data, size);
+      for (int i = 0; i < size; ++i)
+      {
+        bitstream.push_back(data[i]);
+      }
       vtkLogF(TRACE, "Wrote %d bytes", size);
     }
   }
 
-  return 0;
+  std::ifstream baseline;
+  vtkLogF(INFO, "Read %s", baselineFile.c_str());
+  baseline.open(baselineFile, std::ios::in | std::ios::binary);
+  baseline.ignore(std::numeric_limits<std::streamsize>::max());
+
+  const std::size_t size1 = baseline.gcount();
+  const std::size_t size2 = bitstream.size();
+  vtkLogF(TRACE, "%zu, %zu", size1, bitstream.size());
+  success = bitstream.size() == size1;
+
+  baseline.clear();
+  baseline.seekg(0, std::ios_base::beg);
+
+  std::vector<uint8_t> baseline_ptr(size1, 0);
+  baseline.read(reinterpret_cast<char*>(baseline_ptr.data()), size1);
+
+  for (std::size_t i1 = 0, i2 = 0; i1 < size1 && i2 < size2 && success; ++i1 && ++i2)
+  {
+    vtkLogF(TRACE, "%d, %d", int(baseline_ptr[i1]), int(bitstream[i2]));
+    success &= (baseline_ptr[i1] == bitstream[i2]);
+  }
+  if (!success)
+  {
+    filename = vtkTestUtilities::ExpandFileNameWithArgOrEnvOrDefault(
+      "-T", argc, argv, "VTK_DATA_ROOT", "../../../../VTKData", "cars_320x240.h264");
+    std::ofstream file(filename, std::ios::out | std::ios::binary);
+    file.write(reinterpret_cast<char*>(bitstream.data()), bitstream.size());
+  }
+  return success ? 0 : 1;
 }
