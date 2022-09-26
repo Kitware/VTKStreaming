@@ -29,7 +29,7 @@
 #include <chrono>
 #include <thread>
 
-#define MAX_NUM_FRAMES 100
+#define MAX_NUM_FRAMES 64
 
 static int readyCount = 0;
 void TestEncoderAsyncDelegateMultiCurrentContext_callback(
@@ -46,9 +46,9 @@ int TestEncoderAsyncDelegateMultiCurrentContext(int argc, char* argv[])
   // deliberately use OpenGL video frame to ensure we don't do anything bad with the context.
   std::vector<vtkNew<vtkOpenGLVideoFrame>> frames(MAX_NUM_FRAMES);
 
-  encoder->SetMockEncodeTimeMilliseconds(MAX_NUM_FRAMES / 10);
-  encoder->SetMockLargeFramePeriod(MAX_NUM_FRAMES / 20);
-  encoder->SetMockLargeFrameIntervalRatio(MAX_NUM_FRAMES / 2);
+  encoder->SetMockEncodeTimeMilliseconds(1);
+  encoder->SetMockLargeFramePeriod(MAX_NUM_FRAMES / 4);
+  encoder->SetMockLargeFrameIntervalRatio(2);
 
   encoder->AsyncModeOn();
 
