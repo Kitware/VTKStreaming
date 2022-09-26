@@ -19,14 +19,14 @@
 #include "vtkVideoEncoder.h"
 
 #include "nvEncodeAPI.h"             // for nvenc
-#include "vtkStreamingNVENCModule.h" // for export macro
+#include "vtkStreamingNvEncodeModule.h" // for export macro
 
 #include <memory> // for ivar
 
 class vtkNvEncoderInternals;
 class vtkOpenGLRenderWindow;
 
-class VTKSTREAMINGNVENC_EXPORT vtkNvEncoderGL : public vtkVideoEncoder
+class VTKSTREAMINGNVENCODE_EXPORT vtkNvEncoderGL : public vtkVideoEncoder
 {
 public:
   vtkTypeMacro(vtkNvEncoderGL, vtkVideoEncoder);

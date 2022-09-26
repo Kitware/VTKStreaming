@@ -16,12 +16,12 @@
 #ifndef vtkNvEncodeImportTable_h
 #define vtkNvEncodeImportTable_h
 
-#include "vtkStreamingNVENCModule.h"
+#include "vtkStreamingNvEncodeModule.h"
 
 #include "nvEncodeAPI.h"      // for status type
 #include "vtkDynamicLoader.h" // for loader
 
-struct VTKSTREAMINGNVENC_EXPORT vtkNvEncodeImportTable
+struct VTKSTREAMINGNVENCODE_EXPORT vtkNvEncodeImportTable
 {
   typedef NVENCSTATUS (*PFN_NvEncodeAPIGetMaxSupportedVersion)(uint32_t*);
   typedef NVENCSTATUS (*PFN_NvEncodeAPICreateInstance)(NV_ENCODE_API_FUNCTION_LIST*);
