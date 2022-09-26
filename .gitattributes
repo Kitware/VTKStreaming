@@ -4,7 +4,6 @@
 *.sh             crlf=input
 newalpha         crlf=input
 newversion       crlf=input
-pre-commit       crlf=input
 
 # Custom attribute to mark sources as using our C code style.
 [attr]our-c-style  whitespace=tab-in-indent,-blank-at-eol  format.clang-format=8
@@ -20,6 +19,8 @@ pre-commit       crlf=input
 *.txt            whitespace=tab-in-indent,-blank-at-eol
 *.cmake          whitespace=tab-in-indent,-blank-at-eol
 
-*.sha512         eol=lf
-
 *.md             whitespace=tab-in-indent conflict-marker-size=30
+
+[attr]lfs       filter=lfs diff=lfs merge=lfs -text
+
+Data/** filter=lfs diff=lfs merge=lfs -text
