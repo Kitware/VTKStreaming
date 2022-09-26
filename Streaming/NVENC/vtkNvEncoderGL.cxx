@@ -176,7 +176,7 @@ VTKVideoEncoderResultType vtkNvEncoderGL::EncodeInternal(vtkRawVideoFrame* frame
 }
 
 //------------------------------------------------------------------------------
-VTKVideoEncoderResultType vtkNvEncoderGL::EncodeScreenInternal(vtkRenderWindow* window)
+VTKVideoEncoderResultType vtkNvEncoderGL::EncodeDisplayInternal()
 {
   vtkLogScopeFunction(TRACE);
   auto& internals = (*this->Internals);
@@ -187,7 +187,7 @@ VTKVideoEncoderResultType vtkNvEncoderGL::EncodeScreenInternal(vtkRenderWindow* 
     vtkLog(ERROR, << "Encoder does not have valid input frames. vtkOpenGLVideoFrame");
     return { VTKVideoProcessingStatusType::VTKVPStatus_InvalidValue, {} };
   }
-  input->Capture(window);
+  input->Capture(this->GraphicsContext);
   auto status = internals.Send(this->ForceIFrame);
   std::vector<vtkSmartPointer<vtkCompressedVideoPacket>> packets;
   bool success = internals.Receive(packets);
@@ -241,8 +241,7 @@ bool vtkNvEncoderGL::AllocateInputBuffers()
     frame->SetPixelFormat(this->InputPixelFormat);
     frame->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::TopDown);
     frame->ComputeDefaultStrides();
-    auto context = this->HasDelegate() ? this->GetDelegateContext() : this->Context;
-    frame->SetContext(vtkOpenGLRenderWindow::SafeDownCast(context));
+    frame->SetContext(vtkOpenGLRenderWindow::SafeDownCast(this->GraphicsContext));
     frame->AllocateDataStore();
     widthBytes = vtkRawVideoFrame::GetWidthBytes(this->Width, this->InputPixelFormat);
     auto vtkTexture = reinterpret_cast<vtkTextureObject*>(frame->GetResourceHandle());

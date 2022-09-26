@@ -56,7 +56,7 @@ int TestNvEncoderPushReceiveIYUV(int argc, char* argv[])
   renWin->Render();
 
   vtkNew<vtkNvEncoderGL> enc;
-  enc->SetContext(renWin);
+  enc->SetGraphicsContext(renWin);
   enc->SetWidth(width);
   enc->SetHeight(height);
   enc->SetCodec(VTKVideoCodecType::VTKVC_H264);

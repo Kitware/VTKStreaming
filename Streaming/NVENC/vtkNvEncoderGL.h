@@ -34,7 +34,7 @@ public:
   static vtkNvEncoderGL* New();
 
   bool IsHardwareAccelerated() const noexcept override { return true; }
-  bool SupportsAsynchronousDelegate() const noexcept override { return false; }
+  bool SupportsAsyncMode() const noexcept override { return false; }
   vtkIdType GetLastEncodeTimeNS() const noexcept override;
   vtkIdType GetLastScaleTimeNS() const noexcept override;
   bool SupportsCodec(VTKVideoCodecType codec) const noexcept override;
@@ -56,7 +56,7 @@ protected:
   VTKVideoEncoderResultType EncodeInternal(vtkRawVideoFrame* frame) override;
   VTKVideoEncoderResultType DrainInternal() override;
 
-  VTKVideoEncoderResultType EncodeScreenInternal(vtkRenderWindow* window) override;
+  VTKVideoEncoderResultType EncodeDisplayInternal() override;
 
   bool AllocateInputBuffers();
   void ReleaseInputBuffers();

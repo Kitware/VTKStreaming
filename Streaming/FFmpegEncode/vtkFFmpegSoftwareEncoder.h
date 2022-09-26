@@ -43,7 +43,7 @@ public:
    * Implement public convenient methods.
    */
   bool IsHardwareAccelerated() const noexcept override { return false; }
-  bool SupportsAsynchronousDelegate() const noexcept override { return true; }
+  bool SupportsAsyncMode() const noexcept override { return true; }
   vtkIdType GetLastEncodeTimeNS() const noexcept override;
   vtkIdType GetLastScaleTimeNS() const noexcept override;
   bool SupportsCodec(VTKVideoCodecType codec) const noexcept override;
@@ -75,7 +75,7 @@ protected:
   VTKVideoEncoderResultType EncodeInternal(vtkRawVideoFrame* frame) override;
   ///@}
 
-  VTKVideoEncoderResultType EncodeScreenInternal(vtkRenderWindow* window) override { return {}; }
+  VTKVideoEncoderResultType EncodeDisplayInternal() override { return {}; }
 
 private:
   vtkFFmpegSoftwareEncoder(const vtkFFmpegSoftwareEncoder&) = delete;

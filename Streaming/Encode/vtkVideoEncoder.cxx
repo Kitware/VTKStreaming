@@ -44,7 +44,7 @@ vtkVideoEncoder::~vtkVideoEncoder()
 void vtkVideoEncoder::PrintSelf(ostream& os, vtkIndent indent)
 {
   this->Superclass::PrintSelf(os, indent);
-  os << "UsingAsynchronousDelegate: " << (this->HasDelegate() ? "yes" : "no") << '\n';
+  os << "AsyncMode: " << (this->HasDelegate() ? "yes" : "no") << '\n';
   if (this->HasDelegate())
   {
     this->Delegate->PrintSelf(os, indent.GetNextIndent());
@@ -73,19 +73,19 @@ void vtkVideoEncoder::PrintSelf(ostream& os, vtkIndent indent)
 }
 
 //------------------------------------------------------------------------------
-void vtkVideoEncoder::SetContext(vtkRenderWindow* context)
+void vtkVideoEncoder::SetGraphicsContext(vtkRenderWindow* context)
 {
-  this->Context = context;
+  this->GraphicsContext = context;
 }
 
 //------------------------------------------------------------------------------
-vtkRenderWindow* vtkVideoEncoder::GetContext() const
+vtkRenderWindow* vtkVideoEncoder::GetGraphicsContext() const
 {
-  return this->Context;
+  return this->GraphicsContext;
 }
 
 //------------------------------------------------------------------------------
-vtkRenderWindow* vtkVideoEncoder::GetDelegateContext() const
+vtkRenderWindow* vtkVideoEncoder::GetDelegateGraphicsContext() const
 {
   return this->Delegate ? this->Delegate->GetWorkerGfxContext() : nullptr;
 }
@@ -100,7 +100,7 @@ bool vtkVideoEncoder::HasDelegate()
 void vtkVideoEncoder::SetAsyncMode(bool val)
 {
   vtkLogScopeF(TRACE, "%s val=%s", __func__, val ? "true" : "false");
-  if (!this->SupportsAsynchronousDelegate())
+  if (!this->SupportsAsyncMode())
   {
     vtkLog(TRACE, << "Bypass the delegate.");
     return;
@@ -171,7 +171,7 @@ bool vtkVideoEncoder::Initialize()
     VTKVideoEncodeWorkerType worker = std::bind(&vtkVideoEncoder::Encode, this, _1);
 
     // from this point on, async delegate takes care of processing frames into compressed packets.
-    this->Delegate->InitializeWorker(worker, this->Context);
+    this->Delegate->InitializeWorker(worker, this->GraphicsContext);
     return this->Initialized;
   }
   else
@@ -414,10 +414,17 @@ void vtkVideoEncoder::CancelPendingEncodeRequests()
 }
 
 //------------------------------------------------------------------------------
-VTKVideoEncoderResultType vtkVideoEncoder::EncodeScreen(vtkRenderWindow* window)
+VTKVideoEncoderResultType vtkVideoEncoder::EncodeDisplay()
 {
-  vtkLogScopeF(TRACE, "%s window=%s", __func__, vtkLogIdentifier(window));
+  vtkLogScopeF(TRACE, "%s window=%s", __func__, vtkLogIdentifier(this->GraphicsContext));
 
+  if (this->GraphicsContext == nullptr)
+  {
+    vtkLog(WARNING,
+      "Please set graphics context with "
+      "vtkVideoEncoder::SetGraphicsContext(vtkRenderWindow*).");
+    return { VTKVideoProcessingStatusType::VTKVPStatus_InvalidValue, {} };
+  }
   if (this->GetAsyncMode())
   {
     vtkLog(ERROR, "The encoder is in async mode. Please use Push/GetResult API.");
@@ -425,13 +432,13 @@ VTKVideoEncoderResultType vtkVideoEncoder::EncodeScreen(vtkRenderWindow* window)
   }
   else
   {
-    const int& width = window->GetSize()[0];
-    const int& height = window->GetSize()[1];
+    const int& width = this->GraphicsContext->GetSize()[0];
+    const int& height = this->GraphicsContext->GetSize()[1];
 
     auto ctxStatus = this->UpdateEncoderContext(width, height);
     if (ctxStatus == VTKVideoProcessingStatusType::VTKVPStatus_Success)
     {
-      return this->EncodeScreenInternal(window);
+      return this->EncodeDisplayInternal();
     }
     else
     {
