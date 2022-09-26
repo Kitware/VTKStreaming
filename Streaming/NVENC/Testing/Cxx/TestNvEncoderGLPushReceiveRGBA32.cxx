@@ -16,6 +16,7 @@
 
 #include "vtkActor.h"
 #include "vtkCallbackCommand.h"
+#include "vtkCamera.h"
 #include "vtkCylinderSource.h"
 #include "vtkLogger.h"
 #include "vtkNamedColors.h"
@@ -28,19 +29,27 @@
 #include "vtkRawVideoFrame.h"
 #include "vtkRenderWindowInteractor.h"
 #include "vtkRenderer.h"
+#include "vtkTestUtilities.h"
 #include "vtkVideoCodecTypes.h"
 #include "vtkVideoProcessingStatusTypes.h"
 
+#include <array>
 #include <fstream>
 #include <iomanip>
+#include <string>
 
 #define WRITE_CHUNKS 0
 
 int TestNvEncoderGLPushReceiveRGBA32(int argc, char* argv[])
 {
   bool success = true;
-  int width = 1920, height = 1200;
-  vtkLogger::SetStderrVerbosity(vtkLogger::VERBOSITY_9);
+  int width = 320, height = 240;
+
+  char* filename =
+    vtkTestUtilities::ExpandDataFileName(argc, argv, "Data/spinnin_cylinder_320x240_100_frames.h264");
+  std::string baselineFile = filename;
+  delete[] filename;
+
   vtkNew<vtkRenderWindowInteractor> iren;
   vtkNew<vtkRenderWindow> win;
   vtkNew<vtkRenderer> ren;
@@ -49,6 +58,10 @@ int TestNvEncoderGLPushReceiveRGBA32(int argc, char* argv[])
   vtkNew<vtkActor> actor;
   vtkNew<vtkNamedColors> colors;
 
+  // Set the background color.
+  std::array<unsigned char, 4> bkg{{26, 51, 102, 255}};
+  colors->SetColor("BkgColor", bkg.data());
+
   mapper->SetInputConnection(cyl->GetOutputPort());
   actor->SetMapper(mapper);
   actor->GetProperty()->SetColor(colors->GetColor4d("Tomato").GetData());
@@ -56,12 +69,11 @@ int TestNvEncoderGLPushReceiveRGBA32(int argc, char* argv[])
   actor->RotateY(-45.0);
 
   ren->AddActor(actor);
-  ren->SetBackground(0.2, 0.2, 0.2);
+  ren->SetBackground(colors->GetColor3d("BkgColor").GetData());
 
   auto renWin = vtkOpenGLRenderWindow::SafeDownCast(win);
   renWin->AddRenderer(ren);
   renWin->SetSize(width, height);
-  ren->SetBackground(0.5, 0.5, 0.5);
   iren->SetRenderWindow(renWin);
   iren->Initialize();
   iren->Render();
@@ -89,42 +101,68 @@ int TestNvEncoderGLPushReceiveRGBA32(int argc, char* argv[])
     });
   iren->AddObserver(vtkCommand::ExitEvent, exitCallback);
 
-#if !WRITE_CHUNKS
-  std::ofstream outFile("cylinder.h264", std::ofstream::out | std::ofstream::binary);
-#endif
-
-  int frame = 0;
+  int frameId = 0;
+  std::vector<uint8_t> bitstream;
   while (true)
   {
-    iren->ProcessEvents();
+    double azimuth = (frameId % 36) * 10;
+    ren->GetActiveCamera()->Azimuth(vtkMath::RadiansFromDegrees(azimuth));
+    renWin->Render();
+    if (frameId > 100)
+    {
+      iren->ExitEvent();
+    }
     if (iren->GetDone())
     {
       break;
     }
-#if WRITE_CHUNKS
-    std::stringstream filename;
-    filename << "frame-" << std::setfill('0') << std::setw(3) << frame << ".bin";
-    std::ofstream outFile(filename.str(), std::ofstream::out | std::ofstream::binary);
-#endif
     vtkOpenGLCheckErrors("error uploading data to gl texture");
 
     auto result = enc->EncodeDisplay();
 
     vtkLog(TRACE, << vtkVideoProcessingStatusTypeUtilities::ToString(result.first));
-    if (result.second.empty() || result.second[0] == nullptr)
+    success &= !(result.second.empty() || result.second[0] == nullptr);
+    if (!success)
     {
-      continue;
+      break;
     }
-    outFile.write(reinterpret_cast<char*>(result.second[0]->GetData()->GetPointer(0)),
-      result.second[0]->GetSize());
-#if WRITE_CHUNKS
-    outFile.close();
-#endif
-    ++frame;
+    auto data = result.second[0]->GetData()->GetPointer(0);
+    auto size = result.second[0]->GetSize();
+    vtkLogF(INFO, "Recv %d bytes", size);
+    for (std::size_t i = 0; i < size; ++i)
+    {
+      bitstream.push_back(data[i]);
+    }
+    ++frameId;
   }
-#if !WRITE_CHUNKS
-  outFile.close();
-#endif
 
-  return 0;
+  std::ifstream baseline;
+  vtkLogF(INFO, "Read %s", baselineFile.c_str());
+  baseline.open(baselineFile, std::ios::in | std::ios::binary);
+  baseline.ignore(std::numeric_limits<std::streamsize>::max());
+
+  const std::size_t size1 = baseline.gcount();
+  const std::size_t size2 = bitstream.size();
+  vtkLogF(TRACE, "%zu, %zu", size1, size2);
+  success = size1 == size2;
+
+  baseline.clear();
+  baseline.seekg(0, std::ios_base::beg);
+
+  std::vector<uint8_t> baseline_ptr(size1, 0);
+  baseline.read(reinterpret_cast<char*>(baseline_ptr.data()), size1);
+
+  for (std::size_t i1 = 0, i2 = 0; i1 < size1 && i2 < size2 && success; ++i1 && ++i2)
+  {
+    vtkLogF(TRACE, "%d, %d", int(baseline_ptr[i1]), int(bitstream[i2]));
+    success &= (baseline_ptr[i1] == bitstream[i2]);
+  }
+  if (!success)
+  {
+    filename = vtkTestUtilities::ExpandFileNameWithArgOrEnvOrDefault(
+      "-T", argc, argv, "VTK_DATA_ROOT", "../../../../VTKData", "spinnin_cylinder_320x240_100_frames.h264");
+    std::ofstream file(filename, std::ios::out | std::ios::binary);
+    file.write(reinterpret_cast<char*>(bitstream.data()), bitstream.size());
+  }
+  return success ? 0 : 1;
 }
