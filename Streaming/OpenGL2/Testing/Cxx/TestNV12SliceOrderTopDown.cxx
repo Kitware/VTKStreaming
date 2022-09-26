@@ -35,7 +35,7 @@ int TestNV12SliceOrderTopDown(int argc, char* argv[])
 {
   bool success = true;
   const int width = 320, height = 240;
-  char* filename = vtkTestUtilities::ExpandDataFileName(argc, argv, "Data/cars_320x240.nv12");
+  char* filename = vtkTestUtilities::ExpandDataFileName(argc, argv, "cars_320x240.nv12");
   vtkLogF(INFO, "Read %s", filename);
   std::ifstream fpIn(filename, std::ifstream::in | std::ifstream::binary);
   if (!fpIn)
@@ -86,7 +86,7 @@ int TestNV12SliceOrderTopDown(int argc, char* argv[])
   renWin->GetRGBACharPixelData(0, 0, width - 1, height - 1, 1, pixels2);
 
   vtkNew<vtkPNGReader> reader;
-  filename = vtkTestUtilities::ExpandDataFileName(argc, argv, "Data/cars_320x240_00.png");
+  filename = vtkTestUtilities::ExpandDataFileName(argc, argv, "cars_320x240_00.png");
   reader->SetFileName(filename);
   delete[] filename;
   reader->Update();

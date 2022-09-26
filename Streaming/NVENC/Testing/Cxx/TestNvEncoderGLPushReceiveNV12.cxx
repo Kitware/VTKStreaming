@@ -40,7 +40,7 @@ int TestNvEncoderGLPushReceiveNV12(int argc, char* argv[])
   bool success = true;
   const int width = 320, height = 240;
 
-  char* filename = vtkTestUtilities::ExpandDataFileName(argc, argv, "Data/cars_320x240.nv12");
+  char* filename = vtkTestUtilities::ExpandDataFileName(argc, argv, "cars_320x240.nv12");
   vtkLogF(INFO, "Read %s", filename);
   std::ifstream fpIn(filename, std::ifstream::in | std::ifstream::binary);
   if (!fpIn)
@@ -49,7 +49,7 @@ int TestNvEncoderGLPushReceiveNV12(int argc, char* argv[])
     return 1;
   }
   delete[] filename;
-  filename = vtkTestUtilities::ExpandDataFileName(argc, argv, "Data/cars_320x240.h264");
+  filename = vtkTestUtilities::ExpandDataFileName(argc, argv, "cars_320x240.h264");
   std::string baselineFile = filename;
   delete[] filename;
 
@@ -146,7 +146,7 @@ int TestNvEncoderGLPushReceiveNV12(int argc, char* argv[])
   if (!success)
   {
     filename = vtkTestUtilities::ExpandFileNameWithArgOrEnvOrDefault(
-      "-T", argc, argv, "VTK_DATA_ROOT", "../../../../VTKData", "cars_320x240.h264");
+      "-T", argc, argv, "VTKSTREAMING_DATA_ROOT", "Temporary", "cars_320x240.h264");
     std::ofstream file(filename, std::ios::out | std::ios::binary);
     file.write(reinterpret_cast<char*>(bitstream.data()), bitstream.size());
   }

@@ -46,7 +46,7 @@ int TestNvEncoderGLPushReceiveRGBA32(int argc, char* argv[])
   int width = 320, height = 240;
 
   char* filename =
-    vtkTestUtilities::ExpandDataFileName(argc, argv, "Data/spinnin_cylinder_320x240_100_frames.h264");
+    vtkTestUtilities::ExpandDataFileName(argc, argv, "spinnin_cylinder_320x240_100_frames.h264");
   std::string baselineFile = filename;
   delete[] filename;
 
@@ -59,7 +59,7 @@ int TestNvEncoderGLPushReceiveRGBA32(int argc, char* argv[])
   vtkNew<vtkNamedColors> colors;
 
   // Set the background color.
-  std::array<unsigned char, 4> bkg{{26, 51, 102, 255}};
+  std::array<unsigned char, 4> bkg{ { 26, 51, 102, 255 } };
   colors->SetColor("BkgColor", bkg.data());
 
   mapper->SetInputConnection(cyl->GetOutputPort());
@@ -159,8 +159,8 @@ int TestNvEncoderGLPushReceiveRGBA32(int argc, char* argv[])
   }
   if (!success)
   {
-    filename = vtkTestUtilities::ExpandFileNameWithArgOrEnvOrDefault(
-      "-T", argc, argv, "VTK_DATA_ROOT", "../../../../VTKData", "spinnin_cylinder_320x240_100_frames.h264");
+    filename = vtkTestUtilities::ExpandFileNameWithArgOrEnvOrDefault("-T", argc, argv,
+      "VTKSTREAMING_DATA_ROOT", "Temporary", "spinnin_cylinder_320x240_100_frames.h264");
     std::ofstream file(filename, std::ios::out | std::ios::binary);
     file.write(reinterpret_cast<char*>(bitstream.data()), bitstream.size());
   }

@@ -40,7 +40,7 @@ int TestNvEncoderGLPushReceiveIYUV(int argc, char* argv[])
   bool success = true;
   const int width = 320, height = 240;
 
-  char* filename = vtkTestUtilities::ExpandDataFileName(argc, argv, "Data/cars_320x240.iyuv");
+  char* filename = vtkTestUtilities::ExpandDataFileName(argc, argv, "cars_320x240.iyuv");
   vtkLogF(INFO, "Read %s", filename);
   std::ifstream fpIn(filename, std::ifstream::in | std::ifstream::binary);
   if (!fpIn)
@@ -49,7 +49,7 @@ int TestNvEncoderGLPushReceiveIYUV(int argc, char* argv[])
     return 1;
   }
   delete[] filename;
-  filename = vtkTestUtilities::ExpandDataFileName(argc, argv, "Data/cars_320x240.h264");
+  filename = vtkTestUtilities::ExpandDataFileName(argc, argv, "cars_320x240.h264");
   std::string baselineFile = filename;
   delete[] filename;
 
@@ -123,12 +123,13 @@ int TestNvEncoderGLPushReceiveIYUV(int argc, char* argv[])
   }
 
   std::ifstream baseline;
-  vtkLogF(INFO, "Read %s", baselineFile.c_str());
+  vtkLogF(INFO, "Open %s", baselineFile.c_str());
   baseline.open(baselineFile, std::ios::in | std::ios::binary);
   baseline.ignore(std::numeric_limits<std::streamsize>::max());
 
   const std::size_t size1 = baseline.gcount();
   const std::size_t size2 = bitstream.size();
+  vtkLogF(INFO, "Read %zu bytes", size1);
   vtkLogF(TRACE, "%zu, %zu", size1, bitstream.size());
   success = bitstream.size() == size1;
 
@@ -140,13 +141,13 @@ int TestNvEncoderGLPushReceiveIYUV(int argc, char* argv[])
 
   for (std::size_t i1 = 0, i2 = 0; i1 < size1 && i2 < size2 && success; ++i1 && ++i2)
   {
-    vtkLogF(TRACE, "%d, %d", int(baseline_ptr[i1]), int(bitstream[i2]));
+    vtkLogF(INFO, "%d, %d", int(baseline_ptr[i1]), int(bitstream[i2]));
     success &= (baseline_ptr[i1] == bitstream[i2]);
   }
   if (!success)
   {
     filename = vtkTestUtilities::ExpandFileNameWithArgOrEnvOrDefault(
-      "-T", argc, argv, "VTK_DATA_ROOT", "../../../../VTKData", "cars_320x240.h264");
+      "-T", argc, argv, "VTKSTREAMING_DATA_ROOT", "Temporary", "cars_320x240.h264");
     std::ofstream file(filename, std::ios::out | std::ios::binary);
     file.write(reinterpret_cast<char*>(bitstream.data()), bitstream.size());
   }
