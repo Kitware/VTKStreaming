@@ -56,7 +56,7 @@ int TestNvEncoderMapResource(int argc, char* argv[])
 
   vtkNew<vtkNvEncoderGL> enc;
   enc->SetCodec(VTKVideoCodecType::VTKVC_H264);
-  enc->SetContext(renWin);
+  enc->SetGraphicsContext(renWin);
   enc->SetWidth(w);
   enc->SetHeight(h);
   enc->AsyncModeOn();

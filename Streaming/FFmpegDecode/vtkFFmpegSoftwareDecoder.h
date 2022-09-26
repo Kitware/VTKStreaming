@@ -42,7 +42,7 @@ public:
   /**
    * Implement public convenient methods.
    */
-  bool SupportsAsynchronousDelegate() const noexcept override { return true; }
+  bool SupportsAsyncMode() const noexcept override { return true; }
   bool IsHardwareAccelerated() const noexcept override { return false; }
   vtkIdType GetLastDecodeTimeNS() const noexcept override;
   vtkIdType GetLastScaleTimeNS() const noexcept override;

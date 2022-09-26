@@ -71,7 +71,7 @@ int TestJPEGEncoderPushReceiveRGBA32(int argc, char* argv[])
   iren->Render();
 
   vtkNew<vtkJPEGVideoEncoder> enc;
-  enc->SetContext(renWin);
+  enc->SetGraphicsContext(renWin);
   enc->SetWidth(width);
   enc->SetHeight(height);
   enc->AsyncModeOn();

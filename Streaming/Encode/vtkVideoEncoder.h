@@ -16,15 +16,28 @@
  * @class   vtkVideoEncoder
  * @brief   this class defines an abstract interface for a video encoder.
  *
- * You can push video frames for encoding with the vtkVideoEncoder::Push method.
- * Since the method is non-blocking, you have to call vtkVideoEncoder::GetResult
- * to obtain the compressed video packet.
+ * There are two ways to achieve video encoding with this class.
+ *
+ * 1. You can push `vtkRawVideoFrame` objects for encoding with the
+ *    vtkVideoEncoder::Push(vtkRawVideoFrame*) method.
+ *    Since the method may be non-blocking, you need to call
+ *    vtkVideoEncoder::GetResult() to obtain the compressed video packet.
+ *    Async mode is supported.
+ *
+ * 2. When your use case involves streaming a display, usually from `vtkRenderWindow`,
+ *    you can achieve zero-copy with certain hardware accelerated video encoders this way.
+ *    Supply the `vtkRenderWindow` instance with
+ * vtkVideoEncoder::SetGraphicsContext(vtkRenderWindow*). Then, call
+ * vtkVideoEncoder::EncodeDisplay(vtkRenderWindow*) whenever you're ready. The return value will
+ * have the compressed packet corresponding to `vtkRenderWindow` display frame buffer. This
+ * interesting use case is for low-latency hardware acclerated encoders. Async mode is not
+ * supported.
  *
  * You are free to delete or modify the frame contents after calling `Push`
  * only when using asynchronous delegate.
  *
- * The encoder can use a processing delegate to queue frames into work units
- * which are eventually encoded.
+ * In async mode, the encoder can use an asynchronous delegate to
+ * queue frames into work units which are eventually encoded.
  *
  * With asynchronous delegates, the 'real' encoding happens
  * during vtkVideoEncoder::GetResult().
@@ -86,9 +99,9 @@ public:
    * When the encoder is in async mode, it maintains a thread-local
    * context. You can access it with `GetDelegateContext()`
    */
-  void SetContext(vtkRenderWindow* context);
-  vtkRenderWindow* GetContext() const;
-  vtkRenderWindow* GetDelegateContext() const;
+  void SetGraphicsContext(vtkRenderWindow* context);
+  vtkRenderWindow* GetGraphicsContext() const;
+  vtkRenderWindow* GetDelegateGraphicsContext() const;
   ///@}
 
   ///@{
@@ -296,11 +309,11 @@ public:
 
   ///@{
   /**
-   * Capture the screen and encode the image.
+   * Capture the display from current graphics context and encode the image.
    * Some synchronous hardware encoders can do zero-copy encoding.
    * Hardware encoders are usually fast enough to be non-blocking.
    */
-  VTKVideoEncoderResultType EncodeScreen(vtkRenderWindow* window);
+  VTKVideoEncoderResultType EncodeDisplay();
   ///@}
 
   /**
@@ -315,7 +328,7 @@ public:
    * Convenient functions implemented by concrete subclasses.
    */
   virtual bool IsHardwareAccelerated() const noexcept = 0;
-  virtual bool SupportsAsynchronousDelegate() const noexcept = 0;
+  virtual bool SupportsAsyncMode() const noexcept = 0;
   virtual vtkIdType GetLastEncodeTimeNS() const noexcept = 0;
   virtual vtkIdType GetLastScaleTimeNS() const noexcept = 0;
   virtual bool SupportsCodec(VTKVideoCodecType codec) const noexcept = 0;
@@ -349,8 +362,8 @@ protected:
   unsigned int NumberOfEncoderThreads = 2; // conservative default.
   // 6. Processing delegate
   vtkAsynchronousEncoderDelegate* Delegate = nullptr;
-  // 7. Context
-  vtkRenderWindow* Context = nullptr;
+  // 7. Our graphics context.
+  vtkRenderWindow* GraphicsContext = nullptr;
 
   bool Initialized = false;
   bool IgnoreEncodeRequest = false;
@@ -392,7 +405,7 @@ protected:
   virtual VTKVideoEncoderResultType DrainInternal() = 0;
   ///@}
 
-  virtual VTKVideoEncoderResultType EncodeScreenInternal(vtkRenderWindow* window) = 0;
+  virtual VTKVideoEncoderResultType EncodeDisplayInternal() = 0;
 
   VTKVideoProcessingStatusType UpdateEncoderContext(int width, int height);
 

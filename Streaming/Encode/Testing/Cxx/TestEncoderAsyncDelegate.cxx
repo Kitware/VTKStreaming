@@ -60,7 +60,7 @@ int TestEncoderAsyncDelegate(int argc, char* argv[])
   cmd->SetCallback(TestEncoderAsyncDelegate_callback);
   encoder->AddObserver(vtkCommand::ProgressEvent, cmd);
 
-  encoder->SetContext(window);
+  encoder->SetGraphicsContext(window);
   int pushCount = 0;
   for (const auto& frame : frames)
   {

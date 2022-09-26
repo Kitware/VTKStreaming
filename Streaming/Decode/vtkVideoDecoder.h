@@ -84,7 +84,7 @@ public:
    * Convenient functions implemented by concrete subclasses.
    */
   virtual bool IsHardwareAccelerated() const noexcept = 0;
-  virtual bool SupportsAsynchronousDelegate() const noexcept = 0;
+  virtual bool SupportsAsyncMode() const noexcept = 0;
   virtual vtkIdType GetLastDecodeTimeNS() const noexcept = 0;
   virtual vtkIdType GetLastScaleTimeNS() const noexcept = 0;
   virtual bool SupportsCodec(VTKVideoCodecType codec) const noexcept = 0;

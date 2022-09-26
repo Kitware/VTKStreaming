@@ -61,7 +61,7 @@ int TestEncoderAsyncDelegateMultiCurrentContext(int argc, char* argv[])
   cmd->SetCallback(TestEncoderAsyncDelegateMultiCurrentContext_callback);
   encoder->AddObserver(vtkCommand::ProgressEvent, cmd);
 
-  encoder->SetContext(window);
+  encoder->SetGraphicsContext(window);
   int pushCount = 0;
   for (const auto& frame : frames)
   {

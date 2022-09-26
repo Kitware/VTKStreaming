@@ -67,7 +67,7 @@ int TestNvEncoderPushReceiveRGBA32(int argc, char* argv[])
   iren->Render();
 
   vtkNew<vtkNvEncoderGL> enc;
-  enc->SetContext(renWin);
+  enc->SetGraphicsContext(renWin);
   enc->SetCodec(VTKVideoCodecType::VTKVC_H264);
   enc->SetWidth(width);
   enc->SetHeight(height);
@@ -108,7 +108,7 @@ int TestNvEncoderPushReceiveRGBA32(int argc, char* argv[])
 #endif
     vtkOpenGLCheckErrors("error uploading data to gl texture");
 
-    auto result = enc->EncodeScreen(renWin);
+    auto result = enc->EncodeDisplay();
 
     vtkLog(TRACE, << vtkVideoProcessingStatusTypeUtilities::ToString(result.first));
     if (result.second.empty() || result.second[0] == nullptr)
