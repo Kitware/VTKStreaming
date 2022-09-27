@@ -30,11 +30,12 @@ void main()
 
   ivec2 pixelCoord = ivec2(gl_FragCoord.x - 0.5, yCoord);
   
-  int x_half = pixelCoord.x >> 1;
-  int y_half = pixelCoord.y >> 1;
-  int p_half = strides[0] >> 1; // luma pitch half
-  int crh_half = chromaHeight >> 1;
-  int y_quart = pixelCoord.y >> 2;
+  int a = pixelCoord.x >> 1;
+  int b = pixelCoord.y >> 1;
+  int c = strides[0] >> 1; // luma pitch half
+  int d = chromaHeight >> 1;
+  int e = ((resolution[1] + 1) >> 1) << 1; // nearest even number greater than l.h.s argument for '+'
+  int f = pixelCoord.y >> 2;
 
   // luminance.
   ivec2 lumaOfst;
@@ -43,11 +44,11 @@ void main()
   float luma = texelFetch(iyuvTexture, lumaOfst, 0).r;
 
   // chroma red.
-  ivec2 uOffset = ivec2(mod(y_half, 2) * p_half + x_half, resolution[1] + y_quart);
+  ivec2 uOffset = ivec2(a + mod(b, 2) * c, e + f);
   float u = texelFetch(iyuvTexture, uOffset, 0).r;
 
   // chroma blue.
-  ivec2 vOffset = ivec2(uOffset.x, uOffset.y + crh_half);
+  ivec2 vOffset = ivec2(uOffset.x, uOffset.y + d);
   float v = texelFetch(iyuvTexture, vOffset, 0).r;
 
   const mat3 YCbCrToRGBmatrix = mat3(
