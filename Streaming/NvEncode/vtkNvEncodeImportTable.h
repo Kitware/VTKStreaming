@@ -16,12 +16,12 @@
 #ifndef vtkNvEncodeImportTable_h
 #define vtkNvEncodeImportTable_h
 
-#include "vtkStreamingNVENCModule.h"
+#include "vtkStreamingNvEncodeModule.h"
 
-#include "nvEncodeAPI.h"      // for status type
-#include "vtkDynamicLoader.h" // for loader
+#include "nvEncodeAPI.h"        // for status type
+#include "vtkNvDynamicLoader.h" // for loader
 
-struct VTKSTREAMINGNVENC_EXPORT vtkNvEncodeImportTable
+struct VTKSTREAMINGNVENCODE_EXPORT vtkNvEncodeImportTable
 {
   typedef NVENCSTATUS (*PFN_NvEncodeAPIGetMaxSupportedVersion)(uint32_t*);
   typedef NVENCSTATUS (*PFN_NvEncodeAPICreateInstance)(NV_ENCODE_API_FUNCTION_LIST*);
@@ -37,7 +37,7 @@ struct VTKSTREAMINGNVENC_EXPORT vtkNvEncodeImportTable
 
 private:
   // for nvEncodeAPI.dll on windows or libnvidia-encode.so on nix.
-  vtkLibHandle LibraryHandle = nullptr;
+  VTKSTREAMING_NV_LIB_HANDLE LibraryHandle = nullptr;
 };
 
 #endif // vtkNvEncodeImportTable_h

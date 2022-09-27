@@ -1,11 +1,11 @@
 NAME
-  VTKStreaming::NVENC
+  VTKStreaming::NvEncode
 LIBRARY_NAME
-  vtkStreamingNVENC
+  vtkStreamingNvEncode
 GROUPS
   Streaming
 KIT
-  VTKStreaming::NVENC
+  VTKStreaming::NvEncode
 DEPENDS
   VTKStreaming::Encode
   VTKStreaming::Decode

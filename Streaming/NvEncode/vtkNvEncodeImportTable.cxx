@@ -13,27 +13,19 @@
 
 =========================================================================*/
 #include "vtkNvEncodeImportTable.h"
-#include "vtkDynamicLoader.h"
 #include "vtkLogger.h"
-#include <vtksys/SystemInformation.hxx>
 
 #define GetProcEntryPoint(name)                                                                    \
   do                                                                                               \
   {                                                                                                \
-    /* Hack to cast pointer-to-function to pointer-to-function with different signature.*/         \
-    union                                                                                          \
-    {                                                                                              \
-      vtkSymbolPointer psym;                                                                       \
-      PFN_##name u_##name;                                                                         \
-    } result;                                                                                      \
-    result.psym = vtkDynamicLoader::GetSymbolAddress(this->LibraryHandle, #name);                  \
-    if (!result.psym)                                                                              \
+    void* result = VTKSTREAMING_NV_SYM_FUNC(this->LibraryHandle, #name);                           \
+    if (result == nullptr)                                                                         \
     {                                                                                              \
       vtkLogF(ERROR, "Failed to load %s", #name);                                                  \
       return false;                                                                                \
     }                                                                                              \
-    vtkLogF(TRACE, "found symbol %s (%p)", #name, result.psym);                                    \
-    this->name = result.u_##name;                                                                  \
+    vtkLogF(TRACE, "found symbol %s (%p)", #name, result);                                         \
+    this->name = (PFN_##name)result;                                                               \
                                                                                                    \
   } while (0)
 
@@ -43,7 +35,7 @@ vtkNvEncodeImportTable::~vtkNvEncodeImportTable()
 {
   if (this->LibraryHandle != nullptr)
   {
-    vtkDynamicLoader::CloseLibrary(this->LibraryHandle);
+    VTKSTREAMING_NV_FREE_LIB(this->LibraryHandle);
   }
 }
 
@@ -55,31 +47,17 @@ bool vtkNvEncodeImportTable::LoadFunctionsTable()
     return true;
   }
 
-  vtksys::SystemInformation sysImpl;
-#if defined(_WIN32)
-#if defined(_WIN64)
-  const char* libName = "nvEncodeAPI64.dll";
-  HMODULE hModule = LoadLibrary(TEXT(libName));
-  this->LibraryHandle = hModule;
-#else
-  const char* libName = "nvEncodeAPI.dll";
-  HMODULE hModule = LoadLibrary(TEXT(libName));
-  this->LibraryHandle = hModule;
-#endif
-#else
-  const char* libName = "libnvidia-encode.so";
-  this->LibraryHandle = vtkDynamicLoader::OpenLibrary(libName);
-#endif
+  this->LibraryHandle = VTKSTREAMING_NV_LOAD_LIB(VTKSTREAMING_NVENC_LIBNAME);
   if (this->LibraryHandle == nullptr)
   {
     vtkLogF(ERROR,
       "Failed to load %s. Please install or upgrade NVIDIA drivers if you have an NVIDIA GPU.",
-      libName);
+      VTKSTREAMING_NVENC_LIBNAME);
     return false;
   }
   else
   {
-    vtkLogF(TRACE, "Loaded %s.", libName);
+    vtkLogF(TRACE, "Loaded %s.", VTKSTREAMING_NVENC_LIBNAME);
   }
   GetProcEntryPoint(NvEncodeAPIGetMaxSupportedVersion);
   GetProcEntryPoint(NvEncodeAPICreateInstance);
@@ -93,5 +71,6 @@ bool vtkNvEncodeImportTable::CloseLibrary()
   {
     return true;
   }
-  return vtkDynamicLoader::CloseLibrary(this->LibraryHandle);
+  VTKSTREAMING_NV_FREE_LIB(this->LibraryHandle);
+  return true;
 }
