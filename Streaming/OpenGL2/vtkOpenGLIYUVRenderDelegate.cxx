@@ -64,7 +64,7 @@ void vtkOpenGLIYUVRenderDelegate::Render(vtkTextureObject* iyuvTexture,
     if (invert_y)
     {
       vtkShaderProgram::Substitute(
-        FSSource, "//VTK::FLIPY::Impl", "float yCoord = windowDims[1] - gl_FragCoord.y - 0.5;\n");
+        FSSource, "//VTK::FLIPY::Impl", "float yCoord = resolution[1] - gl_FragCoord.y - 0.5;\n");
     }
     else
     {
@@ -108,7 +108,7 @@ void vtkOpenGLIYUVRenderDelegate::Render(vtkTextureObject* iyuvTexture,
     vtkOpenGLState::ScopedglActiveTexture textureSave(state);
     iyuvTexture->Activate();
     program->SetUniform1iv("strides", 3, strides);
-    program->SetUniform1iv("windowDims", 2, window->GetSize());
+    program->SetUniform1iv("resolution", 2, window->GetSize());
     program->SetUniformi("iyuvTexture", iyuvTexture->GetTextureUnit());
     program->SetUniformi("chromaHeight", chromaHeight);
     vtkOpenGLRenderUtilities::RenderTriangles(

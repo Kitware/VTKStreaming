@@ -18,7 +18,7 @@
 in vec2 texCoord;
 
 uniform sampler2D nv12Texture;
-uniform int windowDims[2];
+uniform int resolution[2];
 uniform int strides[3];
 uniform int chromaHeight;
 
@@ -41,7 +41,7 @@ void main()
   float luma = texelFetch(nv12Texture, lumaOfst, 0).r;
 
   // chroma red.
-  ivec2 uOffset = ivec2(x_nearest_even_prev, windowDims[1] + y_half);
+  ivec2 uOffset = ivec2(x_nearest_even_prev, resolution[1] + y_half);
   float u = texelFetch(nv12Texture, uOffset, 0).r;
 
   // chroma blue.
