@@ -28,11 +28,13 @@
 #include "vtkPolyDataMapper.h"
 #include "vtkProperty.h"
 #include "vtkRenderer.h"
+#include "vtkStreamingTestUtility.h"
 #include "vtkTestUtilities.h"
 #include "vtkUnsignedCharArray.h"
 
 int TestRGBA32SliceOrderTopDown(int argc, char* argv[])
 {
+  vtkStreamingTestUtility::SetLoggerVerbosityFromCli(argc, argv);
   bool success = true;
   const int width = 240, height = 240;
 

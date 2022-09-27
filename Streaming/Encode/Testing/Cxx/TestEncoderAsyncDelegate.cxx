@@ -24,6 +24,7 @@
 #include "vtkOpenGLVideoFrame.h"
 #include "vtkRenderWindow.h"
 #include "vtkRenderer.h"
+#include "vtkStreamingTestUtility.h"
 #include "vtkVideoEncoder.h"
 
 #include <chrono>
@@ -40,6 +41,7 @@ void TestEncoderAsyncDelegate_callback(vtkObject* enc, unsigned long, void*, voi
 
 int TestEncoderAsyncDelegate(int argc, char* argv[])
 {
+  vtkStreamingTestUtility::SetLoggerVerbosityFromCli(argc, argv);
   vtkNew<vtkMockVideoEncoder> encoder;
   bool success = true;
   // deliberately use OpenGL video frame to ensure we don't do anything bad with the context.

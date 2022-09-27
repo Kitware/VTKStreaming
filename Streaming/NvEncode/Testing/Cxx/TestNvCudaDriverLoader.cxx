@@ -15,9 +15,11 @@
 // This test exercises delay load of nvcuda.dll or libcuda.so.1
 
 #include "vtkNvCudaDriverImportTable.h"
+#include "vtkStreamingTestUtility.h"
 
 int TestNvCudaDriverLoader(int argc, char* argv[])
 {
+  vtkStreamingTestUtility::SetLoggerVerbosityFromCli(argc, argv);
   vtkNvCudaDriverImportTable loader;
   return loader.LoadFunctionsTable() ? 0 : 1;
 }

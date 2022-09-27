@@ -22,10 +22,12 @@
 #include "vtkPixelFormatTypes.h"
 #include "vtkRenderWindow.h"
 #include "vtkRenderer.h"
+#include "vtkStreamingTestUtility.h"
 #include <vector>
 
 int TestOpenGLVideoFrameXferWithExternalStrides(int argc, char* argv[])
 {
+  vtkStreamingTestUtility::SetLoggerVerbosityFromCli(argc, argv);
   bool success = true;
   const int width = 239, height = 240;
 

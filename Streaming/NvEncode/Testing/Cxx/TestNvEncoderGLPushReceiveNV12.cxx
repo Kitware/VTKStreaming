@@ -28,6 +28,7 @@
 #include "vtkProperty.h"
 #include "vtkRawVideoFrame.h"
 #include "vtkRenderer.h"
+#include "vtkStreamingTestUtility.h"
 #include "vtkTestUtilities.h"
 #include "vtkVideoProcessingStatusTypes.h"
 
@@ -37,6 +38,7 @@
 
 int TestNvEncoderGLPushReceiveNV12(int argc, char* argv[])
 {
+  vtkStreamingTestUtility::SetLoggerVerbosityFromCli(argc, argv);
   bool success = true;
   const int width = 320, height = 240;
 

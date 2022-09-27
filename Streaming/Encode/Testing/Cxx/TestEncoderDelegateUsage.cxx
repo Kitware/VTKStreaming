@@ -21,9 +21,11 @@
 #include "vtkLogger.h"
 #include "vtkMockVideoEncoder.h"
 #include "vtkSmartPointer.h"
+#include "vtkStreamingTestUtility.h"
 
 int TestEncoderDelegateUsage(int argc, char* argv[])
 {
+  vtkStreamingTestUtility::SetLoggerVerbosityFromCli(argc, argv);
   // 1. AsyncModeOn
   {
     vtkLog(TRACE, << "1. AsyncModeOn");
