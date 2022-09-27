@@ -14,14 +14,16 @@
 =========================================================================*/
 
 #include "vtkCompressedVideoPacket.h"
-#include "vtkNvEncodeImportTable.h"
+#include "vtkNvEncodeLoader.h"
 #include "vtkRawVideoFrame.h"
-#include "vtkVideoEncoder.h"
-#include "vtkVideoProcessingWorkUnitTypes.h"
+#include "vtkPixelFormatTypes.h"
+#include "vtkVideoProcessingStatusTypes.h"
 
 #include "nvEncodeAPI.h"
 
 #include <chrono>
+
+class vtkVideoEncoder;
 
 class vtkNvEncoderInternals
 {
@@ -189,7 +191,7 @@ private:
   //------------------------------------------------------------------------------
   // 1. Shared library handles and key function pointers.
   //------------------------------------------------------------------------------
-  vtkNvEncodeImportTable NvEncodeLoader;
+  vtkNvEncodeLoader NvEncodeLoader;
 
   //------------------------------------------------------------------------------
   // 2. Handles to the NvEnc session, device and encoder parameters.

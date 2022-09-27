@@ -18,12 +18,12 @@
 
 #include "vtkVideoEncoder.h"
 
-#include "nvEncodeAPI.h"                // for nvenc
 #include "vtkStreamingNvEncodeModule.h" // for export macro
 
 #include <memory> // for ivar
 
 class vtkNvEncoderInternals;
+class vtkCUDADriverLoader;
 class vtkOpenGLRenderWindow;
 
 class VTKSTREAMINGNVENCODE_EXPORT vtkNvEncoderGL : public vtkVideoEncoder
@@ -66,7 +66,11 @@ private:
   vtkNvEncoderGL(const vtkNvEncoderGL&) = delete;
   void operator=(const vtkNvEncoderGL&) = delete;
 
+  class vtkCUDAContext;
   std::unique_ptr<vtkNvEncoderInternals> Internals;
+  std::unique_ptr<vtkCUDADriverLoader> CUDADriverLoader;
+  std::unique_ptr<vtkCUDAContext> CUDAInstance;
+  bool CUDADriverAvailable = false;
 };
 
 #endif // vtkNvEncoderGL_h

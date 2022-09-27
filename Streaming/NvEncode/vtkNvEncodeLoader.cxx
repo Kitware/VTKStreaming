@@ -1,7 +1,7 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    vtkNvEncodeImportTable.cxx
+  Module:    vtkNvEncodeLoader.cxx
 
   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
   All rights reserved.
@@ -12,7 +12,7 @@
      PURPOSE.  See the above copyright notice for more information.
 
 =========================================================================*/
-#include "vtkNvEncodeImportTable.h"
+#include "vtkNvEncodeLoader.h"
 #include "vtkLogger.h"
 
 #define GetProcEntryPoint(name)                                                                    \
@@ -29,9 +29,9 @@
                                                                                                    \
   } while (0)
 
-vtkNvEncodeImportTable::vtkNvEncodeImportTable() = default;
+vtkNvEncodeLoader::vtkNvEncodeLoader() = default;
 
-vtkNvEncodeImportTable::~vtkNvEncodeImportTable()
+vtkNvEncodeLoader::~vtkNvEncodeLoader()
 {
   if (this->LibraryHandle != nullptr)
   {
@@ -39,7 +39,7 @@ vtkNvEncodeImportTable::~vtkNvEncodeImportTable()
   }
 }
 
-bool vtkNvEncodeImportTable::LoadFunctionsTable()
+bool vtkNvEncodeLoader::LoadFunctionsTable()
 {
   vtkLogScopeF(TRACE, "%s this->LibraryHandle=%p", __func__, this->LibraryHandle);
   if (this->LibraryHandle != nullptr)
@@ -64,7 +64,7 @@ bool vtkNvEncodeImportTable::LoadFunctionsTable()
   return true;
 }
 
-bool vtkNvEncodeImportTable::CloseLibrary()
+bool vtkNvEncodeLoader::CloseLibrary()
 {
   vtkLogScopeF(TRACE, "%s this->LibraryHandle=%p", __func__, this->LibraryHandle);
   if (this->LibraryHandle == nullptr)

@@ -8,7 +8,6 @@ KIT
   VTKStreaming::NvEncode
 DEPENDS
   VTKStreaming::Encode
-  VTKStreaming::Decode
   VTKStreaming::OpenGL2
 PRIVATE_DEPENDS
   VTK::glew

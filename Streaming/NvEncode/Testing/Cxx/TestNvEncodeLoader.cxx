@@ -1,7 +1,7 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    TestNvEncodeFunctionLoader.cxx
+  Module:    TestNvEncodeLoader.cxx
 
   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
   All rights reserved.
@@ -14,12 +14,12 @@
 =========================================================================*/
 // This test exercises delay load of nvEncodeAPI.dll/libnvidia-encode.so
 
-#include "vtkNvEncodeImportTable.h"
+#include "vtkNvEncodeLoader.h"
 #include "vtkStreamingTestUtility.h"
 
-int TestNvEncodeFunctionLoader(int argc, char* argv[])
+int TestNvEncodeLoader(int argc, char* argv[])
 {
   vtkStreamingTestUtility::SetLoggerVerbosityFromCli(argc, argv);
-  vtkNvEncodeImportTable loader;
+  vtkNvEncodeLoader loader;
   return loader.LoadFunctionsTable() ? 0 : 1;
 }

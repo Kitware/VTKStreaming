@@ -1,7 +1,7 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    vtkNvEncodeImportTable.h
+  Module:    vtkNvEncodeLoader.h
 
   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
   All rights reserved.
@@ -21,12 +21,12 @@
 #include "nvEncodeAPI.h"        // for status type
 #include "vtkNvDynamicLoader.h" // for loader
 
-struct VTKSTREAMINGNVENCODE_EXPORT vtkNvEncodeImportTable
+struct VTKSTREAMINGNVENCODE_EXPORT vtkNvEncodeLoader
 {
   typedef NVENCSTATUS (*PFN_NvEncodeAPIGetMaxSupportedVersion)(uint32_t*);
   typedef NVENCSTATUS (*PFN_NvEncodeAPICreateInstance)(NV_ENCODE_API_FUNCTION_LIST*);
-  vtkNvEncodeImportTable();
-  ~vtkNvEncodeImportTable();
+  vtkNvEncodeLoader();
+  ~vtkNvEncodeLoader();
 
   bool LoadFunctionsTable();
   bool CloseLibrary();
@@ -41,4 +41,4 @@ private:
 };
 
 #endif // vtkNvEncodeImportTable_h
-// VTK-HeaderTest-Exclude: vtkNvEncodeImportTable.h
+// VTK-HeaderTest-Exclude: vtkNvEncodeLoader.h

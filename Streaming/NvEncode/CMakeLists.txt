@@ -1,7 +1,7 @@
 set(classes 
   vtkNvEncoderGL
-  vtkNvEncodeImportTable
-  vtkNvCudaDriverImportTable
+  vtkNvEncodeLoader
+  vtkCUDADriverLoader
 )
 
 set(private_classes
@@ -14,6 +14,7 @@ set(headers
 
 set(private_headers
   nvEncodeAPI.h
+  vtkCUDADriverAPI.h
 )
 
 vtk_module_add_module(VTKStreaming::NvEncode
