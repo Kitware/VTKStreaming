@@ -14,18 +14,13 @@
 =========================================================================*/
 // This test exercises the shader programs that draw RGBA32 bottom-up pictures.
 
-#include "vtkCylinderSource.h"
 #include "vtkImageData.h"
 #include "vtkImageDifference.h"
 #include "vtkLogger.h"
 #include "vtkOpenGLError.h"
 #include "vtkOpenGLRenderWindow.h"
 #include "vtkOpenGLVideoFrame.h"
-#include "vtkPNGWriter.h"
-#include "vtkPixelFormatTypes.h"
 #include "vtkPointData.h"
-#include "vtkPolyDataMapper.h"
-#include "vtkProperty.h"
 #include "vtkRenderer.h"
 #include "vtkStreamingTestUtility.h"
 #include "vtkTestUtilities.h"
@@ -39,31 +34,12 @@ int TestRGBA32SliceOrderBottomUp(int argc, char* argv[])
 
   vtkNew<vtkRenderWindow> win;
   vtkNew<vtkRenderer> ren;
-  vtkNew<vtkCylinderSource> cyl;
-  vtkNew<vtkPolyDataMapper> mapper;
-  vtkNew<vtkActor> actor;
-
-  mapper->SetInputConnection(cyl->GetOutputPort());
-  actor->SetMapper(mapper);
-  actor->GetProperty()->SetColor(1.0, 0.647, 0.2);
-  actor->RotateX(30.0);
-  actor->RotateY(-45.0);
-
-  ren->AddActor(actor);
-  ren->SetBackground(0.2, 0.2, 0.2);
 
   auto renWin = vtkOpenGLRenderWindow::SafeDownCast(win);
   renWin->AddRenderer(ren);
   renWin->SetSize(width, height);
 
   renWin->Initialize();
-  renWin->Render();
-
-  vtkNew<vtkUnsignedCharArray> pixels;
-  renWin->GetRGBACharPixelData(0, 0, width - 1, height - 1, 1, pixels);
-  // now let's remove it.
-  ren->RemoveActor(actor);
-  // display blank screen.
   renWin->Render();
 
   vtkNew<vtkOpenGLVideoFrame> rgba32Picture;
@@ -77,7 +53,9 @@ int TestRGBA32SliceOrderBottomUp(int argc, char* argv[])
   rgba32Picture->AllocateDataStore();
   vtkOpenGLCheckErrors("ERROR allocating gl texture. ");
 
-  rgba32Picture->CopyData(pixels->GetPointer(0), 4 * width * height);
+  auto pixels =
+    vtk::TakeSmartPointer(vtkStreamingTestUtility::GenerateRGBA32ColorBars(width, height));
+  rgba32Picture->CopyData(pixels);
   vtkOpenGLCheckErrors("ERROR uploading pixels to gl texture. ");
 
   rgba32Picture->Render(renWin);
@@ -92,7 +70,9 @@ int TestRGBA32SliceOrderBottomUp(int argc, char* argv[])
   vtkNew<vtkImageData> baseline;
   baseline->SetDimensions(width, height, 1);
   baseline->AllocateScalars(VTK_UNSIGNED_CHAR, 4);
-  baseline->GetPointData()->SetScalars(pixels);
+  std::copy(pixels->GetPointer(0), pixels->GetPointer(pixels->GetNumberOfValues()),
+    reinterpret_cast<vtkUnsignedCharArray::ValueType*>(
+      baseline->GetPointData()->GetScalars()->GetVoidPointer(0)));
 
   vtkNew<vtkImageData> testImage;
   testImage->SetDimensions(width, height, 1);

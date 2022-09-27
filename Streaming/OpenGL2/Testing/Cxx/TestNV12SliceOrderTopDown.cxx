@@ -14,8 +14,6 @@
 =========================================================================*/
 // This test exercises the shader programs that draw NV12 top-down pictures.
 
-#include "vtkCPUVideoFrame.h"
-#include "vtkCylinderSource.h"
 #include "vtkImageData.h"
 #include "vtkImageDifference.h"
 #include "vtkLogger.h"
@@ -23,11 +21,7 @@
 #include "vtkOpenGLRenderWindow.h"
 #include "vtkOpenGLVideoFrame.h"
 #include "vtkPNGReader.h"
-#include "vtkPixelFormatTypes.h"
 #include "vtkPointData.h"
-#include "vtkPolyDataMapper.h"
-#include "vtkProperty.h"
-#include "vtkRawVideoFrame.h"
 #include "vtkRenderer.h"
 #include "vtkStreamingTestUtility.h"
 #include "vtkTestUtilities.h"

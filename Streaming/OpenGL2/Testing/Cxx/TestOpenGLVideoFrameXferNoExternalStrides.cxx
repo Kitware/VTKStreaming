@@ -14,14 +14,12 @@
 =========================================================================*/
 // This test exercises the memory access API for vtkOpenGLVideoFrame without external strides.
 
-#include "vtkCylinderSource.h"
+#include "vtkObject.h"
+
 #include "vtkLogger.h"
 #include "vtkOpenGLError.h"
 #include "vtkOpenGLRenderWindow.h"
 #include "vtkOpenGLVideoFrame.h"
-#include "vtkPixelFormatTypes.h"
-#include "vtkPolyDataMapper.h"
-#include "vtkProperty.h"
 #include "vtkRenderWindow.h"
 #include "vtkRenderer.h"
 #include "vtkStreamingTestUtility.h"
@@ -35,27 +33,15 @@ int TestOpenGLVideoFrameXferNoExternalStrides(int argc, char* argv[])
 
   vtkNew<vtkRenderWindow> win;
   vtkNew<vtkRenderer> ren;
-  vtkNew<vtkCylinderSource> cyl;
-  vtkNew<vtkPolyDataMapper> mapper;
-  vtkNew<vtkActor> actor;
-
-  mapper->SetInputConnection(cyl->GetOutputPort());
-  actor->SetMapper(mapper);
-  actor->GetProperty()->SetColor(1.0, 0.647, 0.2);
-  actor->RotateX(30.0);
-  actor->RotateY(-45.0);
-
-  ren->AddActor(actor);
-  ren->SetBackground(0.2, 0.2, 0.2);
 
   auto renWin = vtkOpenGLRenderWindow::SafeDownCast(win);
   renWin->AddRenderer(ren);
   renWin->SetSize(width, height);
-
   renWin->Initialize();
   renWin->Render();
 
-  auto pixels = renWin->GetRGBACharPixelData(0, 0, width - 1, height - 1, 1);
+  auto pixels =
+    vtk::TakeSmartPointer(vtkStreamingTestUtility::GenerateRGBA32ColorBars(width, height));
 
   vtkNew<vtkOpenGLVideoFrame> srcFrame;
   srcFrame->SetContext(renWin);
@@ -66,7 +52,7 @@ int TestOpenGLVideoFrameXferNoExternalStrides(int argc, char* argv[])
   srcFrame->ComputeDefaultStrides();
   srcFrame->AllocateDataStore();
   vtkOpenGLCheckErrors("ERROR allocating gl texture. ");
-  srcFrame->CopyData(pixels, 4 * width * height);
+  srcFrame->CopyData(pixels);
   vtkOpenGLCheckErrors("ERROR uploading pixels to gl texture. ");
 
   vtkNew<vtkOpenGLVideoFrame> dstFrame;
@@ -78,14 +64,14 @@ int TestOpenGLVideoFrameXferNoExternalStrides(int argc, char* argv[])
   dstFrame->DeepCopy(srcFrame);
   vtkOpenGLCheckErrors("ERROR fetching pixels from gl texture. ");
 
-  unsigned char* srcData = nullptr;
-  assert(dstFrame->GetData(srcData) == srcFrame->GetActualSize());
-  success &= dstFrame->GetData(srcData) == srcFrame->GetActualSize();
+  unsigned char *dstData = nullptr, *srcData = pixels->GetPointer(0);
+  assert(dstFrame->GetData(dstData) == srcFrame->GetActualSize());
+  success &= dstFrame->GetData(dstData) == srcFrame->GetActualSize();
   for (int i = 0; i < dstFrame->GetActualSize(); ++i)
   {
-    assert(pixels[i] == srcData[i]);
-    success &= pixels[i] == srcData[i];
-    // vtkLogF(TRACE, "d[%d]=%d == h[%d]=%d", i, pixels[i], i, srcData[i]);
+    assert(srcData[i] == dstData[i]);
+    success &= srcData[i] == dstData[i];
+    // vtkLogF(TRACE, "src[%d]=%d == dsr[%d]=%d", i, srcData[i], i, dstData[i]);
   }
   return 0;
 }
