@@ -16,7 +16,9 @@
 #ifndef vtkStreamingTestUtility_h
 #define vtkStreamingTestUtility_h
 
-struct vtkStreamingTestUtility
+#include "vtkStreamingTestUtilitesModule.h"
+
+struct VTKSTREAMINGTESTUTILITES_EXPORT vtkStreamingTestUtility
 {
   static void SetLoggerVerbosityFromCli(int argc, char* argv[]);
 };
