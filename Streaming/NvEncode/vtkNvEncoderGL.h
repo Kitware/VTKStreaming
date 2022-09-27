@@ -18,7 +18,7 @@
 
 #include "vtkVideoEncoder.h"
 
-#include "nvEncodeAPI.h"             // for nvenc
+#include "nvEncodeAPI.h"                // for nvenc
 #include "vtkStreamingNvEncodeModule.h" // for export macro
 
 #include <memory> // for ivar

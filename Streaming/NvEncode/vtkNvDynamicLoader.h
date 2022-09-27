@@ -58,3 +58,4 @@
 #endif
 
 #endif
+// VTK-HeaderTest-Exclude: vtkNvDynamicLoader.h
