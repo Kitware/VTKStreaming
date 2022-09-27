@@ -15,6 +15,7 @@
 
 #include "vtkStreamingTestUtility.h"
 #include "vtkLogger.h"
+#include "vtkUnsignedCharArray.h"
 
 #include <cstdlib>
 #include <string>
@@ -37,4 +38,37 @@ void vtkStreamingTestUtility::SetLoggerVerbosityFromCli(int argc, char** argv)
       vtkLogger::SetStderrVerbosity(verbosity_level);
     }
   }
+}
+
+vtkUnsignedCharArray* vtkStreamingTestUtility::GenerateRGBA32ColorBars(int width, int height, int shift /*=0*/)
+{
+  auto result = vtkUnsignedCharArray::New();
+  int ndivs = width >> 3;
+  std::vector<unsigned char> reds(8), greens(8), blues(8), alphas(8, 255);
+  reds = { 255, 255, 0, 0, 255, 255, 0, 0 };
+  greens = { 255, 255, 255, 255, 0, 0, 0, 0 };
+  blues = { 255, 0, 255, 0, 255, 0, 255, 0 };
+  for (int j = 0; j < height >> 1; ++j)
+  {
+    for (int i = 0; i < width; ++i)
+    {
+      const int bar = ((i / ndivs) + (shift % 8)) % 8;
+      result->InsertNextValue(reds[bar]);
+      result->InsertNextValue(greens[bar]);
+      result->InsertNextValue(blues[bar]);
+      result->InsertNextValue(alphas[bar]);
+    }
+  }
+  for (int j = height >> 1; j < height; ++j)
+  {
+    for (int i = 0; i < width; ++i)
+    {
+      const int bar = (7 - (i / ndivs) + (shift % 8)) % 8;
+      result->InsertNextValue(reds[bar]);
+      result->InsertNextValue(greens[bar]);
+      result->InsertNextValue(blues[bar]);
+      result->InsertNextValue(alphas[bar]);
+    }
+  }
+  return result;
 }
