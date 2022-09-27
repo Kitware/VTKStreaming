@@ -17,9 +17,11 @@
 #include "vtkCPUVideoFrame.h"
 #include "vtkLogger.h"
 #include "vtkPixelFormatTypes.h"
+#include "vtkStreamingTestUtility.h"
 
 int TestVideoFrameLumaChroma(int argc, char* argv[])
 {
+  vtkStreamingTestUtility::SetLoggerVerbosityFromCli(argc, argv);
   bool success = true;
   (void)argc;
   (void)argv;

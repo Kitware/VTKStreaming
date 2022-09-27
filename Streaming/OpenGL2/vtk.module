@@ -17,3 +17,4 @@ TEST_DEPENDS
   VTK::TestingCore
   VTK::ImagingCore
   VTK::IOImage
+  VTKStreaming::TestUtilites

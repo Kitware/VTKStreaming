@@ -11,3 +11,4 @@ DEPENDS
   VTK::CommonDataModel
 TEST_DEPENDS
   VTK::TestingCore
+  VTKStreaming::TestUtilites

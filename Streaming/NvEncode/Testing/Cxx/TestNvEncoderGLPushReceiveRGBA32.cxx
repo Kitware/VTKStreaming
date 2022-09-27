@@ -29,6 +29,7 @@
 #include "vtkRawVideoFrame.h"
 #include "vtkRenderWindowInteractor.h"
 #include "vtkRenderer.h"
+#include "vtkStreamingTestUtility.h"
 #include "vtkTestUtilities.h"
 #include "vtkVideoCodecTypes.h"
 #include "vtkVideoProcessingStatusTypes.h"
@@ -42,6 +43,7 @@
 
 int TestNvEncoderGLPushReceiveRGBA32(int argc, char* argv[])
 {
+  vtkStreamingTestUtility::SetLoggerVerbosityFromCli(argc, argv);
   bool success = true;
   int width = 320, height = 240;
 

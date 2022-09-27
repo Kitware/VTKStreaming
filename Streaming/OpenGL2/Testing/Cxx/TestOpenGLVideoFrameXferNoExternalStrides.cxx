@@ -24,10 +24,12 @@
 #include "vtkProperty.h"
 #include "vtkRenderWindow.h"
 #include "vtkRenderer.h"
+#include "vtkStreamingTestUtility.h"
 #include "vtkTestUtilities.h"
 
 int TestOpenGLVideoFrameXferNoExternalStrides(int argc, char* argv[])
 {
+  vtkStreamingTestUtility::SetLoggerVerbosityFromCli(argc, argv);
   bool success = true;
   const int width = 240, height = 240;
 

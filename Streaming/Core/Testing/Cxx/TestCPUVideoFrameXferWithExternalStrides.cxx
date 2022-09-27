@@ -17,9 +17,11 @@
 #include "vtkCPUVideoFrame.h"
 #include "vtkLogger.h"
 #include "vtkPixelFormatTypes.h"
+#include "vtkStreamingTestUtility.h"
 
 int TestCPUVideoFrameXferWithExternalStrides(int argc, char* argv[])
 {
+  vtkStreamingTestUtility::SetLoggerVerbosityFromCli(argc, argv);
   bool success = true;
   const int width = 239, height = 240;
 

@@ -24,10 +24,12 @@
 #include "vtkPixelFormatTypes.h"
 #include "vtkRawVideoFrame.h"
 #include "vtkRenderer.h"
+#include "vtkStreamingTestUtility.h"
 #include "vtkVideoProcessingStatusTypes.h"
 
 int TestNvEncoderGLMapResource(int argc, char* argv[])
 {
+  vtkStreamingTestUtility::SetLoggerVerbosityFromCli(argc, argv);
   bool success = true;
   const int w = 480, h = 480;
 

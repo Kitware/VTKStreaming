@@ -16,3 +16,4 @@ TEST_DEPENDS
   VTK::TestingCore
   VTK::RenderingOpenGL2
   VTKStreaming::OpenGL2
+  VTKStreaming::TestUtilites

@@ -16,11 +16,13 @@
 
 #include "vtkCompressedVideoPacket.h"
 #include "vtkLogger.h"
+#include "vtkStreamingTestUtility.h"
 
 #include <vector>
 
-int TestCodedVideoPacketMemory(int vtkNotUsed(argc), char* vtkNotUsed(argv)[])
+int TestCodedVideoPacketMemory(int argc, char* argv[])
 {
+  vtkStreamingTestUtility::SetLoggerVerbosityFromCli(argc, argv);
   bool success = true;
   // 1. Set/GetSize
   {

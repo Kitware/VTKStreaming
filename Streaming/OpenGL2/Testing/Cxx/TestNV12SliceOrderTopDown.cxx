@@ -29,10 +29,12 @@
 #include "vtkProperty.h"
 #include "vtkRawVideoFrame.h"
 #include "vtkRenderer.h"
+#include "vtkStreamingTestUtility.h"
 #include "vtkTestUtilities.h"
 
 int TestNV12SliceOrderTopDown(int argc, char* argv[])
 {
+  vtkStreamingTestUtility::SetLoggerVerbosityFromCli(argc, argv);
   bool success = true;
   const int width = 320, height = 240;
   char* filename = vtkTestUtilities::ExpandDataFileName(argc, argv, "cars_320x240.nv12");
