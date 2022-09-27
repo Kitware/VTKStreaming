@@ -14,7 +14,8 @@
 =========================================================================*/
 // This test exercises the memory access API for vtkOpenGLVideoFrame with strides.
 
-#include "vtkCPUVideoFrame.h"
+#include "vtkObject.h"
+
 #include "vtkLogger.h"
 #include "vtkOpenGLError.h"
 #include "vtkOpenGLRenderWindow.h"
@@ -23,7 +24,6 @@
 #include "vtkRenderWindow.h"
 #include "vtkRenderer.h"
 #include "vtkStreamingTestUtility.h"
-#include <vector>
 
 int TestOpenGLVideoFrameXferWithExternalStrides(int argc, char* argv[])
 {
@@ -47,19 +47,15 @@ int TestOpenGLVideoFrameXferWithExternalStrides(int argc, char* argv[])
   srcFrame->SetPixelFormat(VTKPixelFormatType::VTKPF_NV12);
   srcFrame->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::BottomUp);
 
+  auto pixels =
+    vtk::TakeSmartPointer(vtkStreamingTestUtility::GenerateRGBA32ColorBars(width, height));
   int strides[3] = { width + (240 - width), width + (240 - width), 0 };
   srcFrame->SetStrides(strides, 3);
 
   srcFrame->SetContext(renWin);
   srcFrame->AllocateDataStore();
   vtkOpenGLCheckErrors("ERROR allocating gl texture for source. ");
-
-  std::vector<unsigned char> pixels(srcFrame->GetActualSize());
-  for (int i = 0; i < srcFrame->GetActualSize(); ++i)
-  {
-    pixels[i] = i % 255;
-  }
-  srcFrame->CopyData(pixels.data(), pixels.size());
+  srcFrame->CopyData(pixels);
   vtkOpenGLCheckErrors("ERROR uploading pixels to gl texture for source. ");
 
   vtkNew<vtkOpenGLVideoFrame> dstFrame;
@@ -71,14 +67,14 @@ int TestOpenGLVideoFrameXferWithExternalStrides(int argc, char* argv[])
   dstFrame->DeepCopy(srcFrame);
   vtkOpenGLCheckErrors("ERROR fetching pixels from gl texture of source -> destination. ");
 
-  unsigned char* hData = nullptr;
-  assert(dstFrame->GetData(hData) == srcFrame->GetActualSize());
-  success &= dstFrame->GetData(hData) == srcFrame->GetActualSize();
+  unsigned char *dstData = nullptr, *srcData = pixels->GetPointer(0);
+  assert(dstFrame->GetData(dstData) == srcFrame->GetActualSize());
+  success &= dstFrame->GetData(dstData) == srcFrame->GetActualSize();
   for (int i = 0; i < dstFrame->GetActualSize(); ++i)
   {
-    assert(pixels[i] == hData[i]);
-    success &= pixels[i] == hData[i];
-    // vtkLogF(TRACE, "d[%d]=%d == h[%d]=%d", i, pixels[i], i, hData[i]);
+    assert(srcData[i] == dstData[i]);
+    success &= srcData[i] == dstData[i];
+    // vtkLogF(TRACE, "src[%d]=%d == dsr[%d]=%d", i, srcData[i], i, dstData[i]);
   }
   return 0;
 }

@@ -45,7 +45,8 @@ void vtkOpenGLNV12RenderDelegate::ReleaseGraphicsResources(vtkOpenGLRenderWindow
 }
 
 void vtkOpenGLNV12RenderDelegate::Render(vtkTextureObject* nv12Texture,
-  vtkOpenGLRenderWindow* window, int strides[3], int chromaHeight, bool invert_y /* = false*/)
+  vtkOpenGLRenderWindow* window, int strides[3], int vtkNotUsed(chromaHeight),
+  bool invert_y /* = false*/)
 {
   vtkLogScopeF(TRACE, "%s textureContext=%s, window=%s, Texture=%d", __func__,
     vtkLogIdentifier(nv12Texture->GetContext()), vtkLogIdentifier(window),
@@ -64,7 +65,7 @@ void vtkOpenGLNV12RenderDelegate::Render(vtkTextureObject* nv12Texture,
     if (invert_y)
     {
       vtkShaderProgram::Substitute(
-        FSSource, "//VTK::FLIPY::Impl", "float yCoord = windowDims[1] - gl_FragCoord.y - 0.5;\n");
+        FSSource, "//VTK::FLIPY::Impl", "float yCoord = resolution[1] - gl_FragCoord.y - 0.5;\n");
     }
     else
     {
@@ -108,9 +109,8 @@ void vtkOpenGLNV12RenderDelegate::Render(vtkTextureObject* nv12Texture,
     vtkOpenGLState::ScopedglActiveTexture textureSave(state);
     nv12Texture->Activate();
     program->SetUniform1iv("strides", 3, strides);
-    program->SetUniform1iv("windowDims", 2, window->GetSize());
+    program->SetUniform1iv("resolution", 2, window->GetSize());
     program->SetUniformi("nv12Texture", nv12Texture->GetTextureUnit());
-    program->SetUniformi("chromaHeight", chromaHeight);
     vtkOpenGLRenderUtilities::RenderTriangles(
       verts, 4, iboData, 6, nullptr, program, this->DrawHelper.VAO);
     nv12Texture->Deactivate();

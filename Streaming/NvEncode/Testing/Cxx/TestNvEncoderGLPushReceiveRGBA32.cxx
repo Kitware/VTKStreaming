@@ -15,127 +15,94 @@
 // This test exercises NvEnc h.264 encoder with RGBA32 inputs.
 
 #include "vtkActor.h"
-#include "vtkCallbackCommand.h"
-#include "vtkCamera.h"
-#include "vtkCylinderSource.h"
 #include "vtkLogger.h"
 #include "vtkNamedColors.h"
 #include "vtkNvEncoderGL.h"
 #include "vtkOpenGLError.h"
 #include "vtkOpenGLRenderWindow.h"
-#include "vtkPixelFormatTypes.h"
-#include "vtkPolyDataMapper.h"
-#include "vtkProperty.h"
-#include "vtkRawVideoFrame.h"
-#include "vtkRenderWindowInteractor.h"
+#include "vtkOpenGLVideoFrame.h"
 #include "vtkRenderer.h"
 #include "vtkStreamingTestUtility.h"
 #include "vtkTestUtilities.h"
-#include "vtkVideoCodecTypes.h"
 #include "vtkVideoProcessingStatusTypes.h"
-
-#include <array>
-#include <fstream>
-#include <iomanip>
-#include <string>
-
-#define WRITE_CHUNKS 0
 
 int TestNvEncoderGLPushReceiveRGBA32(int argc, char* argv[])
 {
   vtkStreamingTestUtility::SetLoggerVerbosityFromCli(argc, argv);
   bool success = true;
-  int width = 320, height = 240;
+  const int width = 320, height = 240;
 
-  char* filename =
-    vtkTestUtilities::ExpandDataFileName(argc, argv, "spinnin_cylinder_320x240_100_frames.h264");
+  char* filename = vtkTestUtilities::ExpandDataFileName(argc, argv, "movin_color_bars_320x240_64_frames.h264");
   std::string baselineFile = filename;
   delete[] filename;
 
-  vtkNew<vtkRenderWindowInteractor> iren;
   vtkNew<vtkRenderWindow> win;
   vtkNew<vtkRenderer> ren;
-  vtkNew<vtkCylinderSource> cyl;
-  vtkNew<vtkPolyDataMapper> mapper;
-  vtkNew<vtkActor> actor;
-  vtkNew<vtkNamedColors> colors;
-
-  // Set the background color.
-  std::array<unsigned char, 4> bkg{ { 26, 51, 102, 255 } };
-  colors->SetColor("BkgColor", bkg.data());
-
-  mapper->SetInputConnection(cyl->GetOutputPort());
-  actor->SetMapper(mapper);
-  actor->GetProperty()->SetColor(colors->GetColor4d("Tomato").GetData());
-  actor->RotateX(30.0);
-  actor->RotateY(-45.0);
-
-  ren->AddActor(actor);
-  ren->SetBackground(colors->GetColor3d("BkgColor").GetData());
-
   auto renWin = vtkOpenGLRenderWindow::SafeDownCast(win);
-  renWin->AddRenderer(ren);
   renWin->SetSize(width, height);
-  iren->SetRenderWindow(renWin);
-  iren->Initialize();
-  iren->Render();
+  renWin->Initialize();
+  renWin->Render();
 
   vtkNew<vtkNvEncoderGL> enc;
   enc->SetGraphicsContext(renWin);
-  enc->SetCodec(VTKVideoCodecType::VTKVC_H264);
   enc->SetWidth(width);
   enc->SetHeight(height);
+  enc->SetCodec(VTKVideoCodecType::VTKVC_H264);
   enc->AsyncModeOff();
   enc->SetInputPixelFormat(VTKPixelFormatType::VTKPF_RGBA32);
 
-  vtkNew<vtkCallbackCommand> exitCallback;
-  exitCallback->SetClientData(enc);
-  exitCallback->SetCallback(
-    [](vtkObject* iren_ptr, unsigned long, void* enc_ptr, void*)
-    {
-      // drain needs an opengl context so it can release the resources.
-      auto encoder = reinterpret_cast<vtkVideoEncoder*>(enc_ptr);
-      auto result = encoder->Drain();
-      (void)result;
-      auto iren = reinterpret_cast<vtkRenderWindowInteractor*>(iren_ptr);
-      encoder->Shutdown();
-      iren->TerminateApp();
-    });
-  iren->AddObserver(vtkCommand::ExitEvent, exitCallback);
+  vtkNew<vtkOpenGLVideoFrame> rgba32Picture;
+  rgba32Picture->SetContext(renWin);
+  rgba32Picture->SetWidth(width);
+  rgba32Picture->SetHeight(height);
+  rgba32Picture->SetPixelFormat(VTKPixelFormatType::VTKPF_RGBA32);
+  rgba32Picture->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::TopDown);
+  rgba32Picture->ComputeDefaultStrides();
 
-  int frameId = 0;
   std::vector<uint8_t> bitstream;
+  int shift = 0;
   while (true)
   {
-    double azimuth = (frameId % 36) * 10;
-    ren->GetActiveCamera()->Azimuth(vtkMath::RadiansFromDegrees(azimuth));
-    renWin->Render();
-    if (frameId > 100)
+    auto pixels = vtk::TakeSmartPointer(
+      vtkStreamingTestUtility::GenerateRGBA32ColorBars(width, height, shift++));
+
+    if (shift >= 64)
     {
-      iren->ExitEvent();
-    }
-    if (iren->GetDone())
-    {
+      auto result = enc->Drain();
+      if (!result.second.empty())
+      {
+        auto data = result.second[0]->GetData()->GetPointer(0);
+        auto size = result.second[0]->GetSize();
+        for (std::size_t i = 0; i < size; ++i)
+        {
+          bitstream.push_back(data[i]);
+        }
+      }
+      enc->Shutdown();
       break;
     }
-    vtkOpenGLCheckErrors("error uploading data to gl texture");
+    rgba32Picture->CopyData(pixels);
+    vtkOpenGLCheckErrors("ERROR uploading data to gl texture");
 
-    auto result = enc->EncodeDisplay();
+    rgba32Picture->Render(renWin);
 
-    vtkLog(TRACE, << vtkVideoProcessingStatusTypeUtilities::ToString(result.first));
-    success &= !(result.second.empty() || result.second[0] == nullptr);
-    if (!success)
+    auto status = enc->Push(rgba32Picture);
+    vtkOpenGLCheckErrors("ERROR fetching data from gl texture");
+    vtkLogF(TRACE, "Push - %s", vtkVideoProcessingStatusTypeUtilities::ToString(status));
+
+    auto result = enc->GetResult();
+    vtkLogF(TRACE, "GetResult - %s", vtkVideoProcessingStatusTypeUtilities::ToString(result.first));
+
+    if (!result.second.empty() && result.second[0] != nullptr)
     {
-      break;
+      auto data = result.second[0]->GetData()->GetPointer(0);
+      auto size = result.second[0]->GetSize();
+      for (std::size_t i = 0; i < size; ++i)
+      {
+        bitstream.push_back(data[i]);
+      }
+      vtkLogF(TRACE, "Wrote %d bytes", size);
     }
-    auto data = result.second[0]->GetData()->GetPointer(0);
-    auto size = result.second[0]->GetSize();
-    vtkLogF(INFO, "Recv %d bytes", size);
-    for (std::size_t i = 0; i < size; ++i)
-    {
-      bitstream.push_back(data[i]);
-    }
-    ++frameId;
   }
 
   std::ifstream baseline;
@@ -145,8 +112,8 @@ int TestNvEncoderGLPushReceiveRGBA32(int argc, char* argv[])
 
   const std::size_t size1 = baseline.gcount();
   const std::size_t size2 = bitstream.size();
-  vtkLogF(TRACE, "%zu, %zu", size1, size2);
-  success = size1 == size2;
+  vtkLogF(TRACE, "%zu, %zu", size1, bitstream.size());
+  success = bitstream.size() == size1;
 
   baseline.clear();
   baseline.seekg(0, std::ios_base::beg);
@@ -161,8 +128,8 @@ int TestNvEncoderGLPushReceiveRGBA32(int argc, char* argv[])
   }
   if (!success)
   {
-    filename = vtkTestUtilities::ExpandFileNameWithArgOrEnvOrDefault("-T", argc, argv,
-      "VTKSTREAMING_DATA_ROOT", "Temporary", "spinnin_cylinder_320x240_100_frames.h264");
+    filename = vtkTestUtilities::ExpandFileNameWithArgOrEnvOrDefault(
+      "-T", argc, argv, "VTKSTREAMING_DATA_ROOT", "Temporary", "movin_color_bars_320x240_64_frames.h264");
     std::ofstream file(filename, std::ios::out | std::ios::binary);
     file.write(reinterpret_cast<char*>(bitstream.data()), bitstream.size());
   }

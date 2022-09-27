@@ -18,9 +18,8 @@
 in vec2 texCoord;
 
 uniform sampler2D nv12Texture;
-uniform int windowDims[2];
+uniform int resolution[2];
 uniform int strides[3];
-uniform int chromaHeight;
 
 //VTK::NV12::Decl
 
@@ -30,9 +29,9 @@ void main()
 
   ivec2 pixelCoord = ivec2(gl_FragCoord.x - 0.5, yCoord);
   
-  int y_half = pixelCoord.y >> 1;
-  float x_mod = mod(pixelCoord.x, 2);
-  float x_nearest_even_prev = pixelCoord.x - x_mod; // nearest even number lesser than the x-coordinate.
+  int a = (pixelCoord.x >> 1) << 1; // nearest even number lesser than l.h.s argument for '+'
+  int b = ((resolution[1] + 1) >> 1) << 1; // nearest even number greater than l.h.s argument for '+'
+  int c = pixelCoord.y >> 1;
 
   // luminance.
   ivec2 lumaOfst;
@@ -41,11 +40,11 @@ void main()
   float luma = texelFetch(nv12Texture, lumaOfst, 0).r;
 
   // chroma red.
-  ivec2 uOffset = ivec2(x_nearest_even_prev, windowDims[1] + y_half);
+  ivec2 uOffset = ivec2(a, b + c);
   float u = texelFetch(nv12Texture, uOffset, 0).r;
 
   // chroma blue.
-  ivec2 vOffset = ivec2(uOffset.x + 1, uOffset.y);
+  ivec2 vOffset = ivec2(a + 1, b + c);
   float v = texelFetch(nv12Texture, vOffset, 0).r;
 
   const mat3 YCbCrToRGBmatrix = mat3(
