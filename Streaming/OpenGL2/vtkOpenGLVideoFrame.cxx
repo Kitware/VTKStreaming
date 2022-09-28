@@ -18,7 +18,9 @@
 #include "vtkLogger.h"
 #include "vtkObjectFactory.h"
 #include "vtkOpenGLError.h"
+#include "vtkOpenGLIYUVCaptureDelegate.h"
 #include "vtkOpenGLIYUVRenderDelegate.h"
+#include "vtkOpenGLNV12CaptureDelegate.h"
 #include "vtkOpenGLNV12RenderDelegate.h"
 #include "vtkOpenGLRGB24RenderDelegate.h"
 #include "vtkOpenGLRGBA32RenderDelegate.h"
@@ -28,8 +30,6 @@
 #include "vtkOpenGLVideoFrameInternals.h"
 #include "vtkPixelFormatTypes.h"
 #include "vtkSmartPointer.h"
-
-#include <sstream>
 #include <vtk_glew.h>
 
 #include <algorithm>
@@ -38,10 +38,12 @@ vtkStandardNewMacro(vtkOpenGLVideoFrame);
 
 //------------------------------------------------------------------------------
 vtkOpenGLVideoFrame::vtkOpenGLVideoFrame()
-  : IYUVDelegate(std::unique_ptr<vtkOpenGLIYUVRenderDelegate>(new vtkOpenGLIYUVRenderDelegate()))
-  , NV12Delegate(std::unique_ptr<vtkOpenGLNV12RenderDelegate>(new vtkOpenGLNV12RenderDelegate()))
-  , RGB24Delegate(std::unique_ptr<vtkOpenGLRGB24RenderDelegate>(new vtkOpenGLRGB24RenderDelegate()))
-  , RGBA32Delegate(
+  : IYUVGrabber(std::unique_ptr<vtkOpenGLIYUVCaptureDelegate>(new vtkOpenGLIYUVCaptureDelegate()))
+  , NV12Grabber(std::unique_ptr<vtkOpenGLNV12CaptureDelegate>(new vtkOpenGLNV12CaptureDelegate()))
+  , IYUVRenderer(std::unique_ptr<vtkOpenGLIYUVRenderDelegate>(new vtkOpenGLIYUVRenderDelegate()))
+  , NV12Renderer(std::unique_ptr<vtkOpenGLNV12RenderDelegate>(new vtkOpenGLNV12RenderDelegate()))
+  , RGB24Renderer(std::unique_ptr<vtkOpenGLRGB24RenderDelegate>(new vtkOpenGLRGB24RenderDelegate()))
+  , RGBA32Renderer(
       std::unique_ptr<vtkOpenGLRGBA32RenderDelegate>(new vtkOpenGLRGBA32RenderDelegate()))
   , Internals(std::unique_ptr<vtkOpenGLVideoFrameInternals>(new vtkOpenGLVideoFrameInternals()))
 {
@@ -118,42 +120,88 @@ void vtkOpenGLVideoFrame::Capture(vtkRenderWindow* window)
     internals.VtkTexture->GetHandle(), vtkLogIdentifier(internals.VtkTexture->GetContext()),
     vtkLogIdentifier(oglRenWin));
 
-  if (this->PixelFormat != VTKPixelFormatType::VTKPF_RGBA32)
-  {
-    vtkLogF(ERROR, "Capture API only supports RGBA32 pixel format.");
-    return;
-  }
+  const bool invert_y = this->SliceOrder == vtkRawVideoFrame::SliceOrderType::TopDown;
+  const int chromaHeight = vtkRawVideoFrame::GetChromaHeight(this->Height, this->PixelFormat);
 
-  oglRenWin->MakeCurrent();
-  oglRenWin->GetState()->PushReadFramebufferBinding();
-  oglRenWin->GetDisplayFramebuffer()->Bind(GL_READ_FRAMEBUFFER);
-  oglRenWin->GetDisplayFramebuffer()->ActivateReadBuffer(0);
-
-  internals.VtkTexture->Bind();
-
-  if (this->SliceOrder == vtkRawVideoFrame::SliceOrderType::BottomUp)
+  switch (this->PixelFormat)
   {
-    glCopyTexSubImage2D(
-      internals.VtkTexture->GetTarget(), 0, 0, 0, 0, 0, this->Width, this->Height);
-  }
-  else
-  {
-    vtkLog(TRACE, "Desired slice order is TopDown. Will invert picture along Y dimension.");
-    for (int i1 = 0, i2 = this->Height - 1; i1 < this->Height && i2 >= 0; ++i1, --i2)
+    case VTKPixelFormatType::VTKPF_RGB24:
     {
-      int xofst = 0;
-      int yofst = i2;
-      int xsrc = 0;
-      int ysrc = i1;
-      int width = this->Width;
-      int height = 1;
-      glCopyTexSubImage2D(
-        internals.VtkTexture->GetTarget(), 0, xofst, yofst, xsrc, ysrc, width, height);
+      vtkLogF(ERROR, "Capture API only supports RGBA32, IYUV, NV12 pixel formats.");
+      break;
+    }
+    case VTKPixelFormatType::VTKPF_RGBA32:
+    {
+      oglRenWin->MakeCurrent();
+      oglRenWin->GetState()->PushReadFramebufferBinding();
+      oglRenWin->GetDisplayFramebuffer()->Bind(GL_READ_FRAMEBUFFER);
+      oglRenWin->GetDisplayFramebuffer()->ActivateReadBuffer(0);
+      internals.VtkTexture->Bind();
+
+      if (invert_y)
+      {
+        vtkLog(TRACE, "Desired slice order is TopDown. Will invert picture along Y dimension.");
+        for (int i1 = 0, i2 = this->Height - 1; i1 < this->Height && i2 >= 0; ++i1, --i2)
+        {
+          int xofst = 0;
+          int yofst = i2;
+          int xsrc = 0;
+          int ysrc = i1;
+          int width = this->Width;
+          int height = 1;
+          glCopyTexSubImage2D(
+            internals.VtkTexture->GetTarget(), 0, xofst, yofst, xsrc, ysrc, width, height);
+        }
+      }
+      else
+      {
+        glCopyTexSubImage2D(
+          internals.VtkTexture->GetTarget(), 0, 0, 0, 0, 0, this->Width, this->Height);
+      }
+      vtkOpenGLCheckErrorMacro("FBO->Internals->VtkTexture xfer failed ");
+      glBindTexture(internals.VtkTexture->GetTarget(), 0);
+      oglRenWin->GetState()->PopReadFramebufferBinding();
+      break;
+    }
+    case VTKPixelFormatType::VTKPF_IYUV:
+    {
+      internals.VtkFrameBuffer->SaveCurrentBindingsAndBuffers();
+      internals.VtkFrameBuffer->AddColorAttachment(
+        0, internals.VtkTexture, 0, internals.VtkTexture->GetTarget(), 0);
+      vtkOpenGLCheckErrorMacro("Failed to add output texture to read framebuffer. ");
+
+      internals.VtkFrameBuffer->CheckFrameBufferStatus(GL_FRAMEBUFFER);
+      internals.VtkFrameBuffer->Bind(GL_DRAW_FRAMEBUFFER);
+      internals.VtkFrameBuffer->ActivateDrawBuffers(1);
+      vtkOpenGLCheckErrorMacro("Failed to bind draw framebuffer. ");
+
+      auto rgba32Texture = oglRenWin->GetDisplayFramebuffer()->GetColorAttachmentAsTextureObject(0);
+      this->IYUVGrabber->Capture(rgba32Texture, oglRenWin, this->Strides, chromaHeight, invert_y);
+
+      internals.VtkFrameBuffer->RemoveColorAttachments(0);
+      internals.VtkFrameBuffer->RestorePreviousBindingsAndBuffers();
+      break;
+    }
+    case VTKPixelFormatType::VTKPF_NV12:
+    {
+      internals.VtkFrameBuffer->SaveCurrentBindingsAndBuffers();
+      internals.VtkFrameBuffer->AddColorAttachment(
+        0, internals.VtkTexture, 0, internals.VtkTexture->GetTarget(), 0);
+      vtkOpenGLCheckErrorMacro("Failed to add output texture to read framebuffer. ");
+
+      internals.VtkFrameBuffer->CheckFrameBufferStatus(GL_FRAMEBUFFER);
+      internals.VtkFrameBuffer->Bind(GL_DRAW_FRAMEBUFFER);
+      internals.VtkFrameBuffer->ActivateDrawBuffers(1);
+      vtkOpenGLCheckErrorMacro("Failed to bind draw framebuffer. ");
+
+      auto rgba32Texture = oglRenWin->GetDisplayFramebuffer()->GetColorAttachmentAsTextureObject(0);
+      this->NV12Grabber->Capture(rgba32Texture, oglRenWin, this->Strides, chromaHeight, invert_y);
+
+      internals.VtkFrameBuffer->RemoveColorAttachments(0);
+      internals.VtkFrameBuffer->RestorePreviousBindingsAndBuffers();
+      break;
     }
   }
-  vtkOpenGLCheckErrorMacro("FBO->Internals->VtkTexture xfer failed ");
-  glBindTexture(internals.VtkTexture->GetTarget(), 0);
-  oglRenWin->GetState()->PopReadFramebufferBinding();
   this->Modified();
 }
 
@@ -436,23 +484,23 @@ void vtkOpenGLVideoFrame::Render(vtkRenderWindow* window)
     vtkLogIdentifier(internals.VtkTexture->GetContext()), vtkLogIdentifier(window));
 
   // when rendering into opengl, we may want to invert along Y dimension.
-  bool invert_y = this->SliceOrder == vtkRawVideoFrame::SliceOrderType::TopDown;
+  const bool invert_y = this->SliceOrder == vtkRawVideoFrame::SliceOrderType::TopDown;
   const int chromaHeight = vtkRawVideoFrame::GetChromaHeight(this->Height, this->PixelFormat);
   auto& tex = internals.VtkTexture;
 
   switch (this->PixelFormat)
   {
     case VTKPixelFormatType::VTKPF_RGBA32:
-      this->RGBA32Delegate->Render(tex, oglRenWin, invert_y);
+      this->RGBA32Renderer->Render(tex, oglRenWin, invert_y);
       break;
     case VTKPixelFormatType::VTKPF_RGB24:
-      this->RGB24Delegate->Render(tex, oglRenWin, invert_y);
+      this->RGB24Renderer->Render(tex, oglRenWin, invert_y);
       break;
     case VTKPixelFormatType::VTKPF_NV12:
-      this->NV12Delegate->Render(tex, oglRenWin, this->Strides, chromaHeight, invert_y);
+      this->NV12Renderer->Render(tex, oglRenWin, this->Strides, chromaHeight, invert_y);
       break;
     case VTKPixelFormatType::VTKPF_IYUV:
-      this->IYUVDelegate->Render(tex, oglRenWin, this->Strides, chromaHeight, invert_y);
+      this->IYUVRenderer->Render(tex, oglRenWin, this->Strides, chromaHeight, invert_y);
       break;
   }
 }

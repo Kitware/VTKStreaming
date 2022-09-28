@@ -1,7 +1,7 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    TestNvEncoderGLPushReceieveDisplayRGBA32.cxx
+  Module:    TestNvEncoderGLPushReceieveDisplayNV12.cxx
 
   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
   All rights reserved.
@@ -13,7 +13,7 @@
 
 =========================================================================*/
 // This test exercises zero-copy display encoding with NvEnc h.264 OpenGL based encoder
-// with display captured in RGBA32 pixel format.
+// with display captured in NV12 pixel format.
 
 #include "vtkActor.h"
 #include "vtkCallbackCommand.h"
@@ -42,14 +42,14 @@
 
 #define WRITE_CHUNKS 0
 
-int TestNvEncoderGLPushReceieveDisplayRGBA32(int argc, char* argv[])
+int TestNvEncoderGLPushReceieveDisplayNV12(int argc, char* argv[])
 {
   vtkStreamingTestUtility::SetLoggerVerbosityFromCli(argc, argv);
   bool success = true;
   int width = 320, height = 240;
 
-  char* filename =
-    vtkTestUtilities::ExpandDataFileName(argc, argv, "spinnin_cylinder_320x240_100_frames.h264");
+  char* filename = vtkTestUtilities::ExpandDataFileName(
+    argc, argv, "spinnin_cylinder_320x240_100_frames_nv12_input.h264");
   std::string baselineFile = filename;
   delete[] filename;
 
@@ -87,7 +87,7 @@ int TestNvEncoderGLPushReceieveDisplayRGBA32(int argc, char* argv[])
   enc->SetWidth(width);
   enc->SetHeight(height);
   enc->AsyncModeOff();
-  enc->SetInputPixelFormat(VTKPixelFormatType::VTKPF_RGBA32);
+  enc->SetInputPixelFormat(VTKPixelFormatType::VTKPF_NV12);
 
   vtkNew<vtkCallbackCommand> exitCallback;
   exitCallback->SetClientData(enc);
@@ -163,9 +163,10 @@ int TestNvEncoderGLPushReceieveDisplayRGBA32(int argc, char* argv[])
   if (!success)
   {
     filename = vtkTestUtilities::ExpandFileNameWithArgOrEnvOrDefault("-T", argc, argv,
-      "VTKSTREAMING_DATA_ROOT", "Temporary", "spinnin_cylinder_320x240_100_frames.h264");
+      "VTKSTREAMING_DATA_ROOT", "Temporary", "spinnin_cylinder_320x240_100_frames_nv12_input.h264");
     std::ofstream file(filename, std::ios::out | std::ios::binary);
     file.write(reinterpret_cast<char*>(bitstream.data()), bitstream.size());
+    vtkLogF(ERROR, "Failed. Result is in %s", filename);
   }
   return success ? 0 : 1;
 }

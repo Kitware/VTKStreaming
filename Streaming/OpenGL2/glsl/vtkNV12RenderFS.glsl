@@ -39,11 +39,11 @@ void main()
   lumaOfst.y = pixelCoord.y;
   float luma = texelFetch(nv12Texture, lumaOfst, 0).r;
 
-  // chroma red.
+  // chroma blue.
   ivec2 uOffset = ivec2(a, b + c);
   float u = texelFetch(nv12Texture, uOffset, 0).r;
 
-  // chroma blue.
+  // chroma red.
   ivec2 vOffset = ivec2(a + 1, b + c);
   float v = texelFetch(nv12Texture, vOffset, 0).r;
 

@@ -42,6 +42,8 @@ class vtkTextureObject;
 class vtkOpenGLRenderWindow;
 class vtkOpenGLFramebufferObject;
 
+class vtkOpenGLIYUVCaptureDelegate;
+class vtkOpenGLNV12CaptureDelegate;
 class vtkOpenGLIYUVRenderDelegate;
 class vtkOpenGLNV12RenderDelegate;
 class vtkOpenGLRGB24RenderDelegate;
@@ -103,10 +105,13 @@ private:
   vtkOpenGLVideoFrame(const vtkOpenGLVideoFrame&) = delete;
   void operator=(const vtkOpenGLVideoFrame&) = delete;
 
-  std::unique_ptr<vtkOpenGLIYUVRenderDelegate> IYUVDelegate;
-  std::unique_ptr<vtkOpenGLNV12RenderDelegate> NV12Delegate;
-  std::unique_ptr<vtkOpenGLRGB24RenderDelegate> RGB24Delegate;
-  std::unique_ptr<vtkOpenGLRGBA32RenderDelegate> RGBA32Delegate;
+  std::unique_ptr<vtkOpenGLIYUVCaptureDelegate> IYUVGrabber;
+  std::unique_ptr<vtkOpenGLNV12CaptureDelegate> NV12Grabber;
+
+  std::unique_ptr<vtkOpenGLIYUVRenderDelegate> IYUVRenderer;
+  std::unique_ptr<vtkOpenGLNV12RenderDelegate> NV12Renderer;
+  std::unique_ptr<vtkOpenGLRGB24RenderDelegate> RGB24Renderer;
+  std::unique_ptr<vtkOpenGLRGBA32RenderDelegate> RGBA32Renderer;
   std::unique_ptr<vtkOpenGLVideoFrameInternals> Internals;
 };
 

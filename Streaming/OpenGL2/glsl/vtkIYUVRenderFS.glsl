@@ -32,6 +32,7 @@ void main()
   
   int a = pixelCoord.x >> 1;
   int b = pixelCoord.y >> 1;
+  int a_ = b & 1;
   int c = strides[0] >> 1; // luma pitch half
   int d = chromaHeight >> 1;
   int e = ((resolution[1] + 1) >> 1) << 1; // nearest even number greater than l.h.s argument for '+'
@@ -43,11 +44,11 @@ void main()
   lumaOfst.y = pixelCoord.y;
   float luma = texelFetch(iyuvTexture, lumaOfst, 0).r;
 
-  // chroma red.
-  ivec2 uOffset = ivec2(a + mod(b, 2) * c, e + f);
+  // chroma blue.
+  ivec2 uOffset = ivec2(a + a_ * c, e + f);
   float u = texelFetch(iyuvTexture, uOffset, 0).r;
 
-  // chroma blue.
+  // chroma red.
   ivec2 vOffset = ivec2(uOffset.x, uOffset.y + d);
   float v = texelFetch(iyuvTexture, vOffset, 0).r;
 

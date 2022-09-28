@@ -3,6 +3,8 @@ set(classes
 )
 
 set(priv_classes
+  vtkOpenGLIYUVCaptureDelegate
+  vtkOpenGLNV12CaptureDelegate
   vtkOpenGLIYUVRenderDelegate
   vtkOpenGLNV12RenderDelegate
   vtkOpenGLRGB24RenderDelegate
@@ -14,6 +16,8 @@ set(priv_headers
 )
 
 set(shader_files
+  glsl/vtkIYUVCaptureFS.glsl
+  glsl/vtkNV12CaptureFS.glsl
   glsl/vtkIYUVRenderFS.glsl
   glsl/vtkNV12RenderFS.glsl)
 
