@@ -25,11 +25,11 @@ set(mkvparser_headers
     "${LIBWEBM_SRC_DIR}/mkvparser/mkvparser.h"
     "${LIBWEBM_SRC_DIR}/mkvparser/mkvreader.h")
 
-vtk_module_add_module(VTK::libwebm
+vtk_module_add_module(VTKStreaming::libwebm
   SOURCES ${mkvmuxer_sources} ${mkvparser_sources}
   HEADERS ${libwebm_common_headers} ${mkvmuxer_headers} ${mkvparser_headers}
-  HEADERS_SUBDIR "vtklibwebm")
+  HEADERS_SUBDIR "vtkstreaminglibwebm")
 
-vtk_module_include(VTK::libwebm
+vtk_module_include(VTKStreaming::libwebm
   PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>")
