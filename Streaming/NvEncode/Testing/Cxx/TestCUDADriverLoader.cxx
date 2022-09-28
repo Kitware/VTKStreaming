@@ -1,7 +1,7 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    TestNvCudaDriverLoader.cxx
+  Module:    TestCUDADriverLoader.cxx
 
   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
   All rights reserved.
@@ -14,12 +14,12 @@
 =========================================================================*/
 // This test exercises delay load of nvcuda.dll or libcuda.so.1
 
-#include "vtkNvCudaDriverImportTable.h"
+#include "vtkCUDADriverLoader.h"
 #include "vtkStreamingTestUtility.h"
 
-int TestNvCudaDriverLoader(int argc, char* argv[])
+int TestCUDADriverLoader(int argc, char* argv[])
 {
   vtkStreamingTestUtility::SetLoggerVerbosityFromCli(argc, argv);
-  vtkNvCudaDriverImportTable loader;
+  vtkCUDADriverLoader loader;
   return loader.LoadFunctionsTable() ? 0 : 1;
 }

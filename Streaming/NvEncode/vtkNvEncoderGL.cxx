@@ -17,6 +17,8 @@
 #include "nvEncodeAPI.h"
 #include "vtkCompressedVideoPacket.h"
 #include "vtkLogger.h"
+#include "vtkCUDADriverAPI.h"
+#include "vtkCUDADriverLoader.h"
 #include "vtkNvEncoderInternals.h"
 #include "vtkObjectFactory.h"
 #include "vtkOpenGLError.h"
@@ -35,11 +37,34 @@
 #include <memory>
 #include <vector>
 
+#define VTK_NV_CUDA_DRIVER_API_CHECKED_INVOKE(call)                                                \
+  do                                                                                               \
+  {                                                                                                \
+    vtkLogF(TRACE, "CUDRVAPI Trace %s", #call);                                                    \
+    auto cufns = this->CUDADriverLoader->FunctionsList;                                            \
+    status = cufns->call;                                                                          \
+    if (status != CUDA_SUCCESS)                                                                    \
+    {                                                                                              \
+      const char* szErrName = NULL;                                                                \
+      cufns->cuGetErrorName(status, &szErrName);                                                   \
+      vtkLogF(ERROR, "CUDA driver API %s failed with error: %s", #call, szErrName);                \
+    }                                                                                              \
+  } while (0)
+
+class vtkNvEncoderGL::vtkCUDAContext
+{
+public:
+  CUcontext Context;
+  std::vector<CUgraphicsResource> Resources;
+};
+
 vtkStandardNewMacro(vtkNvEncoderGL);
 
 //------------------------------------------------------------------------------
 vtkNvEncoderGL::vtkNvEncoderGL()
   : Internals(std::unique_ptr<vtkNvEncoderInternals>(new vtkNvEncoderInternals()))
+  , CUDADriverLoader(std::unique_ptr<vtkCUDADriverLoader>(new vtkCUDADriverLoader()))
+  , CUDAInstance(std::unique_ptr<vtkCUDAContext>(new vtkCUDAContext()))
 {
 }
 
@@ -70,24 +95,81 @@ bool vtkNvEncoderGL::SupportsCodec(VTKVideoCodecType codec) const noexcept
 //------------------------------------------------------------------------------
 bool vtkNvEncoderGL::InitializeInternal()
 {
-  if (!this->Internals->OpenEncodeSession(NV_ENC_DEVICE_TYPE_OPENGL, nullptr, this->Width,
-        this->Height, vtkNvEncoderInternals::ParsePixelFormat(this->InputPixelFormat)))
+  // 1. Load CUDA driver API from scratch if needed.
+  CUresult status;
+  if (!this->CUDADriverAvailable)
   {
-    return false;
+    this->CUDADriverAvailable = this->CUDADriverLoader->LoadFunctionsTable();
+    if (!this->CUDADriverAvailable)
+    {
+      return false;
+    }
+
+    auto cufns = this->CUDADriverLoader->FunctionsList;
+    status = cufns->cuInit(0);
+    if (status != CUDA_SUCCESS)
+    {
+      vtkLog(WARNING, "CUDA Driver API unavailable.");
+      return false;
+    }
+
+    int numGPU = 0;
+    status = cufns->cuDeviceGetCount(&numGPU);
+    if (status != CUDA_SUCCESS)
+    {
+      vtkLog(WARNING, "NVIDIA CUDA devices unavailable.");
+      return false;
+    }
+
+    CUdevice devices[4] = {};
+    unsigned int cudaDeviceCount = 0;
+    VTK_NV_CUDA_DRIVER_API_CHECKED_INVOKE(
+      cuGLGetDevices_v2(&cudaDeviceCount, devices, 4, CU_GL_DEVICE_LIST_ALL));
+    if (!cudaDeviceCount)
+    {
+      vtkLogF(ERROR, "OpenGL rendering is not on a CUDA device.");
+      return false;
+    }
+    else
+    {
+      vtkLogF(INFO, "Found %u devices capable of CUDA-OpenGL interop.", cudaDeviceCount);
+    }
+    char devName[100];
+    status = cufns->cuDeviceGetName(devName, sizeof(devName), devices[0]);
+    vtkLogF(INFO, "NvEncode: GPU %d in use - %s", 0, devName);
+
+    auto& ctx = this->CUDAInstance->Context;
+    ctx = nullptr;
+    status = cufns->cuCtxCreate_v2(&ctx, 0, devices[0]);
+
+    unsigned int version = 0;
+    cufns->cuCtxGetApiVersion(ctx, &version);
+    unsigned int major = version / 1000;
+    unsigned int minor = version - major * 1000;
+    vtkLogF(INFO, "CUDA context in use - %d.%d", major, minor);
   }
-  else
+
+  // 2. Initializes NVENC with CUDA device.
+  auto& internals = (*this->Internals);
+  bool success = internals.OpenEncodeSession(NV_ENC_DEVICE_TYPE_CUDA, this->CUDAInstance->Context,
+    this->Width, this->Height, vtkNvEncoderInternals::ParsePixelFormat(this->InputPixelFormat));
+  if (success)
   {
     NV_ENC_INITIALIZE_PARAMS initializeParams = { NV_ENC_INITIALIZE_PARAMS_VER };
     NV_ENC_CONFIG encodeConfig = { NV_ENC_CONFIG_VER };
     initializeParams.encodeConfig = &encodeConfig;
-    this->Internals->CreateDefaultEncoderInitializeParams(&initializeParams, NV_ENC_CODEC_H264_GUID,
+    internals.CreateDefaultEncoderInitializeParams(&initializeParams, NV_ENC_CODEC_H264_GUID,
       NV_ENC_PRESET_P3_GUID, NV_ENC_TUNING_INFO_ULTRA_LOW_LATENCY);
     vtkNvEncoderInternals::TweakFromEncoderObject(&initializeParams, this);
-    this->Initialized = this->Internals->InitializeEncodeCtx(&initializeParams);
-    std::string out = this->Internals->FullParamToString(&initializeParams);
+    this->Initialized = internals.InitializeEncodeCtx(&initializeParams);
+    std::string out = internals.FullParamToString(&initializeParams);
     vtkLog(TRACE, << out);
+    return this->Initialized;
   }
-  return this->Initialized;
+  else
+  {
+    return false;
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -131,6 +213,7 @@ VTKVideoProcessingStatusType vtkNvEncoderGL::PushInternal(vtkRawVideoFrame* fram
   vtkLogScopeFunction(TRACE);
   auto& internals = (*this->Internals);
   auto input = this->Internals->GetNextInputFrame();
+
   input->DeepCopy(frame);
 
   return vtkNvEncoderInternals::ParseNvEncodeAPIStatus(internals.Send(this->ForceIFrame));
@@ -155,16 +238,13 @@ VTKVideoEncoderResultType vtkNvEncoderGL::EncodeInternal(vtkRawVideoFrame* frame
   vtkLogScopeFunction(TRACE);
   auto& internals = (*this->Internals);
   auto input = this->Internals->GetNextInputFrame();
-  auto glFrame = vtkOpenGLVideoFrame::SafeDownCast(input);
-  if (glFrame == nullptr)
-  {
-    vtkLog(ERROR, << "Encoder does not have valid input frames. vtkOpenGLVideoFrame");
-    return { VTKVideoProcessingStatusType::VTKVPStatus_InvalidValue, {} };
-  }
+
   input->DeepCopy(frame);
+
   auto status = internals.Send(this->ForceIFrame);
   std::vector<vtkSmartPointer<vtkCompressedVideoPacket>> packets;
   bool success = internals.Receive(packets);
+
   if (success)
   {
     return { VTKVideoProcessingStatusType::VTKVPStatus_Success, packets };
@@ -181,16 +261,13 @@ VTKVideoEncoderResultType vtkNvEncoderGL::EncodeDisplayInternal()
   vtkLogScopeFunction(TRACE);
   auto& internals = (*this->Internals);
   auto input = this->Internals->GetNextInputFrame();
-  auto glFrame = vtkOpenGLVideoFrame::SafeDownCast(input);
-  if (glFrame == nullptr)
-  {
-    vtkLog(ERROR, << "Encoder does not have valid input frames. vtkOpenGLVideoFrame");
-    return { VTKVideoProcessingStatusType::VTKVPStatus_InvalidValue, {} };
-  }
+
   input->Capture(this->GraphicsContext);
+
   auto status = internals.Send(this->ForceIFrame);
   std::vector<vtkSmartPointer<vtkCompressedVideoPacket>> packets;
   bool success = internals.Receive(packets);
+
   if (success)
   {
     return { VTKVideoProcessingStatusType::VTKVPStatus_Success, packets };
@@ -225,37 +302,73 @@ bool vtkNvEncoderGL::AllocateInputBuffers()
     vtkLogF(ERROR, "Encoder device not initialized %d", NV_ENC_ERR_ENCODER_NOT_INITIALIZED);
     return false;
   }
+  if (!this->CUDADriverAvailable)
+  {
+    return false;
+  }
+
+  CUresult status;
+  auto& ctx = this->CUDAInstance->Context;
+  VTK_NV_CUDA_DRIVER_API_CHECKED_INVOKE(cuCtxPushCurrent_v2(ctx));
 
   std::vector<void*> inputResources;
   std::vector<vtkSmartPointer<vtkRawVideoFrame>> inputFrames;
-  unsigned int widthBytes = 0;
+  auto gfxContext =
+    this->HasDelegate() ? this->GetDelegateGraphicsContext() : this->GraphicsContext;
   for (std::size_t i = 0; i < internals.GetEncoderBufferCount(); ++i)
   {
-    // this will be encoder's  reference to the resource. must free it
-    // when releasing resources.
-    auto resource = new NV_ENC_INPUT_RESOURCE_OPENGL_TEX;
-
     auto frame = vtk::TakeSmartPointer(vtkOpenGLVideoFrame::New());
     frame->SetWidth(this->Width);
     frame->SetHeight(this->Height);
     frame->SetPixelFormat(this->InputPixelFormat);
     frame->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::TopDown);
     frame->ComputeDefaultStrides();
-    frame->SetContext(vtkOpenGLRenderWindow::SafeDownCast(this->GraphicsContext));
+    frame->SetContext(vtkOpenGLRenderWindow::SafeDownCast(gfxContext));
     frame->AllocateDataStore();
-    widthBytes = vtkRawVideoFrame::GetWidthBytes(this->Width, this->InputPixelFormat);
-    auto vtkTexture = reinterpret_cast<vtkTextureObject*>(frame->GetResourceHandle());
-    resource->texture = vtkTexture->GetHandle();
-    resource->target = vtkTexture->GetTarget();
-    vtkLogF(TRACE, "tex=%d, target=%d", resource->texture, resource->target);
 
-    inputResources.push_back(resource);
+    auto vtkTexture = reinterpret_cast<vtkTextureObject*>(frame->GetResourceHandle());
+    const GLuint handle = vtkTexture->GetHandle();
+    const GLenum target = vtkTexture->GetTarget();
+    vtkLogF(TRACE, "handle=%d, target=%d", handle, target);
+
+    CUgraphicsResource resource = nullptr;
+    VTK_NV_CUDA_DRIVER_API_CHECKED_INVOKE(
+      cuGraphicsGLRegisterImage(&resource, handle, target, CU_GRAPHICS_REGISTER_FLAGS_READ_ONLY | CU_GRAPHICS_REGISTER_FLAGS_SURFACE_LDST));
+    if (status != CUDA_SUCCESS)
+    {
+      return false;
+    }
+
+    this->CUDAInstance->Resources.push_back(resource);
+    VTK_NV_CUDA_DRIVER_API_CHECKED_INVOKE(
+      cuGraphicsResourceSetMapFlags(resource, CU_GRAPHICS_MAP_RESOURCE_FLAGS_READ_ONLY));
+    if (status != CUDA_SUCCESS)
+    {
+      return false;
+    }
+
+    VTK_NV_CUDA_DRIVER_API_CHECKED_INVOKE(cuGraphicsMapResources(1, &resource, nullptr));
+    if (status != CUDA_SUCCESS)
+    {
+      return false;
+    }
+
+    CUarray deviceArray = nullptr;
+    VTK_NV_CUDA_DRIVER_API_CHECKED_INVOKE(
+      cuGraphicsSubResourceGetMappedArray(&deviceArray, resource, 0, 0));
+    if (status != CUDA_SUCCESS)
+    {
+      return false;
+    }
+
+    inputResources.push_back(reinterpret_cast<void*>(deviceArray));
     inputFrames.emplace_back(frame);
   }
+  VTK_NV_CUDA_DRIVER_API_CHECKED_INVOKE(cuCtxPopCurrent_v2(nullptr));
 
   const auto bufFmt = vtkNvEncoderInternals::ParsePixelFormat(this->InputPixelFormat);
   bool success = internals.RegisterInputResources(inputResources, inputFrames,
-    NV_ENC_INPUT_RESOURCE_TYPE_OPENGL_TEX, this->Width, this->Height, this->Width, bufFmt);
+    NV_ENC_INPUT_RESOURCE_TYPE_CUDAARRAY, this->Width, this->Height, this->Width, bufFmt);
   return success;
 }
 
@@ -279,18 +392,36 @@ void vtkNvEncoderGL::ReleaseGLResources()
 
   internals.UnregisterInputResources();
 
+  CUresult status;
+  auto& ctx = this->CUDAInstance->Context;
+  VTK_NV_CUDA_DRIVER_API_CHECKED_INVOKE(cuCtxPushCurrent_v2(ctx));
+
   auto& frames = internals.NvEncInputFrames;
   auto& resources = internals.NvEncInputResources;
   for (std::size_t i = 0; i < frames.size(); ++i)
   {
+    auto deviceArray = reinterpret_cast<CUarray>(resources[i]);
+    auto resource = this->CUDAInstance->Resources[i];
+    if (deviceArray != nullptr && resource != nullptr)
+    {
+      VTK_NV_CUDA_DRIVER_API_CHECKED_INVOKE(cuGraphicsUnmapResources(1, &resource, nullptr));
+      if (status != CUDA_SUCCESS)
+      {
+        vtkLog(ERROR, "Failed to unmap CUDA gfx resource.");
+      }
+      VTK_NV_CUDA_DRIVER_API_CHECKED_INVOKE(cuGraphicsUnregisterResource(resource));
+      if (status != CUDA_SUCCESS)
+      {
+        vtkLog(ERROR, "Failed to unregister CUDA gfx resource.");
+      }
+    }
     if (auto glFrame = vtkOpenGLVideoFrame::SafeDownCast(frames[i]))
     {
       glFrame->ReleaseGraphicsResources();
     }
-    // free the encoder's reference to the resource.
-    auto resource = reinterpret_cast<NV_ENC_INPUT_RESOURCE_OPENGL_TEX*>(resources[i]);
-    delete resource;
   }
+  VTK_NV_CUDA_DRIVER_API_CHECKED_INVOKE(cuCtxPopCurrent_v2(nullptr));
+  this->CUDAInstance->Resources.clear();
   internals.NvEncInputFrames.clear();
   internals.NvEncInputResources.clear();
 }

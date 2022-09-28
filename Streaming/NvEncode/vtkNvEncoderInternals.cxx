@@ -22,6 +22,7 @@
 #include "vtkOpenGLVideoFrame.h"
 #include "vtkRawVideoFrame.h"
 #include "vtkSmartPointer.h"
+#include "vtkVideoEncoder.h"
 #include "vtkVideoProcessingWorkUnitTypes.h"
 
 #include <cstdlib>

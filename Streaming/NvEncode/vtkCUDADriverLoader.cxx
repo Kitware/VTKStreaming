@@ -1,7 +1,7 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    vtkNvCudaDriverImportTable.cxx
+  Module:    vtkCUDADriverLoader.cxx
 
   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
   All rights reserved.
@@ -12,8 +12,11 @@
      PURPOSE.  See the above copyright notice for more information.
 
 =========================================================================*/
-#include "vtkNvCudaDriverImportTable.h"
+#include "vtkCUDADriverLoader.h"
+#include "vtkCUDADriverAPI.h"
 #include "vtkLogger.h"
+
+#include <cstring>
 
 #define GetProcEntryPoint(name)                                                                    \
   do                                                                                               \
@@ -25,13 +28,13 @@
       return false;                                                                                \
     }                                                                                              \
     vtkLogF(TRACE, "found symbol %s (%p)", #name, result);                                         \
-    this->FunctionsList->name = (PFN_##name*)result;                                               \
+    this->FunctionsList->name = (TFN_##name*)result;                                               \
                                                                                                    \
   } while (0)
 
-vtkNvCudaDriverImportTable::vtkNvCudaDriverImportTable() = default;
+vtkCUDADriverLoader::vtkCUDADriverLoader() = default;
 
-vtkNvCudaDriverImportTable::~vtkNvCudaDriverImportTable()
+vtkCUDADriverLoader::~vtkCUDADriverLoader()
 {
   this->FreeFunctions();
   if (this->LibraryHandle != nullptr)
@@ -40,7 +43,7 @@ vtkNvCudaDriverImportTable::~vtkNvCudaDriverImportTable()
   }
 }
 
-bool vtkNvCudaDriverImportTable::LoadFunctionsTable()
+bool vtkCUDADriverLoader::LoadFunctionsTable()
 {
   vtkLogScopeF(TRACE, "%s this->LibraryHandle=%p", __func__, this->LibraryHandle);
   if (this->LibraryHandle != nullptr)
@@ -61,88 +64,42 @@ bool vtkNvCudaDriverImportTable::LoadFunctionsTable()
     vtkLogF(TRACE, "Loaded %s.", VTKSTREAMING_CUDA_LIBNAME);
   }
   this->FreeFunctions();
-  this->FunctionsList = (CudaDriverFunctionsList*)calloc(1, sizeof(*this->FunctionsList));
+  this->FunctionsList = new CUDRVFunctions;
+  std::memset(this->FunctionsList, 0, sizeof(CUDRVFunctions));
   if (this->FunctionsList == nullptr)
   {
     vtkLogF(ERROR, "Out of memory!");
     return false;
   }
   GetProcEntryPoint(cuInit);
+
   GetProcEntryPoint(cuDeviceGetCount);
   GetProcEntryPoint(cuDeviceGet);
-  GetProcEntryPoint(cuDeviceGetAttribute);
   GetProcEntryPoint(cuDeviceGetName);
-  GetProcEntryPoint(cuDeviceGetUuid);
-  GetProcEntryPoint(cuDeviceComputeCapability);
-  GetProcEntryPoint(cuCtxCreate);
-  GetProcEntryPoint(cuCtxSetLimit);
-  GetProcEntryPoint(cuCtxPushCurrent);
-  GetProcEntryPoint(cuCtxPopCurrent);
-  GetProcEntryPoint(cuCtxDestroy);
-  GetProcEntryPoint(cuMemAlloc);
-  GetProcEntryPoint(cuMemAllocPitch);
-  GetProcEntryPoint(cuMemAllocManaged);
-  GetProcEntryPoint(cuMemsetD8Async);
-  GetProcEntryPoint(cuMemFree);
-  GetProcEntryPoint(cuMemcpy);
-  GetProcEntryPoint(cuMemcpyAsync);
-  GetProcEntryPoint(cuMemcpy2D);
-  GetProcEntryPoint(cuMemcpy2DAsync);
-  GetProcEntryPoint(cuMemcpyHtoD);
-  GetProcEntryPoint(cuMemcpyHtoDAsync);
-  GetProcEntryPoint(cuMemcpyDtoH);
-  GetProcEntryPoint(cuMemcpyDtoHAsync);
-  GetProcEntryPoint(cuMemcpyDtoD);
-  GetProcEntryPoint(cuMemcpyDtoDAsync);
+
+  GetProcEntryPoint(cuCtxCreate_v2);
+  GetProcEntryPoint(cuCtxGetApiVersion);
+  GetProcEntryPoint(cuCtxGetDevice);
+  GetProcEntryPoint(cuCtxPushCurrent_v2);
+  GetProcEntryPoint(cuCtxPopCurrent_v2);
+  GetProcEntryPoint(cuCtxDestroy_v2);
+
   GetProcEntryPoint(cuGetErrorName);
   GetProcEntryPoint(cuGetErrorString);
-  GetProcEntryPoint(cuCtxGetDevice);
-  GetProcEntryPoint(cuDevicePrimaryCtxRetain);
-  GetProcEntryPoint(cuDevicePrimaryCtxRelease);
-  GetProcEntryPoint(cuDevicePrimaryCtxSetFlags);
-  GetProcEntryPoint(cuDevicePrimaryCtxGetState);
-  GetProcEntryPoint(cuDevicePrimaryCtxReset);
-  GetProcEntryPoint(cuStreamCreate);
-  GetProcEntryPoint(cuStreamQuery);
-  GetProcEntryPoint(cuStreamSynchronize);
-  GetProcEntryPoint(cuStreamDestroy);
-  GetProcEntryPoint(cuStreamAddCallback);
-  GetProcEntryPoint(cuEventCreate);
-  GetProcEntryPoint(cuEventDestroy);
-  GetProcEntryPoint(cuEventSynchronize);
-  GetProcEntryPoint(cuEventQuery);
-  GetProcEntryPoint(cuEventRecord);
-  GetProcEntryPoint(cuLaunchKernel);
-  GetProcEntryPoint(cuLinkCreate);
-  GetProcEntryPoint(cuLinkAddData);
-  GetProcEntryPoint(cuLinkComplete);
-  GetProcEntryPoint(cuLinkDestroy);
-  GetProcEntryPoint(cuModuleLoadData);
-  GetProcEntryPoint(cuModuleUnload);
-  GetProcEntryPoint(cuModuleGetFunction);
-  GetProcEntryPoint(cuModuleGetGlobal);
-  GetProcEntryPoint(cuTexObjectCreate);
-  GetProcEntryPoint(cuTexObjectDestroy);
-  GetProcEntryPoint(cuGLGetDevices);
+
+  GetProcEntryPoint(cuGLGetDevices_v2);
+
   GetProcEntryPoint(cuGraphicsGLRegisterImage);
   GetProcEntryPoint(cuGraphicsUnregisterResource);
   GetProcEntryPoint(cuGraphicsMapResources);
   GetProcEntryPoint(cuGraphicsUnmapResources);
+  GetProcEntryPoint(cuGraphicsResourceSetMapFlags);
   GetProcEntryPoint(cuGraphicsSubResourceGetMappedArray);
-  GetProcEntryPoint(cuImportExternalMemory);
-  GetProcEntryPoint(cuDestroyExternalMemory);
-  GetProcEntryPoint(cuExternalMemoryGetMappedBuffer);
-  GetProcEntryPoint(cuExternalMemoryGetMappedMipmappedArray);
-  GetProcEntryPoint(cuMipmappedArrayDestroy);
-  GetProcEntryPoint(cuMipmappedArrayGetLevel);
-  GetProcEntryPoint(cuImportExternalSemaphore);
-  GetProcEntryPoint(cuDestroyExternalSemaphore);
-  GetProcEntryPoint(cuSignalExternalSemaphoresAsync);
-  GetProcEntryPoint(cuWaitExternalSemaphoresAsync);
+
   return true;
 }
 
-bool vtkNvCudaDriverImportTable::CloseLibrary()
+bool vtkCUDADriverLoader::CloseLibrary()
 {
   vtkLogScopeF(TRACE, "%s this->LibraryHandle=%p", __func__, this->LibraryHandle);
   if (this->LibraryHandle == nullptr)
@@ -153,12 +110,12 @@ bool vtkNvCudaDriverImportTable::CloseLibrary()
   return true;
 }
 
-void vtkNvCudaDriverImportTable::FreeFunctions()
+void vtkCUDADriverLoader::FreeFunctions()
 {
   vtkLogScopeF(TRACE, "%s this->FunctionsList=%p", __func__, this->FunctionsList);
   if (this->FunctionsList != nullptr)
   {
-    free(this->FunctionsList);
+    delete this->FunctionsList;
     this->FunctionsList = nullptr;
   }
 }
