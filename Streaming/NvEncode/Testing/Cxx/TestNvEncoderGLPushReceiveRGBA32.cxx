@@ -23,7 +23,6 @@
 #include "vtkOpenGLVideoFrame.h"
 #include "vtkRenderer.h"
 #include "vtkStreamingTestUtility.h"
-#include "vtkTestUtilities.h"
 #include "vtkVideoProcessingStatusTypes.h"
 
 int TestNvEncoderGLPushReceiveRGBA32(int argc, char* argv[])
@@ -31,11 +30,6 @@ int TestNvEncoderGLPushReceiveRGBA32(int argc, char* argv[])
   vtkStreamingTestUtility::SetLoggerVerbosityFromCli(argc, argv);
   bool success = true;
   const int width = 320, height = 240;
-
-  char* filename =
-    vtkTestUtilities::ExpandDataFileName(argc, argv, "movin_color_bars_320x240_64_frames.h264");
-  std::string baselineFile = filename;
-  delete[] filename;
 
   vtkNew<vtkRenderWindow> win;
   vtkNew<vtkRenderer> ren;

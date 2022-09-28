@@ -31,7 +31,6 @@
 #include "vtkRenderWindowInteractor.h"
 #include "vtkRenderer.h"
 #include "vtkStreamingTestUtility.h"
-#include "vtkTestUtilities.h"
 #include "vtkVideoCodecTypes.h"
 #include "vtkVideoProcessingStatusTypes.h"
 
@@ -47,11 +46,6 @@ int TestNvEncoderGLPushReceieveDisplayRGBA32(int argc, char* argv[])
   vtkStreamingTestUtility::SetLoggerVerbosityFromCli(argc, argv);
   bool success = true;
   int width = 320, height = 240;
-
-  char* filename =
-    vtkTestUtilities::ExpandDataFileName(argc, argv, "spinnin_cylinder_320x240_100_frames.h264");
-  std::string baselineFile = filename;
-  delete[] filename;
 
   vtkNew<vtkRenderWindowInteractor> iren;
   vtkNew<vtkRenderWindow> win;
