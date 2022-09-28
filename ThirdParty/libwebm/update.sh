@@ -6,9 +6,9 @@ shopt -s dotglob
 
 readonly name="libwebm"
 readonly ownership="Libwebm Upstream <kwrobot@kitware.com>"
-readonly subtree="ThirdParty/$name/vtk$name"
+readonly subtree="ThirdParty/$name/vtkstreaming$name"
 readonly repo="https://gitlab.kitware.com/third-party/libwebm.git"
-readonly tag="for/vtk-20220826-1.0.0.28"
+readonly tag="for/vtkstreaming-20220826-1.0.0.28"
 readonly paths="
 build
 common/webmids.h

@@ -1,5 +1,5 @@
 NAME
-  VTK::libwebm
+  VTKStreaming::libwebm
 LIBRARY_NAME
-  vtklibwebm
+  vtkstreaminglibwebm
 THIRD_PARTY
