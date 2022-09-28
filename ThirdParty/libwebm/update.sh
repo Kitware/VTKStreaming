@@ -8,7 +8,7 @@ readonly name="libwebm"
 readonly ownership="Libwebm Upstream <kwrobot@kitware.com>"
 readonly subtree="ThirdParty/$name/vtkstreaming$name"
 readonly repo="https://gitlab.kitware.com/third-party/libwebm.git"
-readonly tag="for/vtkstreaming-20220826-1.0.0.28"
+readonly tag="for/vtkstreaming-20220928-1.0.0.28"
 readonly paths="
 build
 common/webmids.h
@@ -16,7 +16,7 @@ common/vtk_libwebm_mangle.h
 mkvmuxer
 mkvparser
 
-CMakeLists.vtk.txt
+CMakeLists.vtkstreaming.txt
 
 CONTRIBUTING.md
 AUTHORS.TXT
@@ -33,7 +33,7 @@ extract_source () {
     pushd "$extractdir/$name-reduced"
     sed -i '$ { /^$/ d}' LICENSE.TXT
     sed -i '$ { /^$/ d}' README.libwebm
-    mv -v CMakeLists.vtk.txt CMakeLists.txt
+    mv -v CMakeLists.vtkstreaming.txt CMakeLists.txt
     popd
 }
 
