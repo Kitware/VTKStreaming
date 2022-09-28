@@ -40,7 +40,8 @@ void vtkStreamingTestUtility::SetLoggerVerbosityFromCli(int argc, char** argv)
   }
 }
 
-vtkUnsignedCharArray* vtkStreamingTestUtility::GenerateRGBA32ColorBars(int width, int height, int shift /*=0*/)
+vtkUnsignedCharArray* vtkStreamingTestUtility::GenerateRGBA32ColorBars(
+  int width, int height, int shift /*=0*/)
 {
   auto result = vtkUnsignedCharArray::New();
   int ndivs = width >> 3;

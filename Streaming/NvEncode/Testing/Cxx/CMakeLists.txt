@@ -6,6 +6,7 @@ vtk_add_test_cxx(vtkStreamingNvEncodeCxxTests tests
   TestNvEncoderGLPushReceiveNV12.cxx,NO_VALID
   TestNvEncoderGLPushReceiveRGBA32.cxx,NO_VALID
   TestNvEncoderGLPushReceieveDisplayRGBA32.cxx,NO_VALID
+  TestNvEncoderGLPushReceieveDisplayNV12.cxx,NO_VALID
   )
 
 vtk_test_cxx_executable(vtkStreamingNvEncodeCxxTests tests)
