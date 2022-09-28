@@ -60,12 +60,12 @@ int TestNvEncoderGLPushReceiveRGBA32(int argc, char* argv[])
   rgba32Picture->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::TopDown);
   rgba32Picture->ComputeDefaultStrides();
 
-  std::vector<uint8_t> bitstream;
-  int shift = 0;
+  int shift = 0, frameId = 0;
   while (true)
   {
     auto pixels = vtk::TakeSmartPointer(
       vtkStreamingTestUtility::GenerateRGBA32ColorBars(width, height, shift++));
+    std::vector<uint8_t> bitstream;
 
     if (shift >= 64)
     {
@@ -96,43 +96,19 @@ int TestNvEncoderGLPushReceiveRGBA32(int argc, char* argv[])
 
     if (!result.second.empty() && result.second[0] != nullptr)
     {
-      auto data = result.second[0]->GetData()->GetPointer(0);
+      auto data = reinterpret_cast<char*>(result.second[0]->GetData()->GetPointer(0));
       auto size = result.second[0]->GetSize();
-      for (std::size_t i = 0; i < size; ++i)
+      vtkLogF(INFO, "Recv %d bytes", size);
+      for (int i = 0; i < size; ++i)
       {
         bitstream.push_back(data[i]);
       }
-      vtkLogF(TRACE, "Wrote %d bytes", size);
     }
-  }
-
-  std::ifstream baseline;
-  vtkLogF(INFO, "Read %s", baselineFile.c_str());
-  baseline.open(baselineFile, std::ios::in | std::ios::binary);
-  baseline.ignore(std::numeric_limits<std::streamsize>::max());
-
-  const std::size_t size1 = baseline.gcount();
-  const std::size_t size2 = bitstream.size();
-  vtkLogF(TRACE, "%zu, %zu", size1, bitstream.size());
-  success = bitstream.size() == size1;
-
-  baseline.clear();
-  baseline.seekg(0, std::ios_base::beg);
-
-  std::vector<uint8_t> baseline_ptr(size1, 0);
-  baseline.read(reinterpret_cast<char*>(baseline_ptr.data()), size1);
-
-  for (std::size_t i1 = 0, i2 = 0; i1 < size1 && i2 < size2 && success; ++i1 && ++i2)
-  {
-    vtkLogF(TRACE, "%d, %d", int(baseline_ptr[i1]), int(bitstream[i2]));
-    success &= (baseline_ptr[i1] == bitstream[i2]);
-  }
-  if (!success)
-  {
-    filename = vtkTestUtilities::ExpandFileNameWithArgOrEnvOrDefault("-T", argc, argv,
-      "VTKSTREAMING_DATA_ROOT", "Temporary", "movin_color_bars_320x240_64_frames.h264");
-    std::ofstream file(filename, std::ios::out | std::ios::binary);
-    file.write(reinterpret_cast<char*>(bitstream.data()), bitstream.size());
+    if (frameId > 0)
+    {
+      success &= bitstream.size() > 200;
+    }
+    ++frameId;
   }
   return success ? 0 : 1;
 }

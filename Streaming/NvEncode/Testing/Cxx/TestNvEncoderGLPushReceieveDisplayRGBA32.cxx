@@ -105,10 +105,10 @@ int TestNvEncoderGLPushReceieveDisplayRGBA32(int argc, char* argv[])
   iren->AddObserver(vtkCommand::ExitEvent, exitCallback);
 
   int frameId = 0;
-  std::vector<uint8_t> bitstream;
   while (true)
   {
     double azimuth = (frameId % 36) * 10;
+    std::vector<uint8_t> bitstream;
     ren->GetActiveCamera()->Azimuth(vtkMath::RadiansFromDegrees(azimuth));
     renWin->Render();
     if (frameId > 100)
@@ -136,36 +136,12 @@ int TestNvEncoderGLPushReceieveDisplayRGBA32(int argc, char* argv[])
     {
       bitstream.push_back(data[i]);
     }
+    if (frameId > 0)
+    {
+      success &= bitstream.size() > 1000;
+    }
     ++frameId;
   }
 
-  std::ifstream baseline;
-  vtkLogF(INFO, "Read %s", baselineFile.c_str());
-  baseline.open(baselineFile, std::ios::in | std::ios::binary);
-  baseline.ignore(std::numeric_limits<std::streamsize>::max());
-
-  const std::size_t size1 = baseline.gcount();
-  const std::size_t size2 = bitstream.size();
-  vtkLogF(TRACE, "%zu, %zu", size1, size2);
-  success = size1 == size2;
-
-  baseline.clear();
-  baseline.seekg(0, std::ios_base::beg);
-
-  std::vector<uint8_t> baseline_ptr(size1, 0);
-  baseline.read(reinterpret_cast<char*>(baseline_ptr.data()), size1);
-
-  for (std::size_t i1 = 0, i2 = 0; i1 < size1 && i2 < size2 && success; ++i1 && ++i2)
-  {
-    vtkLogF(TRACE, "%d, %d", int(baseline_ptr[i1]), int(bitstream[i2]));
-    success &= (baseline_ptr[i1] == bitstream[i2]);
-  }
-  if (!success)
-  {
-    filename = vtkTestUtilities::ExpandFileNameWithArgOrEnvOrDefault("-T", argc, argv,
-      "VTKSTREAMING_DATA_ROOT", "Temporary", "spinnin_cylinder_320x240_100_frames.h264");
-    std::ofstream file(filename, std::ios::out | std::ios::binary);
-    file.write(reinterpret_cast<char*>(bitstream.data()), bitstream.size());
-  }
   return success ? 0 : 1;
 }
