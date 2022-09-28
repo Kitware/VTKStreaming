@@ -44,7 +44,7 @@ vtkUnsignedCharArray* vtkStreamingTestUtility::GenerateRGBA32ColorBars(
   int width, int height, int shift /*=0*/)
 {
   auto result = vtkUnsignedCharArray::New();
-  int ndivs = width >> 3;
+  int ndivs = (width + 7) >> 3;
   std::vector<unsigned char> reds(8), greens(8), blues(8), alphas(8, 255);
   reds = { 255, 255, 0, 0, 255, 255, 0, 0 };
   greens = { 255, 255, 255, 255, 0, 0, 0, 0 };
