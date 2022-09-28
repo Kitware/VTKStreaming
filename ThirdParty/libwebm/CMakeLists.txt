@@ -4,14 +4,14 @@ set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
 vtk_module_third_party(
   INTERNAL
-    LICENSE_FILES "vtklibwebm/LICENSE.TXT" "vtklibwebm/PATENTS.TXT"
+    LICENSE_FILES "vtkstreaminglibwebm/LICENSE.TXT" "vtkstreaminglibwebm/PATENTS.TXT"
     VERSION       "1.0.0.28"
     STANDARD_INCLUDE_DIRS
 )
 
 configure_file(
-  "${CMAKE_CURRENT_SOURCE_DIR}/vtk_libwebm.h.in"
-  "${CMAKE_CURRENT_BINARY_DIR}/vtk_libwebm.h")
+  "${CMAKE_CURRENT_SOURCE_DIR}/vtkstreaming_libwebm.h.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/vtkstreaming_libwebm.h")
 
 vtk_module_install_headers(
-  FILES "${CMAKE_CURRENT_BINARY_DIR}/vtk_libwebm.h")
+  FILES "${CMAKE_CURRENT_BINARY_DIR}/vtkstreaming_libwebm.h")
