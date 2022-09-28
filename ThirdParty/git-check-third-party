@@ -1,0 +1,43 @@
+#!/bin/sh
+
+. git-sh-setup
+
+set -e
+
+readonly directory="$1"
+shift
+
+if ! [ -d "$directory" ]; then
+    die "fatal: not a directory"
+fi
+
+readonly last_import_merge="$( git rev-list --max-count=1 HEAD -- "$directory" )"
+if [ -z "$last_import_merge" ]; then
+    die "fatal: not tracked by git"
+fi
+
+if ! git rev-parse "$last_import_merge^2" >/dev/null 2>/dev/null; then
+    die "fatal: not imported via a merge commit"
+fi
+
+readonly last_imported_commit="$( git rev-parse "$last_import_merge^2" )"
+if [ -z "$last_imported_commit" ]; then
+    die "fatal: not modified via a merge commit"
+fi
+
+readonly main_root="$( git rev-list --max-count=1 --first-parent --max-parents=0 HEAD )"
+readonly import_root="$( git rev-list --max-count=1 --first-parent --max-parents=0 "$last_imported_commit" )"
+
+if [ "$main_root" = "$import_root" ]; then
+    die "fatal: not imported via a separate branch"
+fi
+
+readonly last_imported_tree="$( git rev-parse "$last_imported_commit^{tree}" )"
+readonly current_tree="$( git ls-tree HEAD -- "$directory" | tr $'\t' ' ' | cut '-d ' -f3 )"
+
+if ! [ "$current_tree" = "$last_imported_tree" ]; then
+    git diff "$last_imported_tree" "$current_tree"
+    die "fatal: import has been modified"
+fi
+
+echo "root commit: $import_root"
