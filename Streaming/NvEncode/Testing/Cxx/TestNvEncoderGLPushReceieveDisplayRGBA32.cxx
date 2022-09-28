@@ -35,11 +35,6 @@
 #include "vtkVideoProcessingStatusTypes.h"
 
 #include <array>
-#include <fstream>
-#include <iomanip>
-#include <string>
-
-#define WRITE_CHUNKS 0
 
 int TestNvEncoderGLPushReceieveDisplayRGBA32(int argc, char* argv[])
 {
