@@ -1,5 +1,5 @@
 set(classes 
-  vtkWEBMWriter
+  vtkWEBMMuxer
 )
 
 set(sources
@@ -10,11 +10,7 @@ set(priv_headers
   vtkMKVWriterImplementation.h
 )
 
-vtk_module_add_module(VTK::IOWEBM 
+vtk_module_add_module(VTKStreaming::WEBM 
   CLASSES ${classes} 
   PRIVATE_HEADERS ${priv_headers} 
   SOURCES ${sources})
-
-vtk_module_link(VTK::IOWEBM
-  PRIVATE
-    VTK::libwebm)

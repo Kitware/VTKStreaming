@@ -1,9 +1,9 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    vtkWEBMWriter.h
+  Module:    vtkWEBMMuxer.h
 
-  Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
+  Copyright (c) 2022 Kitware, Inc
   All rights reserved.
   See Copyright.txt or http://www.kitware.com/Copyright.htm for details.
 
@@ -13,10 +13,10 @@
 
 =========================================================================*/
 /**
- * @class   vtkWEBMWriter
- * @brief   class for writing WEBM files.
+ * @class   vtkWEBMMuxer
+ * @brief   class for muxing VP8, VP9 compressed packets into WEBM container.
  *
- * vtkWEBMWriter is used to save VP8, VP9 encoded video packets to files using
+ * vtkWEBMMuxer is used to save VP8, VP9 encoded video packets to memory using
  * webm multimedia container format. The webm format is a trimmed down mkv that supports
  * only VP9 and VP8 bitstreams.
  *
@@ -24,31 +24,31 @@
  * into a dynamic buffer rather than a file.
  *
  * Be sure to fetch the dynamic buffer and flush its contents periodically
- * by calling vtkWEBMWriter::Flush() to avoid out of memory errors.
+ * by calling vtkWEBMMuxer::Flush() to avoid out of memory errors.
  *
  * @sa
- * vtkCodedVideoPacket
+ * vtkCompressedVideoPacket
  */
 
-#ifndef vtkWEBMWriter_h
-#define vtkWEBMWriter_h
+#ifndef vtkWEBMMuxer_h
+#define vtkWEBMMuxer_h
 
-#include "vtkIOWEBMModule.h"
 #include "vtkObject.h"
+#include "vtkStreamingWEBMModule.h" // for export macro
 
-#include <memory>
-#include <string>
+#include <memory> // for ivar
+#include <string> // for ivar
 
-class vtkCodedVideoPacket;
+class vtkCompressedVideoPacket;
 class vtkUnsignedCharArray;
 class vtkWEBMContextInternals;
 
-class VTKIOWEBM_EXPORT vtkWEBMWriter : public vtkObject
+class VTKSTREAMINGWEBM_EXPORT vtkWEBMMuxer : public vtkObject
 {
 public:
-  vtkTypeMacro(vtkWEBMWriter, vtkObject);
+  vtkTypeMacro(vtkWEBMMuxer, vtkObject);
   void PrintSelf(ostream& os, vtkIndent indent) override;
-  static vtkWEBMWriter* New();
+  static vtkWEBMMuxer* New();
 
   ///@{
   /**
@@ -88,7 +88,7 @@ public:
   ///@{
   /**
    * Write to a dynamic buffer instead of a file on disk.
-   * You can retrieve the dynamic buffer with vtkWEBMWriter::GetDynamicBuffer()
+   * You can retrieve the dynamic buffer with vtkWEBMMuxer::GetDynamicBuffer()
    */
   vtkSetMacro(WriteToMemory, bool);
   vtkGetMacro(WriteToMemory, bool);
@@ -142,7 +142,7 @@ public:
    */
   void WriteVP9FileHeader();
   void WriteVP8FileHeader();
-  void WriteWebmBlock(vtkCodedVideoPacket* packet);
+  void WriteWebmBlock(vtkCompressedVideoPacket* packet);
   void WriteFileTrailer();
   void Flush();
   ///@}
@@ -153,8 +153,8 @@ public:
   vtkUnsignedCharArray* GetDynamicBuffer();
 
 protected:
-  vtkWEBMWriter();
-  ~vtkWEBMWriter() override;
+  vtkWEBMMuxer();
+  ~vtkWEBMMuxer() override;
 
   bool IsHeaderWritten = false;
   bool ForceNewClusters = false;
@@ -170,11 +170,12 @@ protected:
   void WriteFileHeader(const char* codecId);
 
 private:
-  vtkWEBMWriter(const vtkWEBMWriter&) = delete;
-  void operator=(const vtkWEBMWriter&) = delete;
+  vtkWEBMMuxer(const vtkWEBMMuxer&) = delete;
+  void operator=(const vtkWEBMMuxer&) = delete;
 
   struct vtkWEBMContextInternals;
   std::unique_ptr<vtkWEBMContextInternals> Internals;
 };
 
-#endif // vtkWEBMWriter_h
+#endif // vtkWEBMMuxer_h
+// VTK-HeaderTest-Exclude: vtkWEBMMuxer.h

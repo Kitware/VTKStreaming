@@ -44,9 +44,11 @@ if (NOT DEFINED VTKSTREAMING_CMAKE_DESTINATION)
     "${CMAKE_INSTALL_LIBDIR}/cmake/vtkstreaming")
 endif ()
 
+set(vtkstreaming_src_directories "${PROJECT_SOURCE_DIR}/Streaming" "${PROJECT_SOURCE_DIR}/ThirdParty")
+
 set(_vtk_module_log ALL)
-vtk_module_find_modules(VTKSTREAMING_MODULE_FILES "${PROJECT_SOURCE_DIR}/Streaming")
-vtk_module_find_kits(VTKSTREAMING_KIT_FILES "${PROJECT_SOURCE_DIR}/Streaming")
+vtk_module_find_modules(VTKSTREAMING_MODULE_FILES ${vtkstreaming_src_directories})
+vtk_module_find_kits(VTKSTREAMING_KIT_FILES ${vtkstreaming_src_directories})
 vtk_module_scan(
   MODULE_FILES           ${VTKSTREAMING_MODULE_FILES}
   KIT_FILES           	 ${VTKSTREAMING_KIT_FILES}
@@ -65,6 +67,7 @@ vtk_module_build(
   CMAKE_DESTINATION       "${VTKSTREAMING_CMAKE_DESTINATION}"
   VERSION                 "${PROJECT_VERSION}"
   SOVERSION               "${PROJECT_VERSION}"
+  USE_EXTERNAL            OFF
   TEST_INPUT_DATA_DIRECTORY   "${CMAKE_CURRENT_SOURCE_DIR}/Data"
   TEST_OUTPUT_DATA_DIRECTORY  "${CMAKE_CURRENT_SOURCE_DIR}/Data"
 )

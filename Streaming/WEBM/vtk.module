@@ -1,12 +1,11 @@
 NAME
-  VTK::IOWEBM
+  VTKStreaming::WEBM
 LIBRARY_NAME
-  vtkIOWEBM
+  vtkStreamingWEBM
 GROUPS
   StandAlone
 DEPENDS
-  VTK::CommonCore
   VTK::CommonDataModel
 PRIVATE_DEPENDS
-  VTK::VideoCore
-  VTK::libwebm
+  VTKStreaming::Core
+  VTKStreaming::libwebm

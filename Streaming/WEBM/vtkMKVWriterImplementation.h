@@ -3,7 +3,7 @@
   Program:   Visualization Toolkit
   Module:    vtkMKVWriterImplementation.h
 
-  Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
+  Copyright (c) 2022 Kitware, Inc
   All rights reserved.
   See Copyright.txt or http://www.kitware.com/Copyright.htm for details.
 
@@ -16,15 +16,15 @@
 #ifndef vtkMKVWriterImplementation_h
 #define vtkMKVWriterImplementation_h
 
-#include "vtkIOWEBMModule.h"
-#include "vtkUnsignedCharArray.h"
+#include "vtkStreamingWEBMModule.h"
+#include "vtkUnsignedCharArray.h" // for ivar
 
-#include "vtk_libwebm.h"
+#include "vtkstreaming_libwebm.h"
 
 #include <cstdio>
 
 // Implement the abstract IMkvWriter interface.
-class VTKIOWEBM_EXPORT vtkMKVWriterImplementation : public mkvmuxer::IMkvWriter
+class VTKSTREAMINGWEBM_EXPORT vtkMKVWriterImplementation : public mkvmuxer::IMkvWriter
 {
 public:
   vtkMKVWriterImplementation();
@@ -50,3 +50,4 @@ private:
 };
 
 #endif // vtkMKVWriterImplementation_h
+// VTK-HeaderTest-Exclude: vtkMKVWriterImplementation.h

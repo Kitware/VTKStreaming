@@ -3,7 +3,7 @@
   Program:   Visualization Toolkit
   Module:    vtkMKVWriterImplementation.cxx
 
-  Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
+  Copyright (c) 2022 Kitware, Inc
   All rights reserved.
   See Copyright.txt or http://www.kitware.com/Copyright.htm for details.
 
@@ -17,7 +17,6 @@
 #include "vtkLogger.h"
 
 #include <exception>
-#include <vtkUnsignedCharArray.h>
 
 #ifdef _MSC_VER
 #include <share.h> // for _SH_DENYWR

@@ -1,9 +1,9 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    vtkWEBMWriter.cxx
+  Module:    vtkWEBMMuxer.cxx
 
-  Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
+  Copyright (c) 2022 Kitware, Inc
   All rights reserved.
   See Copyright.txt or http://www.kitware.com/Copyright.htm for details.
 
@@ -13,8 +13,8 @@
 
 =========================================================================*/
 
-#include "vtkWEBMWriter.h"
-#include "vtkCodedVideoPacket.h"
+#include "vtkWEBMMuxer.h"
+#include "vtkCompressedVideoPacket.h"
 #include "vtkLogger.h"
 #include "vtkMKVWriterImplementation.h"
 #include "vtkObjectFactory.h"
@@ -27,7 +27,7 @@ const long long NanoSecondTicks = 1000000000ll;
 }
 
 //------------------------------------------------------------------------------
-struct vtkWEBMWriter::vtkWEBMContextInternals
+struct vtkWEBMMuxer::vtkWEBMContextInternals
 {
   mkvmuxer::Segment* segment;
   vtkMKVWriterImplementation* writer;
@@ -35,16 +35,16 @@ struct vtkWEBMWriter::vtkWEBMContextInternals
 };
 
 //------------------------------------------------------------------------------
-vtkStandardNewMacro(vtkWEBMWriter);
+vtkStandardNewMacro(vtkWEBMMuxer);
 
 //------------------------------------------------------------------------------
-vtkWEBMWriter::vtkWEBMWriter()
+vtkWEBMMuxer::vtkWEBMMuxer()
   : Internals(new vtkWEBMContextInternals)
 {
 }
 
 //------------------------------------------------------------------------------
-vtkWEBMWriter::~vtkWEBMWriter()
+vtkWEBMMuxer::~vtkWEBMMuxer()
 {
   if (this->IsHeaderWritten)
   {
@@ -57,7 +57,7 @@ vtkWEBMWriter::~vtkWEBMWriter()
 }
 
 //------------------------------------------------------------------------------
-void vtkWEBMWriter::PrintSelf(ostream& os, vtkIndent indent)
+void vtkWEBMMuxer::PrintSelf(ostream& os, vtkIndent indent)
 {
   vtkLogScopeFunction(TRACE);
   (void)os;
@@ -65,31 +65,31 @@ void vtkWEBMWriter::PrintSelf(ostream& os, vtkIndent indent)
 }
 
 //------------------------------------------------------------------------------
-void vtkWEBMWriter::WriteVP8FileHeader()
+void vtkWEBMMuxer::WriteVP8FileHeader()
 {
   this->WriteFileHeader("V_VP8");
 }
 
 //------------------------------------------------------------------------------
-void vtkWEBMWriter::WriteVP9FileHeader()
+void vtkWEBMMuxer::WriteVP9FileHeader()
 {
   this->WriteFileHeader("V_VP9");
 }
 
 //------------------------------------------------------------------------------
-void vtkWEBMWriter::SetFileName(const char* filename)
+void vtkWEBMMuxer::SetFileName(const char* filename)
 {
   this->FileName = filename != nullptr ? filename : "output.webm";
 }
 
 //------------------------------------------------------------------------------
-const char* vtkWEBMWriter::GetFileName() const
+const char* vtkWEBMMuxer::GetFileName() const
 {
   return this->FileName.c_str();
 }
 
 //------------------------------------------------------------------------------
-void vtkWEBMWriter::WriteFileHeader(const char* codecId)
+void vtkWEBMMuxer::WriteFileHeader(const char* codecId)
 {
   vtkLogScopeFunction(TRACE);
   if (!this->WriteToMemory)
@@ -110,7 +110,7 @@ void vtkWEBMWriter::WriteFileHeader(const char* codecId)
   mkvmuxer::SegmentInfo* const info = this->Internals->segment->GetSegmentInfo();
   info->set_timecode_scale(this->TimeStampScale);
 
-  std::string writerName = "vtkWEBMWriter";
+  std::string writerName = "vtkWEBMMuxer";
   info->set_writing_app(writerName.c_str());
   this->CodecId = codecId;
 
@@ -127,7 +127,7 @@ void vtkWEBMWriter::WriteFileHeader(const char* codecId)
 }
 
 //------------------------------------------------------------------------------
-void vtkWEBMWriter::WriteWebmBlock(vtkCodedVideoPacket* packet)
+void vtkWEBMMuxer::WriteWebmBlock(vtkCompressedVideoPacket* packet)
 {
   vtkLogScopeFunction(TRACE);
 
@@ -173,7 +173,7 @@ void vtkWEBMWriter::WriteWebmBlock(vtkCodedVideoPacket* packet)
 }
 
 //------------------------------------------------------------------------------
-void vtkWEBMWriter::WriteFileTrailer()
+void vtkWEBMMuxer::WriteFileTrailer()
 {
   vtkLogScopeFunction(TRACE);
   if (!this->IsHeaderWritten)
@@ -189,7 +189,7 @@ void vtkWEBMWriter::WriteFileTrailer()
 }
 
 //------------------------------------------------------------------------------
-void vtkWEBMWriter::Flush()
+void vtkWEBMMuxer::Flush()
 {
   vtkLogScopeFunction(TRACE);
   if (this->Internals->writer != nullptr)
@@ -199,7 +199,7 @@ void vtkWEBMWriter::Flush()
 }
 
 //------------------------------------------------------------------------------
-vtkUnsignedCharArray* vtkWEBMWriter::GetDynamicBuffer()
+vtkUnsignedCharArray* vtkWEBMMuxer::GetDynamicBuffer()
 {
   vtkLogScopeFunction(TRACE);
   return this->Internals->writer->GetDynamicBuffer();
