@@ -15,10 +15,10 @@
 
 #include "vtkNvEncoderGL.h"
 #include "nvEncodeAPI.h"
-#include "vtkCompressedVideoPacket.h"
-#include "vtkLogger.h"
 #include "vtkCUDADriverAPI.h"
 #include "vtkCUDADriverLoader.h"
+#include "vtkCompressedVideoPacket.h"
+#include "vtkLogger.h"
 #include "vtkNvEncoderInternals.h"
 #include "vtkObjectFactory.h"
 #include "vtkOpenGLError.h"
@@ -332,8 +332,8 @@ bool vtkNvEncoderGL::AllocateInputBuffers()
     vtkLogF(TRACE, "handle=%d, target=%d", handle, target);
 
     CUgraphicsResource resource = nullptr;
-    VTK_NV_CUDA_DRIVER_API_CHECKED_INVOKE(
-      cuGraphicsGLRegisterImage(&resource, handle, target, CU_GRAPHICS_REGISTER_FLAGS_READ_ONLY | CU_GRAPHICS_REGISTER_FLAGS_SURFACE_LDST));
+    VTK_NV_CUDA_DRIVER_API_CHECKED_INVOKE(cuGraphicsGLRegisterImage(&resource, handle, target,
+      CU_GRAPHICS_REGISTER_FLAGS_READ_ONLY | CU_GRAPHICS_REGISTER_FLAGS_SURFACE_LDST));
     if (status != CUDA_SUCCESS)
     {
       return false;

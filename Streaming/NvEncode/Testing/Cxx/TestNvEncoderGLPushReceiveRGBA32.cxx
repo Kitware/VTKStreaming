@@ -32,7 +32,8 @@ int TestNvEncoderGLPushReceiveRGBA32(int argc, char* argv[])
   bool success = true;
   const int width = 320, height = 240;
 
-  char* filename = vtkTestUtilities::ExpandDataFileName(argc, argv, "movin_color_bars_320x240_64_frames.h264");
+  char* filename =
+    vtkTestUtilities::ExpandDataFileName(argc, argv, "movin_color_bars_320x240_64_frames.h264");
   std::string baselineFile = filename;
   delete[] filename;
 
@@ -128,8 +129,8 @@ int TestNvEncoderGLPushReceiveRGBA32(int argc, char* argv[])
   }
   if (!success)
   {
-    filename = vtkTestUtilities::ExpandFileNameWithArgOrEnvOrDefault(
-      "-T", argc, argv, "VTKSTREAMING_DATA_ROOT", "Temporary", "movin_color_bars_320x240_64_frames.h264");
+    filename = vtkTestUtilities::ExpandFileNameWithArgOrEnvOrDefault("-T", argc, argv,
+      "VTKSTREAMING_DATA_ROOT", "Temporary", "movin_color_bars_320x240_64_frames.h264");
     std::ofstream file(filename, std::ios::out | std::ios::binary);
     file.write(reinterpret_cast<char*>(bitstream.data()), bitstream.size());
   }

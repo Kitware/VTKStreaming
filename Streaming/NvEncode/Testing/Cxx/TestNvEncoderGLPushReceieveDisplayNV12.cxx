@@ -48,8 +48,8 @@ int TestNvEncoderGLPushReceieveDisplayNV12(int argc, char* argv[])
   bool success = true;
   int width = 320, height = 240;
 
-  char* filename =
-    vtkTestUtilities::ExpandDataFileName(argc, argv, "spinnin_cylinder_320x240_100_frames_nv12_input.h264");
+  char* filename = vtkTestUtilities::ExpandDataFileName(
+    argc, argv, "spinnin_cylinder_320x240_100_frames_nv12_input.h264");
   std::string baselineFile = filename;
   delete[] filename;
 

@@ -15,8 +15,8 @@
 
 #include "vtkCompressedVideoPacket.h"
 #include "vtkNvEncodeLoader.h"
-#include "vtkRawVideoFrame.h"
 #include "vtkPixelFormatTypes.h"
+#include "vtkRawVideoFrame.h"
 #include "vtkVideoProcessingStatusTypes.h"
 
 #include "nvEncodeAPI.h"
