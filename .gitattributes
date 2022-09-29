@@ -21,6 +21,6 @@ newversion       crlf=input
 
 *.md             whitespace=tab-in-indent conflict-marker-size=30
 
-[attr]lfs       filter=lfs diff=lfs merge=lfs -text
+[attr]our-lfs  filter=lfs diff=lfs merge=lfs -text
 
-Data/** filter=lfs diff=lfs merge=lfs -text
+Data/**          our-lfs
