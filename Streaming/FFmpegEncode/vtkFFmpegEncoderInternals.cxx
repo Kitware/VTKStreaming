@@ -267,11 +267,62 @@ bool vtkFFmpegEncoderInternals::SetupHWFrameCtx(AVPixelFormat HWPixelFormat)
 }
 
 //------------------------------------------------------------------------------
-bool vtkFFmpegEncoderInternals::PreprocessInput(vtkRawVideoFrame* rgba32Image)
+bool vtkFFmpegEncoderInternals::PreprocessInput(vtkRawVideoFrame* image)
 {
   vtkLogScopeFunction(TRACE);
+  bool success = false;
+  const auto height = image->GetHeight();
+  const auto chromaHeight = image->GetChromaHeight(height, image->GetPixelFormat());
   auto tStart = std::chrono::high_resolution_clock::now();
-  bool success = this->ConvertRGBA32ToEncoderPixFmt(rgba32Image);
+  if (image->GetPixelFormat() == VTKPixelFormatType::VTKPF_RGBA32)
+  {
+    success = this->ConvertRGBA32ToEncoderPixFmt(image);
+  }
+  else if (image->GetPixelFormat() == VTKPixelFormatType::VTKPF_IYUV)
+  {
+    int* strides = image->GetStrides();
+    for (int i = 0; i < 3; ++i)
+    {
+      this->SoftwareFrame->linesize[i] = strides[i];
+    }
+    unsigned char* src = nullptr;
+    auto size = image->GetData(src);
+    unsigned char* dst = this->SoftwareFrame->data[0];
+    auto luma_end = src + strides[0] * height;
+    std::copy(src, luma_end, dst);
+
+    dst = this->SoftwareFrame->data[1];
+    auto cb_end = luma_end + strides[1] * chromaHeight;
+    std::copy(luma_end, cb_end, dst);
+
+    dst = this->SoftwareFrame->data[2];
+    auto cr_end = cb_end + strides[2] * chromaHeight;
+    std::copy(cb_end, cr_end, dst);
+  }
+  else if (image->GetPixelFormat() == VTKPixelFormatType::VTKPF_IYUV)
+  {
+    int* strides = image->GetStrides();
+    for (int i = 0; i < 3; ++i)
+    {
+      this->SoftwareFrame->linesize[i] = strides[i];
+    }
+    unsigned char* src = nullptr;
+    auto size = image->GetData(src);
+    unsigned char* dst = this->SoftwareFrame->data[0];
+    auto luma_end = src + strides[0] * height;
+    std::copy(src, luma_end, dst);
+
+    auto u_start = strides[0] * height;
+    auto u_end = u_start + strides[1] * chromaHeight + strides[2] * chromaHeight - 1;
+    auto v_start = u_start + 1;
+    auto v_end = u_end + 1;
+    for (int u_ = 0, u = u_start, v_ = 0, v = v_start; u < u_end && v < v_end;
+         (u += 2) && (v + 2) && ++u_ && ++v_)
+    {
+      this->SoftwareFrame->data[1][u_] = src[u];
+      this->SoftwareFrame->data[2][v_] = src[v];
+    }
+  }
   this->dtScale = std::chrono::high_resolution_clock::now() - tStart;
   return success;
 }
