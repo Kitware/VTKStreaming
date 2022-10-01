@@ -70,6 +70,12 @@ int vtkRawVideoFrame::GetWidth() const noexcept
 }
 
 //------------------------------------------------------------------------------
+int vtkRawVideoFrame::GetStorageWidth() const noexcept
+{
+  return this->StorageWidth;
+}
+
+//------------------------------------------------------------------------------
 void vtkRawVideoFrame::SetHeight(int value) noexcept
 {
   vtkLogScopeFunction(TRACE);
@@ -82,6 +88,12 @@ void vtkRawVideoFrame::SetHeight(int value) noexcept
 int vtkRawVideoFrame::GetHeight() const noexcept
 {
   return this->DisplayHeight;
+}
+
+//------------------------------------------------------------------------------
+int vtkRawVideoFrame::GetStorageHeight() const noexcept
+{
+  return this->StorageHeight;
 }
 
 //------------------------------------------------------------------------------
@@ -110,6 +122,12 @@ void vtkRawVideoFrame::SetSliceOrderType(vtkRawVideoFrame::SliceOrderType value)
 vtkRawVideoFrame::SliceOrderType vtkRawVideoFrame::GetSliceOrderType() const noexcept
 {
   return this->SliceOrder;
+}
+
+//------------------------------------------------------------------------------
+unsigned int vtkRawVideoFrame::AlignUp(int value, int bytes) noexcept
+{
+  return ALIGN_UP(value, bytes);
 }
 
 //------------------------------------------------------------------------------
@@ -209,10 +227,10 @@ unsigned int vtkRawVideoFrame::GetChromaPitch(int width, VTKPixelFormatType pixe
   switch (pixelFormat)
   {
     case VTKPixelFormatType::VTKPF_IYUV:
-      chromaPitch = (vtkRawVideoFrame::GetPitch(width, pixelFormat) + 1) >> 1;
+      chromaPitch = vtkRawVideoFrame::GetPitch(width, pixelFormat) >> 1;
       break;
     case VTKPixelFormatType::VTKPF_NV12:
-      chromaPitch = vtkRawVideoFrame::GetPitch(width, pixelFormat);
+      chromaPitch = vtkRawVideoFrame::GetPitch(width, pixelFormat) >> 1;
       break;
     case VTKPixelFormatType::VTKPF_RGB24:
     case VTKPixelFormatType::VTKPF_RGBA32:

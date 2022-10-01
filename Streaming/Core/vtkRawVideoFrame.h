@@ -62,6 +62,7 @@ public:
    */
   void SetWidth(int) noexcept;
   int GetWidth() const noexcept;
+  int GetStorageWidth() const noexcept;
   ///@}
 
   ///@{
@@ -70,6 +71,7 @@ public:
    */
   void SetHeight(int) noexcept;
   int GetHeight() const noexcept;
+  int GetStorageHeight() const noexcept;
   ///@}
 
   ///@{
@@ -178,6 +180,7 @@ public:
    * Get chroma pitch of the frame.
    * Get chroma plane offsets of the frame.
    */
+  static unsigned int AlignUp(int value, int bytes) noexcept;
   static unsigned int GetWidthBytes(int width, VTKPixelFormatType pixelFormat) noexcept;
   static unsigned int GetNumberOfChromaPlanes(VTKPixelFormatType pixelFormat) noexcept;
   static unsigned int GetChromaHeight(int height, VTKPixelFormatType pixelFormat) noexcept;
