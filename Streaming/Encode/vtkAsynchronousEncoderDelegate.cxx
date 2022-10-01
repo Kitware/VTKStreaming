@@ -23,6 +23,7 @@
 #include "vtkVideoProcessingStatusTypes.h"
 #include "vtkVideoProcessingWorkUnitTypes.h"
 
+#include <exception>
 #include <vtk_glew.h>
 
 #include <functional>
@@ -349,7 +350,9 @@ void vtkAsynchronousEncoderDelegate::PostInitializeWorker()
   }
   else
   {
-    // some other graphics implementation..
+    const char* msg = "Encoder does not have a graphics context. Please use ::SetContext.";
+    vtkLog(ERROR, << msg);
+    std::terminate();
   }
 }
 
