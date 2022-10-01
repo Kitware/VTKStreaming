@@ -24,7 +24,7 @@
  * Calling code can let an instance of this class manage memory
  * for the compressed packet by using the `CopyData` overload instead of SetArray.
  *
- * @sa vtkCPUVideoFrame, vtkAbstractVideoencoder, vtkVideoDecoder
+ * @sa vtkAbstractVideoencoder, vtkVideoDecoder
  */
 
 #ifndef vtkCompressedVideoPacket_h
