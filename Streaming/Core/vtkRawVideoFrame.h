@@ -21,7 +21,7 @@
  * key parameters such as width, height, luminance-chroma pitches, offsets,
  * pixel format and slice order.
  *
- * @sa vtkCPUVideoFrame, vtkOpenGLVideoFrame
+ * @sa vtkOpenGLVideoFrame
  */
 
 #ifndef vtkRawVideoFrame_h
@@ -128,6 +128,7 @@ public:
    * Copy data from another memory address into this frame.
    */
   void CopyData(unsigned char* from, unsigned int size);
+  void CopyPlanarData(unsigned char* from, int rowsize, int numrows, int plane);
 
   /**
    * Get a pointer to underlying data. returns the size in bytes.
@@ -192,14 +193,17 @@ protected:
   vtkRawVideoFrame();
   ~vtkRawVideoFrame() override;
 
-  int Width = 0;
-  int Height = 0;
+  int DisplayWidth = 0;
+  int DisplayHeight = 0;
   int Strides[3] = {};
+  int StorageWidth = 0;
+  int StorageHeight = 0;
   bool IsKeyFrame = false;
   VTKPixelFormatType PixelFormat = VTKPixelFormatType::VTKPF_NV12;
   SliceOrderType SliceOrder = SliceOrderType::TopDown;
 
   virtual void CopyDataInternal(unsigned char* from, unsigned int size) = 0;
+  virtual void CopyPlanarDataInternal(unsigned char* from, int rowsize, int numrows, int plane) = 0;
   virtual unsigned int GetDataInternal(unsigned char*& data) = 0;
 
 private:
