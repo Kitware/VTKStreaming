@@ -297,8 +297,10 @@ public:
    *
    * Call vtkVideoEncoder::GetResult() to access the encoded video packets.
    *
-   * Draining the encoder is different from a flush operation.
-   * Flush puts some encoder implementations in an uninitialized state whereas drain does not.
+   * Draining the encoder is different from a flush operation in two ways.
+   * - Flush puts some encoder implementations in an uninitialized state whereas drain does not.
+   * - Drain asks the encoder for any remaining packets and gives them to you. Flush doesn't care to
+   * do that.
    */
   VTKVideoProcessingStatusType Push(vtkRawVideoFrame* frame);
   VTKVideoEncoderResultType Encode(vtkRawVideoFrame* frame);
