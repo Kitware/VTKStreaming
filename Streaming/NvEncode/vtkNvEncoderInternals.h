@@ -228,7 +228,7 @@ private:
   // encoder output counter.
   std::size_t NvEncRecvCounter = 0;
   // for low-latency applications, set this to 0 - the default.
-  std::size_t NvEncExtraOutputDelay;
+  std::size_t NvEncExtraOutputDelay = 0;
   // number of frames that the output is delayed by. > 1 for B-frames or lookahead.
   std::size_t NvEncOutputDelay = 0;
 
