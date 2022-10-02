@@ -71,8 +71,7 @@ public:
    */
   bool RegisterInputResources(const std::vector<void*>& inputResources,
     std::vector<vtkSmartPointer<vtkRawVideoFrame>>& inputFrames,
-    NV_ENC_INPUT_RESOURCE_TYPE resourceType, int width, int height, int pitch,
-    NV_ENC_BUFFER_FORMAT bufferFormat);
+    NV_ENC_INPUT_RESOURCE_TYPE resourceType, NV_ENC_BUFFER_FORMAT bufferFormat);
 
   /**
    * Registers cuda/d3d/opengl input or output buffers with NvEncodeAPI.
@@ -229,7 +228,7 @@ private:
   // encoder output counter.
   std::size_t NvEncRecvCounter = 0;
   // for low-latency applications, set this to 0 - the default.
-  std::size_t NvEncExtraOutputDelay = 0;
+  std::size_t NvEncExtraOutputDelay;
   // number of frames that the output is delayed by. > 1 for B-frames or lookahead.
   std::size_t NvEncOutputDelay = 0;
 

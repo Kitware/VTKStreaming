@@ -20,11 +20,12 @@
 #include "vtkJPEGWriter.h"
 #include "vtkLogger.h"
 #include "vtkObjectFactory.h"
+#include "vtkOpenGLRenderWindow.h"
+#include "vtkOpenGLVideoFrame.h"
 #include "vtkPixelFormatTypes.h"
 #include "vtkPointData.h"
 #include "vtkRawVideoFrame.h"
 #include "vtkSmartPointer.h"
-#include "vtkType.h"
 #include "vtkVideoCodecTypes.h"
 #include "vtkVideoProcessingStatusTypes.h"
 #include "vtkVideoProcessingWorkUnitTypes.h"
@@ -37,8 +38,10 @@ vtkStandardNewMacro(vtkJPEGVideoEncoder);
 //------------------------------------------------------------------------------
 vtkJPEGVideoEncoder::vtkJPEGVideoEncoder()
   : Writer(vtkJPEGWriter::New())
+  , GLFrame(vtkOpenGLVideoFrame::New())
 {
   this->Writer->WriteToMemoryOn();
+  this->InputPixelFormat = VTKPixelFormatType::VTKPF_RGBA32;
 }
 
 //------------------------------------------------------------------------------
@@ -69,15 +72,23 @@ void vtkJPEGVideoEncoder::ShutdownInternal() {}
 void vtkJPEGVideoEncoder::FlushInternal() {}
 
 //------------------------------------------------------------------------------
-bool vtkJPEGVideoEncoder::SetupEncoderFrame(int, int)
+bool vtkJPEGVideoEncoder::SetupEncoderFrame(int w, int h)
 {
+  auto estSize =
+    vtkRawVideoFrame::GetEstimatedSize(this->Width, this->Height, VTKPixelFormatType::VTKPF_RGBA32);
+  if (estSize != this->GLFrame->GetActualSize())
+  {
+    this->GLFrame->ReleaseGraphicsResources();
+    auto gfxContext = vtkOpenGLRenderWindow::SafeDownCast(this->GraphicsContext);
+    this->GLFrame->SetContext(gfxContext);
+    this->GLFrame->SetWidth(this->Width);
+    this->GLFrame->SetHeight(this->Height);
+    this->GLFrame->SetPixelFormat(VTKPixelFormatType::VTKPF_RGBA32);
+    this->GLFrame->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::BottomUp);
+    this->GLFrame->ComputeDefaultStrides();
+    this->GLFrame->AllocateDataStore();
+  }
   return true;
-}
-
-//------------------------------------------------------------------------------
-bool vtkJPEGVideoEncoder::NeedsNewEncoderFrame(int, int)
-{
-  return false;
 }
 
 //------------------------------------------------------------------------------
@@ -155,6 +166,16 @@ VTKVideoEncoderResultType vtkJPEGVideoEncoder::EncodeInternal(vtkRawVideoFrame* 
   }
 
   return this->GetResultInternal();
+}
+
+//------------------------------------------------------------------------------
+VTKVideoEncoderResultType vtkJPEGVideoEncoder::EncodeDisplayInternal()
+{
+  vtkLogScopeFunction(TRACE);
+
+  this->GLFrame->Capture(this->GraphicsContext);
+
+  return this->EncodeInternal(this->GLFrame);
 }
 
 //------------------------------------------------------------------------------

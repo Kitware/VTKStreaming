@@ -35,6 +35,7 @@ public:
 
   bool IsHardwareAccelerated() const noexcept override { return true; }
   bool SupportsAsyncMode() const noexcept override { return false; }
+  bool SupportsZeroCopy() const noexcept override { return true; }
   vtkIdType GetLastEncodeTimeNS() const noexcept override;
   vtkIdType GetLastScaleTimeNS() const noexcept override;
   bool SupportsCodec(VTKVideoCodecType codec) const noexcept override;
@@ -48,7 +49,6 @@ protected:
   void FlushInternal() override;
 
   bool SetupEncoderFrame(int, int) override;
-  bool NeedsNewEncoderFrame(int, int) override;
   void TearDownEncoderFrame() override;
 
   VTKVideoProcessingStatusType PushInternal(vtkRawVideoFrame* frame) override;

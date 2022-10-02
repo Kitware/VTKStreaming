@@ -15,7 +15,6 @@
 // This test exercises NvEnc h.264 encoder with NV12 inputs.
 
 #include "vtkActor.h"
-#include "vtkCPUVideoFrame.h"
 #include "vtkCylinderSource.h"
 #include "vtkLogger.h"
 #include "vtkNamedColors.h"
@@ -36,6 +35,10 @@
 #include <fstream>
 #include <ios>
 
+#ifndef WRITE_BITSTREAM
+#define WRITE_BITSTREAM 0
+#endif
+
 int TestNvEncoderGLPushReceiveNV12(int argc, char* argv[])
 {
   vtkStreamingTestUtility::SetLoggerVerbosityFromCli(argc, argv);
@@ -50,9 +53,6 @@ int TestNvEncoderGLPushReceiveNV12(int argc, char* argv[])
     vtkLogF(ERROR, "Unable to open %s", filename);
     return 1;
   }
-  delete[] filename;
-  filename = vtkTestUtilities::ExpandDataFileName(argc, argv, "cars_320x240.h264");
-  std::string baselineFile = filename;
   delete[] filename;
 
   vtkNew<vtkRenderWindow> win;
@@ -80,6 +80,9 @@ int TestNvEncoderGLPushReceiveNV12(int argc, char* argv[])
 
   auto estSize = vtkRawVideoFrame::GetEstimatedSize(width, height, VTKPixelFormatType::VTKPF_NV12);
   int frameId = 0;
+#if WRITE_BITSTREAM
+  std::ofstream file("cars_320x240_nv12.h264", std::ios::out | std::ios::binary);
+#endif
   while (true)
   {
     std::unique_ptr<uint8_t[]> pixels(new uint8_t[estSize]);
@@ -101,11 +104,12 @@ int TestNvEncoderGLPushReceiveNV12(int argc, char* argv[])
       enc->Shutdown();
       break;
     }
-    nv12Picture->CopyData(pixels.get(), numRead);
+    nv12Picture->CopyData(pixels.get(), width, height + ((height + 1) >> 1));
     vtkOpenGLCheckErrors("ERROR uploading data to gl texture");
 
     nv12Picture->Render(renWin);
 
+    vtkLogF(INFO, "Send %d bytes", nv12Picture->GetActualSize());
     auto status = enc->Push(nv12Picture);
     vtkOpenGLCheckErrors("ERROR fetching data from gl texture");
     vtkLogF(TRACE, "Push - %s", vtkVideoProcessingStatusTypeUtilities::ToString(status));
@@ -123,9 +127,12 @@ int TestNvEncoderGLPushReceiveNV12(int argc, char* argv[])
         bitstream.push_back(data[i]);
       }
     }
+#if WRITE_BITSTREAM
+    file.write((char*)bitstream.data(), bitstream.size());
+#endif
     if (frameId > 0)
     {
-      success &= bitstream.size() > 1000;
+      success &= bitstream.size() > 200;
     }
     ++frameId;
   }

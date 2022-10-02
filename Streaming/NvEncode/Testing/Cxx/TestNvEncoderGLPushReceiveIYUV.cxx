@@ -15,7 +15,6 @@
 // This test exercises NvEnc h.264 encoder with IYUV inputs.
 
 #include "vtkActor.h"
-#include "vtkCPUVideoFrame.h"
 #include "vtkCylinderSource.h"
 #include "vtkLogger.h"
 #include "vtkNamedColors.h"
@@ -35,6 +34,10 @@
 #include <cstdint>
 #include <fstream>
 #include <ios>
+
+#ifndef WRITE_BITSTREAM
+#define WRITE_BITSTREAM 0
+#endif
 
 int TestNvEncoderGLPushReceiveIYUV(int argc, char* argv[])
 {
@@ -80,6 +83,9 @@ int TestNvEncoderGLPushReceiveIYUV(int argc, char* argv[])
 
   auto estSize = vtkRawVideoFrame::GetEstimatedSize(width, height, VTKPixelFormatType::VTKPF_IYUV);
   int frameId = 0;
+#if WRITE_BITSTREAM
+  std::ofstream file("cars_320x240_iyuv.h264", std::ios::out | std::ios::binary);
+#endif
   while (true)
   {
     std::unique_ptr<uint8_t[]> pixels(new uint8_t[estSize]);
@@ -101,11 +107,12 @@ int TestNvEncoderGLPushReceiveIYUV(int argc, char* argv[])
       enc->Shutdown();
       break;
     }
-    iyuvPicture->CopyData(pixels.get(), numRead);
+    iyuvPicture->CopyData(pixels.get(), width, height + ((height + 1) >> 1));
     vtkOpenGLCheckErrors("ERROR uploading data to gl texture");
 
     iyuvPicture->Render(renWin);
 
+    vtkLogF(INFO, "Send %d bytes", iyuvPicture->GetActualSize());
     auto status = enc->Push(iyuvPicture);
     vtkOpenGLCheckErrors("ERROR fetching data from gl texture");
     vtkLogF(TRACE, "Push - %s", vtkVideoProcessingStatusTypeUtilities::ToString(status));
@@ -123,9 +130,12 @@ int TestNvEncoderGLPushReceiveIYUV(int argc, char* argv[])
         bitstream.push_back(data[i]);
       }
     }
+#if WRITE_BITSTREAM
+    file.write((char*)bitstream.data(), bitstream.size());
+#endif
     if (frameId > 0)
     {
-      success &= bitstream.size() > 1000;
+      success &= bitstream.size() > 200;
     }
     ++frameId;
   }

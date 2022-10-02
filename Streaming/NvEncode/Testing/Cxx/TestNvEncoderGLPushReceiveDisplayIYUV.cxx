@@ -1,7 +1,7 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    TestNvEncoderGLPushReceieveDisplayNV12.cxx
+  Module:    TestNvEncoderGLPushReceiveDisplayIYUV.cxx
 
   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
   All rights reserved.
@@ -13,7 +13,7 @@
 
 =========================================================================*/
 // This test exercises zero-copy display encoding with NvEnc h.264 OpenGL based encoder
-// with display captured in NV12 pixel format.
+// with display captured in IYUV pixel format.
 
 #include "vtkActor.h"
 #include "vtkCallbackCommand.h"
@@ -35,12 +35,19 @@
 #include "vtkVideoProcessingStatusTypes.h"
 
 #include <array>
+#include <fstream>
+#include <iomanip>
+#include <string>
 
-int TestNvEncoderGLPushReceieveDisplayNV12(int argc, char* argv[])
+#ifndef WRITE_BITSTREAM
+#define WRITE_BITSTREAM 1
+#endif
+
+int TestNvEncoderGLPushReceiveDisplayIYUV(int argc, char* argv[])
 {
   vtkStreamingTestUtility::SetLoggerVerbosityFromCli(argc, argv);
   bool success = true;
-  int width = 320, height = 240;
+  int width = 641, height = 953;
 
   vtkNew<vtkRenderWindowInteractor> iren;
   vtkNew<vtkRenderWindow> win;
@@ -76,24 +83,25 @@ int TestNvEncoderGLPushReceieveDisplayNV12(int argc, char* argv[])
   enc->SetWidth(width);
   enc->SetHeight(height);
   enc->AsyncModeOff();
-  enc->SetInputPixelFormat(VTKPixelFormatType::VTKPF_NV12);
+  enc->SetInputPixelFormat(VTKPixelFormatType::VTKPF_IYUV);
 
   vtkNew<vtkCallbackCommand> exitCallback;
   exitCallback->SetClientData(enc);
-  exitCallback->SetCallback(
-    [](vtkObject* iren_ptr, unsigned long, void* enc_ptr, void*)
-    {
-      // drain needs an opengl context so it can release the resources.
-      auto encoder = reinterpret_cast<vtkVideoEncoder*>(enc_ptr);
-      auto result = encoder->Drain();
-      (void)result;
-      auto iren = reinterpret_cast<vtkRenderWindowInteractor*>(iren_ptr);
-      encoder->Shutdown();
-      iren->TerminateApp();
-    });
+  exitCallback->SetCallback([](vtkObject* iren_ptr, unsigned long, void* enc_ptr, void*) {
+    // drain needs an opengl context so it can release the resources.
+    auto encoder = reinterpret_cast<vtkVideoEncoder*>(enc_ptr);
+    auto result = encoder->Drain();
+    (void)result;
+    auto iren = reinterpret_cast<vtkRenderWindowInteractor*>(iren_ptr);
+    encoder->Shutdown();
+    iren->TerminateApp();
+  });
   iren->AddObserver(vtkCommand::ExitEvent, exitCallback);
 
   int frameId = 0;
+#if WRITE_BITSTREAM
+  std::ofstream file("cyl_iyuv.h264", std::ios::out | std::ios::binary);
+#endif
   while (true)
   {
     double azimuth = (frameId % 36) * 10;
@@ -116,6 +124,7 @@ int TestNvEncoderGLPushReceieveDisplayNV12(int argc, char* argv[])
     success &= !(result.second.empty() || result.second[0] == nullptr);
     if (!success)
     {
+      vtkLog(ERROR, "Empty encoder result");
       break;
     }
     auto data = result.second[0]->GetData()->GetPointer(0);
@@ -125,10 +134,10 @@ int TestNvEncoderGLPushReceieveDisplayNV12(int argc, char* argv[])
     {
       bitstream.push_back(data[i]);
     }
-    if (frameId > 0)
-    {
-      success &= bitstream.size() > 1000;
-    }
+    success &= bitstream.size() > 200;
+#if WRITE_BITSTREAM
+    file.write((char*)bitstream.data(), bitstream.size());
+#endif
     ++frameId;
   }
   return success ? 0 : 1;

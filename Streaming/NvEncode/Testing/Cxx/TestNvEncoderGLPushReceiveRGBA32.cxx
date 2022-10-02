@@ -3,7 +3,7 @@
   Program:   Visualization Toolkit
   Module:    TestNvEncoderGLPushReceiveRGBA32.cxx
 
-  Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
+  Copyright (c) 2022 Kitware, Inc.
   All rights reserved.
   See Copyright.txt or http://www.kitware.com/Copyright.htm for details.
 
@@ -25,11 +25,15 @@
 #include "vtkStreamingTestUtility.h"
 #include "vtkVideoProcessingStatusTypes.h"
 
+#ifndef WRITE_BITSTREAM
+#define WRITE_BITSTREAM 1
+#endif
+
 int TestNvEncoderGLPushReceiveRGBA32(int argc, char* argv[])
 {
   vtkStreamingTestUtility::SetLoggerVerbosityFromCli(argc, argv);
   bool success = true;
-  const int width = 320, height = 240;
+  const int width = 333, height = 429;
 
   vtkNew<vtkRenderWindow> win;
   vtkNew<vtkRenderer> ren;
@@ -53,8 +57,12 @@ int TestNvEncoderGLPushReceiveRGBA32(int argc, char* argv[])
   rgba32Picture->SetPixelFormat(VTKPixelFormatType::VTKPF_RGBA32);
   rgba32Picture->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::TopDown);
   rgba32Picture->ComputeDefaultStrides();
+  rgba32Picture->Print(std::cout);
 
   int shift = 0, frameId = 0;
+#if WRITE_BITSTREAM
+  std::ofstream file("moving_bars_rgba.h264", std::ios::out | std::ios::binary);
+#endif
   while (true)
   {
     auto pixels = vtk::TakeSmartPointer(
@@ -76,13 +84,14 @@ int TestNvEncoderGLPushReceiveRGBA32(int argc, char* argv[])
       enc->Shutdown();
       break;
     }
-    rgba32Picture->CopyData(pixels);
-    vtkOpenGLCheckErrors("ERROR uploading data to gl texture");
+    rgba32Picture->CopyData(pixels, width * 4, height);
+    vtkOpenGLCheckErrors("ERROR uploading data to gl texture. ");
 
     rgba32Picture->Render(renWin);
 
+    vtkLogF(INFO, "Send %d bytes", rgba32Picture->GetActualSize());
     auto status = enc->Push(rgba32Picture);
-    vtkOpenGLCheckErrors("ERROR fetching data from gl texture");
+    vtkOpenGLCheckErrors("ERROR fetching data from gl texture. ");
     vtkLogF(TRACE, "Push - %s", vtkVideoProcessingStatusTypeUtilities::ToString(status));
 
     auto result = enc->GetResult();
@@ -98,9 +107,12 @@ int TestNvEncoderGLPushReceiveRGBA32(int argc, char* argv[])
         bitstream.push_back(data[i]);
       }
     }
+#if WRITE_BITSTREAM
+    file.write((char*)bitstream.data(), bitstream.size());
+#endif
     if (frameId > 0)
     {
-      success &= bitstream.size() > 200;
+      success &= bitstream.size() > 10;
     }
     ++frameId;
   }

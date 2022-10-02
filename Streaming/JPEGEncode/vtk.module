@@ -8,6 +8,8 @@ KIT
   VTKStreaming::JPEGEncode
 DEPENDS
   VTKStreaming::Encode
+  VTKStreaming::OpenGL2
+  VTK::RenderingOpenGL2
 PRIVATE_DEPENDS
   VTK::IOImage
 TEST_DEPENDS

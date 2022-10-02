@@ -16,7 +16,7 @@
  * @class   vtkFFmpegSoftwareEncoder
  * @brief   this class implements software decoder with FFMPEG.
  *
- * @sa vtkVideoEncoder, vtkCPUVideoFrame, vtkCompressedVideoPacket
+ * @sa vtkVideoEncoder, vtkCompressedVideoPacket
  */
 
 #ifndef vtkFFmpegSoftwareEncoder_h
@@ -44,6 +44,7 @@ public:
    */
   bool IsHardwareAccelerated() const noexcept override { return false; }
   bool SupportsAsyncMode() const noexcept override { return true; }
+  bool SupportsZeroCopy() const noexcept override { return false; }
   vtkIdType GetLastEncodeTimeNS() const noexcept override;
   vtkIdType GetLastScaleTimeNS() const noexcept override;
   bool SupportsCodec(VTKVideoCodecType codec) const noexcept override;
@@ -67,7 +68,6 @@ protected:
    * Implement parent class encoding and encoder resource management.
    */
   bool SetupEncoderFrame(int width, int height) override;
-  bool NeedsNewEncoderFrame(int width, int height) override;
   void TearDownEncoderFrame() override;
   VTKVideoEncoderResultType DrainInternal() override;
   VTKVideoProcessingStatusType PushInternal(vtkRawVideoFrame* frame) override;
@@ -75,7 +75,7 @@ protected:
   VTKVideoEncoderResultType EncodeInternal(vtkRawVideoFrame* frame) override;
   ///@}
 
-  VTKVideoEncoderResultType EncodeDisplayInternal() override { return {}; }
+  VTKVideoEncoderResultType EncodeDisplayInternal() override;
 
 private:
   vtkFFmpegSoftwareEncoder(const vtkFFmpegSoftwareEncoder&) = delete;

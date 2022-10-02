@@ -16,7 +16,7 @@
  * @class   vtkJPEGVideoEncoder
  * @brief   this class implements video encoding with vtkJPEGWriter
  *
- * @sa vtkVideoEncoder, vtkCPUVideoFrame, vtkCompressedVideoPacket
+ * @sa vtkVideoEncoder, vtkCompressedVideoPacket
  */
 #ifndef vtkJPEGVideoEncoder_h
 #define vtkJPEGVideoEncoder_h
@@ -26,6 +26,7 @@
 #include "vtkStreamingJPEGEncodeModule.h" // for export macro
 
 class vtkJPEGWriter;
+class vtkOpenGLVideoFrame;
 
 class VTKSTREAMINGJPEGENCODE_EXPORT vtkJPEGVideoEncoder : public vtkVideoEncoder
 {
@@ -35,10 +36,21 @@ class VTKSTREAMINGJPEGENCODE_EXPORT vtkJPEGVideoEncoder : public vtkVideoEncoder
 
   ///@{
   /**
+   * Set/Get the quality.
+   * 1: Low image quality, faster compression
+   * 100: High image quality, slower compression
+   */
+  vtkGetMacro(Quality, int);
+  vtkSetClampMacro(Quality, int, 1, 100);
+  ///@}
+
+  ///@{
+  /**
    * Implement public convenient methods.
    */
   bool IsHardwareAccelerated() const noexcept override { return false; }
   bool SupportsAsyncMode() const noexcept override { return true; }
+  bool SupportsZeroCopy() const noexcept override { return false; }
   vtkIdType GetLastEncodeTimeNS() const noexcept override;
   vtkIdType GetLastScaleTimeNS() const noexcept override;
   bool SupportsCodec(VTKVideoCodecType codec) const noexcept override;
@@ -47,6 +59,9 @@ class VTKSTREAMINGJPEGENCODE_EXPORT vtkJPEGVideoEncoder : public vtkVideoEncoder
 protected:
   vtkJPEGVideoEncoder();
   ~vtkJPEGVideoEncoder() override;
+
+  int Quality = 60;
+  vtkOpenGLVideoFrame* GLFrame = nullptr;
 
   ///@{
   /**
@@ -62,7 +77,6 @@ protected:
    * Implement parent class encoding and encoder resource management.
    */
   bool SetupEncoderFrame(int width, int height) override;
-  bool NeedsNewEncoderFrame(int width, int height) override;
   void TearDownEncoderFrame() override;
   VTKVideoEncoderResultType DrainInternal() override;
   VTKVideoProcessingStatusType PushInternal(vtkRawVideoFrame* frame) override;
@@ -70,7 +84,7 @@ protected:
   VTKVideoEncoderResultType EncodeInternal(vtkRawVideoFrame* frame) override;
   ///@}
 
-  VTKVideoEncoderResultType EncodeDisplayInternal() override { return {}; }
+  VTKVideoEncoderResultType EncodeDisplayInternal() override;
 
 private:
   vtkJPEGVideoEncoder(const vtkJPEGVideoEncoder&) = delete;

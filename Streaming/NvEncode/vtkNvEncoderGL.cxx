@@ -40,7 +40,7 @@
 #define VTK_NV_CUDA_DRIVER_API_CHECKED_INVOKE(call)                                                \
   do                                                                                               \
   {                                                                                                \
-    vtkLogF(TRACE, "CUDRVAPI Trace %s", #call);                                                    \
+    vtkLogF(TRACE, "CUDRV %s", #call);                                                             \
     auto cufns = this->CUDADriverLoader->FunctionsList;                                            \
     status = cufns->call;                                                                          \
     if (status != CUDA_SUCCESS)                                                                    \
@@ -159,11 +159,11 @@ bool vtkNvEncoderGL::InitializeInternal()
     NV_ENC_CONFIG encodeConfig = { NV_ENC_CONFIG_VER };
     initializeParams.encodeConfig = &encodeConfig;
     internals.CreateDefaultEncoderInitializeParams(&initializeParams, NV_ENC_CODEC_H264_GUID,
-      NV_ENC_PRESET_P3_GUID, NV_ENC_TUNING_INFO_ULTRA_LOW_LATENCY);
+      NV_ENC_PRESET_P2_GUID, NV_ENC_TUNING_INFO_ULTRA_LOW_LATENCY);
     vtkNvEncoderInternals::TweakFromEncoderObject(&initializeParams, this);
     this->Initialized = internals.InitializeEncodeCtx(&initializeParams);
     std::string out = internals.FullParamToString(&initializeParams);
-    vtkLog(TRACE, << out);
+    vtkLog(INFO, << out);
     return this->Initialized;
   }
   else
@@ -193,15 +193,6 @@ bool vtkNvEncoderGL::SetupEncoderFrame(int width, int height)
 }
 
 //------------------------------------------------------------------------------
-bool vtkNvEncoderGL::NeedsNewEncoderFrame(int width, int height)
-{
-  bool outdated = this->Width != width || this->Height != height;
-  this->Width = width;
-  this->Height = height;
-  return outdated;
-}
-
-//------------------------------------------------------------------------------
 void vtkNvEncoderGL::TearDownEncoderFrame()
 {
   this->ReleaseInputBuffers();
@@ -215,6 +206,7 @@ VTKVideoProcessingStatusType vtkNvEncoderGL::PushInternal(vtkRawVideoFrame* fram
   auto input = this->Internals->GetNextInputFrame();
 
   input->DeepCopy(frame);
+  glFlush();
 
   return vtkNvEncoderInternals::ParseNvEncodeAPIStatus(internals.Send(this->ForceIFrame));
 }
@@ -225,7 +217,7 @@ VTKVideoEncoderResultType vtkNvEncoderGL::GetResultInternal()
   vtkLogScopeFunction(TRACE);
   auto& internals = (*this->Internals);
   std::vector<vtkSmartPointer<vtkCompressedVideoPacket>> packets;
-  bool success = internals.Receive(packets);
+  bool success = internals.Receive(packets, true);
   return VTKVideoEncoderResultType(
     { success ? VTKVideoProcessingStatusType::VTKVPStatus_Success
               : VTKVideoProcessingStatusType::VTKVPStatus_UnknownError,
@@ -263,10 +255,11 @@ VTKVideoEncoderResultType vtkNvEncoderGL::EncodeDisplayInternal()
   auto input = this->Internals->GetNextInputFrame();
 
   input->Capture(this->GraphicsContext);
+  glFlush();
 
   auto status = internals.Send(this->ForceIFrame);
   std::vector<vtkSmartPointer<vtkCompressedVideoPacket>> packets;
-  bool success = internals.Receive(packets);
+  bool success = internals.Receive(packets, true);
 
   if (success)
   {
@@ -313,8 +306,7 @@ bool vtkNvEncoderGL::AllocateInputBuffers()
 
   std::vector<void*> inputResources;
   std::vector<vtkSmartPointer<vtkRawVideoFrame>> inputFrames;
-  auto gfxContext =
-    this->HasDelegate() ? this->GetDelegateGraphicsContext() : this->GraphicsContext;
+  auto glContext = vtkOpenGLRenderWindow::SafeDownCast(this->GraphicsContext);
   for (std::size_t i = 0; i < internals.GetEncoderBufferCount(); ++i)
   {
     auto frame = vtk::TakeSmartPointer(vtkOpenGLVideoFrame::New());
@@ -323,7 +315,7 @@ bool vtkNvEncoderGL::AllocateInputBuffers()
     frame->SetPixelFormat(this->InputPixelFormat);
     frame->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::TopDown);
     frame->ComputeDefaultStrides();
-    frame->SetContext(vtkOpenGLRenderWindow::SafeDownCast(gfxContext));
+    frame->SetContext(glContext);
     frame->AllocateDataStore();
 
     auto vtkTexture = reinterpret_cast<vtkTextureObject*>(frame->GetResourceHandle());
@@ -367,8 +359,8 @@ bool vtkNvEncoderGL::AllocateInputBuffers()
   VTK_NV_CUDA_DRIVER_API_CHECKED_INVOKE(cuCtxPopCurrent_v2(nullptr));
 
   const auto bufFmt = vtkNvEncoderInternals::ParsePixelFormat(this->InputPixelFormat);
-  bool success = internals.RegisterInputResources(inputResources, inputFrames,
-    NV_ENC_INPUT_RESOURCE_TYPE_CUDAARRAY, this->Width, this->Height, this->Width, bufFmt);
+  bool success = internals.RegisterInputResources(
+    inputResources, inputFrames, NV_ENC_INPUT_RESOURCE_TYPE_CUDAARRAY, bufFmt);
   return success;
 }
 

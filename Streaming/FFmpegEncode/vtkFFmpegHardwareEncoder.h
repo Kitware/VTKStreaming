@@ -19,7 +19,7 @@
  * It configures and uses FFmpeg with a hardware accelerated encoder.
  * The support for encoder codec varies.
  *
- * @sa vtkVideoEncoder, vtkCPUVideoFrame, vtkCompressedVideoPacket
+ * @sa vtkVideoEncoder, vtkCompressedVideoPacket
  */
 
 #ifndef vtkFFmpegHardwareEncoder_h
@@ -90,6 +90,7 @@ public:
    */
   bool IsHardwareAccelerated() const noexcept override { return true; }
   bool SupportsAsyncMode() const noexcept override { return true; }
+  bool SupportsZeroCopy() const noexcept override { return false; }
   vtkIdType GetLastEncodeTimeNS() const noexcept override;
   vtkIdType GetLastScaleTimeNS() const noexcept override;
   bool SupportsCodec(VTKVideoCodecType codec) const noexcept override;
@@ -138,7 +139,6 @@ protected:
    * Implement parent class encoding and hardware encoder resource management.
    */
   bool SetupEncoderFrame(int width, int height) override;
-  bool NeedsNewEncoderFrame(int width, int height) override;
   void TearDownEncoderFrame() override;
   VTKVideoEncoderResultType DrainInternal() override;
   VTKVideoProcessingStatusType PushInternal(vtkRawVideoFrame* frame) override;
@@ -146,7 +146,7 @@ protected:
   VTKVideoEncoderResultType EncodeInternal(vtkRawVideoFrame* frame) override;
   ///@}
 
-  VTKVideoEncoderResultType EncodeDisplayInternal() override { return {}; }
+  VTKVideoEncoderResultType EncodeDisplayInternal() override;
 
 private:
   vtkFFmpegHardwareEncoder(const vtkFFmpegHardwareEncoder&) = delete;

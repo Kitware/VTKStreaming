@@ -15,11 +15,9 @@
 
 #include "vtkFFmpegHardwareEncoder.h"
 #include "vtkFFmpegEncoderInternals.h"
-
 #include "vtkLogger.h"
 #include "vtkObjectFactory.h"
-
-#include "vtkCPUVideoFrame.h"
+#include "vtkOpenGLRenderWindow.h"
 #include "vtkRawVideoFrame.h"
 #include "vtkSmartPointer.h"
 #include "vtksys/SystemInformation.hxx"
@@ -437,6 +435,47 @@ VTKVideoEncoderResultType vtkFFmpegHardwareEncoder::EncodeInternal(vtkRawVideoFr
 }
 
 //------------------------------------------------------------------------------
+VTKVideoEncoderResultType vtkFFmpegHardwareEncoder::EncodeDisplayInternal()
+{
+  vtkLogScopeFunction(TRACE);
+  auto& internals = (*this->Internals);
+  VTKVideoEncoderResultType result;
+
+  auto estSize =
+    vtkRawVideoFrame::GetEstimatedSize(this->Width, this->Height, this->InputPixelFormat);
+  if (estSize != internals.GLFrame->GetActualSize())
+  {
+    internals.GLFrame->ReleaseGraphicsResources();
+    auto gfxContext = vtkOpenGLRenderWindow::SafeDownCast(this->GraphicsContext);
+    internals.GLFrame->SetContext(gfxContext);
+    internals.GLFrame->SetWidth(this->Width);
+    internals.GLFrame->SetHeight(this->Height);
+    internals.GLFrame->SetPixelFormat(this->InputPixelFormat);
+    internals.GLFrame->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::TopDown);
+    internals.GLFrame->ComputeDefaultStrides();
+    internals.GLFrame->AllocateDataStore();
+  }
+  internals.GLFrame->Capture(this->GraphicsContext);
+
+  if (!internals.PreprocessInput(internals.GLFrame))
+  {
+    vtkLog(ERROR, << "Failed to convert rgba32 to encoder input frame pixel format.");
+    result.first = VTKVideoProcessingStatusType::VTKVPStatus_InvalidValue;
+    result.second = {};
+    return result;
+  }
+
+  if (!internals.PrepareForEncoding())
+  {
+    result.first = VTKVideoProcessingStatusType::VTKVPStatus_InvalidValue;
+    result.second = {};
+    return result;
+  }
+
+  return internals.Encode(this->ForceIFrame);
+}
+
+//------------------------------------------------------------------------------
 VTKVideoEncoderResultType vtkFFmpegHardwareEncoder::DrainInternal()
 {
   vtkLogScopeFunction(TRACE);
@@ -468,8 +507,8 @@ bool vtkFFmpegHardwareEncoder::SetupEncoderFrame(int width, int height)
   auto& internals = *(this->Internals);
 
   internals.EncodeCtx->bit_rate = this->BitRate;
-  internals.EncodeCtx->width = width;
-  internals.EncodeCtx->height = height;
+  internals.EncodeCtx->width = this->Width;
+  internals.EncodeCtx->height = this->Height;
   internals.EncodeCtx->time_base = AVRational{ this->TimeBaseStart, this->TimeBaseEnd };
   internals.EncodeCtx->framerate = AVRational{ this->TimeBaseEnd, this->TimeBaseStart };
   internals.EncodeCtx->gop_size = this->GroupOfPicturesSize;
@@ -517,16 +556,23 @@ bool vtkFFmpegHardwareEncoder::SetupEncoderFrame(int width, int height)
 
   // Setup a hardware frame.
   success &= internals.InitializeHWFrame();
-  return success;
-}
 
-//------------------------------------------------------------------------------
-bool vtkFFmpegHardwareEncoder::NeedsNewEncoderFrame(int w, int h)
-{
-  vtkLogScopeFunction(TRACE);
-  auto& internals = *(this->Internals);
-  vtkLogScopeFunction(TRACE);
-  return w != internals.LastEncodedFrameDims[0] && h != internals.LastEncodedFrameDims[1];
+  auto estSize =
+    vtkRawVideoFrame::GetEstimatedSize(this->Width, this->Height, this->InputPixelFormat);
+  if (estSize != internals.GLFrame->GetActualSize())
+  {
+    internals.GLFrame->ReleaseGraphicsResources();
+    auto gfxContext = vtkOpenGLRenderWindow::SafeDownCast(this->GraphicsContext);
+    internals.GLFrame->SetContext(gfxContext);
+    internals.GLFrame->SetWidth(this->Width);
+    internals.GLFrame->SetHeight(this->Height);
+    internals.GLFrame->SetPixelFormat(this->InputPixelFormat);
+    internals.GLFrame->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::TopDown);
+    internals.GLFrame->ComputeDefaultStrides();
+    internals.GLFrame->AllocateDataStore();
+  }
+
+  return success;
 }
 
 //------------------------------------------------------------------------------
