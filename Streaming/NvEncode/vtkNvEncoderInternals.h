@@ -53,8 +53,8 @@ public:
    * If needed, you can alos override the parameters with app-specific settings before
    * ::InitializeEncodeCtx()
    */
-  bool CreateDefaultEncoderInitializeParams(
-    NV_ENC_INITIALIZE_PARAMS* params, GUID codecGuid, GUID presetGuid, NV_ENC_TUNING_INFO tuneInfo);
+  bool CreateDefaultEncoderInitializeParams(NV_ENC_INITIALIZE_PARAMS* params, GUID codec,
+    GUID preset, GUID profile, NV_ENC_TUNING_INFO tuneInfo);
 
   /**
    * Initializes encoder session and output buffers.

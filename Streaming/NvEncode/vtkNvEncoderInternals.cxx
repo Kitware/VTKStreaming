@@ -49,7 +49,7 @@ static inline bool operator!=(const GUID& guid1, const GUID& guid2)
     vtkLogF(TRACE, "NVENC %s", #nvencAPICall);                                                     \
     success = true;                                                                                \
     errorCode = nvencAPICall;                                                                      \
-    if (errorCode != NV_ENC_SUCCESS)                                                               \
+    if (errorCode != NV_ENC_SUCCESS && errorCode != NV_ENC_ERR_NEED_MORE_INPUT)                    \
     {                                                                                              \
       success = false;                                                                             \
       vtkLog(ERROR, << #nvencAPICall << " failed. ErrorCode (" << errorCode << ")");               \
@@ -255,7 +255,7 @@ bool vtkNvEncoderInternals::LoadNvEncodeAPI()
 
 //------------------------------------------------------------------------------
 bool vtkNvEncoderInternals::CreateDefaultEncoderInitializeParams(NV_ENC_INITIALIZE_PARAMS* params,
-  GUID codecGuid, GUID presetGuid, // NOLINT(bugprone-easily-swappable-parameters)
+  GUID codec, GUID preset, GUID profile, // NOLINT(bugprone-easily-swappable-parameters)
   NV_ENC_TUNING_INFO tuneInfo)
 {
   vtkLogScopeFunction(TRACE);
@@ -280,8 +280,8 @@ bool vtkNvEncoderInternals::CreateDefaultEncoderInitializeParams(NV_ENC_INITIALI
 
   params->encodeConfig->version = NV_ENC_CONFIG_VER;
   params->version = NV_ENC_INITIALIZE_PARAMS_VER;
-  params->encodeGUID = codecGuid;
-  params->presetGUID = presetGuid;
+  params->encodeGUID = codec;
+  params->presetGUID = preset;
   params->encodeWidth = this->Width;
   params->encodeHeight = this->Height;
   params->darWidth = this->Width;
@@ -298,19 +298,19 @@ bool vtkNvEncoderInternals::CreateDefaultEncoderInitializeParams(NV_ENC_INITIALI
   params->enableOutputInVidmem = false;
 
   NV_ENC_PRESET_CONFIG presetConfig = { NV_ENC_PRESET_CONFIG_VER, { NV_ENC_CONFIG_VER } };
-  this->NvEncInstance.nvEncGetEncodePresetConfig(
-    this->NvEncSession, codecGuid, presetGuid, &presetConfig);
+  this->NvEncInstance.nvEncGetEncodePresetConfig(this->NvEncSession, codec, preset, &presetConfig);
   memcpy(params->encodeConfig, &presetConfig.presetCfg, sizeof(NV_ENC_CONFIG));
   params->encodeConfig->frameIntervalP = 1;
   params->encodeConfig->gopLength = NVENC_INFINITE_GOPLENGTH;
   params->encodeConfig->rcParams.rateControlMode = NV_ENC_PARAMS_RC_CBR;
+  params->encodeConfig->profileGUID = profile;
 
   // Apply tune information.
   {
     params->tuningInfo = tuneInfo;
     NV_ENC_PRESET_CONFIG presetConfig = { NV_ENC_PRESET_CONFIG_VER, { NV_ENC_CONFIG_VER } };
     this->NvEncInstance.nvEncGetEncodePresetConfigEx(
-      this->NvEncSession, codecGuid, presetGuid, tuneInfo, &presetConfig);
+      this->NvEncSession, codec, preset, tuneInfo, &presetConfig);
     memcpy(params->encodeConfig, &presetConfig.presetCfg, sizeof(NV_ENC_CONFIG));
   }
 
@@ -322,6 +322,7 @@ bool vtkNvEncoderInternals::CreateDefaultEncoderInitializeParams(NV_ENC_INITIALI
     {
       params->encodeConfig->encodeCodecConfig.h264Config.chromaFormatIDC = 3;
     }
+    params->encodeConfig->encodeCodecConfig.h264Config.level = NV_ENC_LEVEL_AUTOSELECT;
     params->encodeConfig->encodeCodecConfig.h264Config.idrPeriod = params->encodeConfig->gopLength;
   }
   else if (params->encodeGUID == NV_ENC_CODEC_HEVC_GUID)
@@ -588,6 +589,9 @@ NVENCSTATUS vtkNvEncoderInternals::Send(bool keyFrame /*=false*/)
   {
     ++this->NvEncSendCounter;
   }
+  vtkLogF(TRACE, "Send status: %s",
+    vtkVideoProcessingStatusTypeUtilities::ToString(
+      vtkNvEncoderInternals::ParseNvEncodeAPIStatus(errorCode)));
   return errorCode;
 }
 
@@ -609,7 +613,8 @@ bool vtkNvEncoderInternals::SendEOS()
 bool vtkNvEncoderInternals::Receive(
   std::vector<vtkSmartPointer<vtkCompressedVideoPacket>>& packets, bool outputDelay /*=false*/)
 {
-  vtkLogScopeF(TRACE, "%s, %lu, outputDelay=%d", __func__, this->NvEncSendCounter - 1, outputDelay);
+  vtkLogScopeF(TRACE, "%s, %lu, outputDelay=%s|%lu", __func__, this->NvEncSendCounter - 1,
+    (outputDelay ? "true" : "false"), this->NvEncOutputDelay);
   std::size_t iPkt = 0;
   bool success = true;
   NVENCSTATUS errorCode;
@@ -624,6 +629,10 @@ bool vtkNvEncoderInternals::Receive(
     lockBitStreamData.doNotWait = false;
     VTK_NVENC_API_CHECKED_INVOKE(
       this->NvEncInstance.nvEncLockBitstream(this->NvEncSession, &lockBitStreamData));
+
+    vtkLogF(TRACE, "Recv status: %s",
+      vtkVideoProcessingStatusTypeUtilities::ToString(
+        vtkNvEncoderInternals::ParseNvEncodeAPIStatus(errorCode)));
     if (!success)
     {
       return false;
