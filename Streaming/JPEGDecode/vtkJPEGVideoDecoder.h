@@ -16,7 +16,7 @@
  * @class   vtkJPEGVideoDecoder
  * @brief   this class implements video decoding with vtkJPEGReader
  *
- * @sa vtkVideoDecoder, vtkCPUVideoFrame, vtkCompressedVideoPacket
+ * @sa vtkVideoDecoder, vtkCompressedVideoPacket
  */
 
 #ifndef vtkJPEGVideoDecoder_h

@@ -15,10 +15,9 @@
 
 #include "vtkFFmpegSoftwareDecoder.h"
 #include "vtkFFmpegDecoderInternals.h"
-
-#include "vtkCPUVideoFrame.h"
 #include "vtkLogger.h"
 #include "vtkObjectFactory.h"
+#include "vtkOpenGLVideoFrame.h"
 #include "vtkSmartPointer.h"
 
 extern "C"
@@ -224,7 +223,8 @@ VTKVideoDecoderResultType vtkFFmpegSoftwareDecoder::GetResultInternal()
   else
   {
     result.first = status;
-    result.second.emplace_back(vtk::TakeSmartPointer(internals.GetOutputFrameFromDecodedFrame()));
+    result.second.emplace_back(
+      vtk::TakeSmartPointer(internals.GetOutputFrameFromDecodedFrame(this->GraphicsContext)));
     vtkLogF(TRACE, "Successfully decoded image - %d bytes", result.second[0]->GetActualSize());
     return result;
   }
@@ -286,7 +286,8 @@ VTKVideoDecoderResultType vtkFFmpegSoftwareDecoder::DecodeInternal(vtkCompressed
   {
     internals.dtDecode = now - tStart;
     result.first = status;
-    result.second.emplace_back(vtk::TakeSmartPointer(internals.GetOutputFrameFromDecodedFrame()));
+    result.second.emplace_back(
+      vtk::TakeSmartPointer(internals.GetOutputFrameFromDecodedFrame(this->GraphicsContext)));
     vtkLogF(TRACE, "Successfully decoded image - %d bytes", result.second[0]->GetActualSize());
     return result;
   }

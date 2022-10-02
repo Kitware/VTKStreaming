@@ -14,8 +14,9 @@
 =========================================================================*/
 
 #include "vtkFFmpegDecoderInternals.h"
-#include "vtkCPUVideoFrame.h"
 #include "vtkLogger.h"
+#include "vtkOpenGLRenderWindow.h"
+#include "vtkOpenGLVideoFrame.h"
 #include "vtkRawVideoFrame.h"
 
 #include <cstddef>
@@ -28,7 +29,8 @@ extern "C"
 }
 
 //------------------------------------------------------------------------------
-vtkCPUVideoFrame* vtkFFmpegDecoderInternals::GetOutputFrameFromDecodedFrame()
+vtkOpenGLVideoFrame* vtkFFmpegDecoderInternals::GetOutputFrameFromDecodedFrame(
+  vtkRenderWindow* context)
 {
   vtkLogScopeFunction(TRACE);
   vtkLog(TRACE, << "Decoded frame dimensions " << this->SoftwareFrame->width << "x"
@@ -36,11 +38,8 @@ vtkCPUVideoFrame* vtkFFmpegDecoderInternals::GetOutputFrameFromDecodedFrame()
   vtkLog(TRACE, << "Decoded frame linsize " << this->SoftwareFrame->linesize[0] << "x"
                 << this->SoftwareFrame->linesize[1] << 'x' << this->SoftwareFrame->linesize[2]);
 
-  auto output = vtkCPUVideoFrame::New();
-  // Wrap the decoded frame into our vtkCPUVideoFrame instance.
-  output->SetWidth(this->SoftwareFrame->width);
-  output->SetHeight(this->SoftwareFrame->height);
-  output->SetIsKeyFrame(this->SoftwareFrame->key_frame);
+  auto output = vtkOpenGLVideoFrame::New();
+  // Wrap the decoded frame into our vtkOpenGLVideoFrame instance.
   switch (this->SoftwareFrame->format)
   {
     case AV_PIX_FMT_RGB24:
@@ -52,6 +51,8 @@ vtkCPUVideoFrame* vtkFFmpegDecoderInternals::GetOutputFrameFromDecodedFrame()
       output->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::BottomUp);
       break;
     case AV_PIX_FMT_NV12:
+      output->SetPixelFormat(VTKPixelFormatType::VTKPF_NV12);
+      output->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::TopDown);
     case AV_PIX_FMT_YUV420P:
     default:
       output->SetPixelFormat(VTKPixelFormatType::VTKPF_IYUV);
@@ -60,31 +61,17 @@ vtkCPUVideoFrame* vtkFFmpegDecoderInternals::GetOutputFrameFromDecodedFrame()
   }
   output->SetWidth(this->SoftwareFrame->width);
   output->SetHeight(this->SoftwareFrame->height);
-  output->SetStrides(this->SoftwareFrame->linesize, AV_NUM_DATA_POINTERS);
+  output->SetIsKeyFrame(this->SoftwareFrame->key_frame);
+  output->SetContext(vtkOpenGLRenderWindow::SafeDownCast(context));
   output->AllocateDataStore();
-  unsigned char* dstPixels = nullptr;
-  int lastSize = 0;
-  const auto dstSize = output->GetData(dstPixels);
-  vtkLogF(TRACE, "DstSize=%d", dstSize);
-  std::fill(dstPixels, dstPixels + dstSize, 0);
 
-  for (int planeId = 0; planeId < 3; ++planeId)
+  int nshifts[3] = { 0, 1, 1 };
+  for (int i = 0; i < 3; ++i)
   {
-    uint8_t* srcPixels = this->SoftwareFrame->data[planeId];
-    int srcLinesize = this->SoftwareFrame->linesize[planeId];
-    std::ptrdiff_t numRows = 0;
-    if (planeId && this->SoftwareFrame->format != AV_PIX_FMT_RGBA &&
-      this->SoftwareFrame->format != AV_PIX_FMT_RGB24)
-    {
-      numRows = this->SoftwareFrame->height >> 1;
-    }
-    else
-    {
-      numRows = this->SoftwareFrame->height;
-    }
-    std::copy(srcPixels, srcPixels + numRows * srcLinesize, &dstPixels[lastSize]);
-    vtkLogF(TRACE, "PlaneID=%d, size=%ld", planeId, numRows * srcLinesize);
-    lastSize += numRows * srcLinesize;
+    uint8_t* src = this->SoftwareFrame->data[i];
+    int rowsize = this->SoftwareFrame->linesize[i];
+    int numrows = this->SoftwareFrame->height >> nshifts[i];
+    output->CopyPlanarData(src, rowsize, numrows, i);
   }
 
   return output;

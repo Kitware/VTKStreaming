@@ -15,12 +15,12 @@
 
 #include "vtkJPEGVideoDecoder.h"
 
-#include "vtkCPUVideoFrame.h"
 #include "vtkCompressedVideoPacket.h"
 #include "vtkImageData.h"
 #include "vtkJPEGReader.h"
 #include "vtkLogger.h"
 #include "vtkObjectFactory.h"
+#include "vtkOpenGLVideoFrame.h"
 #include "vtkPixelFormatTypes.h"
 #include "vtkPointData.h"
 #include "vtkSmartPointer.h"
@@ -96,7 +96,7 @@ VTKVideoDecoderResultType vtkJPEGVideoDecoder::GetResultInternal()
   VTKVideoDecoderResultType result;
 
   result.first = VTKVideoProcessingStatusType::VTKVPStatus_Success;
-  result.second.emplace_back(vtk::TakeSmartPointer(vtkCPUVideoFrame::New()));
+  result.second.emplace_back(vtk::TakeSmartPointer(vtkOpenGLVideoFrame::New()));
 
   auto frame = result.second.front();
   int dims[3] = {};
@@ -110,8 +110,7 @@ VTKVideoDecoderResultType vtkJPEGVideoDecoder::GetResultInternal()
   frame->AllocateDataStore();
 
   auto src = reinterpret_cast<unsigned char*>(img->GetScalarPointer());
-  auto size = img->GetPointData()->GetScalars()->GetNumberOfValues();
-  frame->CopyData(src, size);
+  frame->CopyData(src, dims[0] * 4, dims[1]);
 
   return result;
 }
