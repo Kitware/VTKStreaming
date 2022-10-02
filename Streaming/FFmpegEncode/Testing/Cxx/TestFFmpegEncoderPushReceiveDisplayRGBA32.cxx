@@ -1,9 +1,9 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    TestNvEncoderGLPushReceieveDisplayRGBA32.cxx
+  Module:    TestFFmpegEncoderPushReceiveDisplayRGBA32.cxx
 
-  Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
+  Copyright (c) 2022 Kitware, Inc.
   All rights reserved.
   See Copyright.txt or http://www.kitware.com/Copyright.htm for details.
 
@@ -19,9 +19,9 @@
 #include "vtkCallbackCommand.h"
 #include "vtkCamera.h"
 #include "vtkCylinderSource.h"
+#include "vtkFFmpegSoftwareEncoder.h"
 #include "vtkLogger.h"
 #include "vtkNamedColors.h"
-#include "vtkNvEncoderGL.h"
 #include "vtkOpenGLError.h"
 #include "vtkOpenGLRenderWindow.h"
 #include "vtkPixelFormatTypes.h"
@@ -35,12 +35,20 @@
 #include "vtkVideoProcessingStatusTypes.h"
 
 #include <array>
+#include <fstream>
+#include <iomanip>
+#include <ios>
+#include <string>
 
-int TestNvEncoderGLPushReceieveDisplayRGBA32(int argc, char* argv[])
+#ifndef WRITE_BITSTREAM
+#define WRITE_BITSTREAM 1
+#endif
+
+int TestFFmpegEncoderPushReceiveDisplayRGBA32(int argc, char* argv[])
 {
   vtkStreamingTestUtility::SetLoggerVerbosityFromCli(argc, argv);
   bool success = true;
-  int width = 320, height = 240;
+  int width = 647, height = 953;
 
   vtkNew<vtkRenderWindowInteractor> iren;
   vtkNew<vtkRenderWindow> win;
@@ -70,7 +78,7 @@ int TestNvEncoderGLPushReceieveDisplayRGBA32(int argc, char* argv[])
   iren->Initialize();
   iren->Render();
 
-  vtkNew<vtkNvEncoderGL> enc;
+  vtkNew<vtkFFmpegSoftwareEncoder> enc;
   enc->SetGraphicsContext(renWin);
   enc->SetCodec(VTKVideoCodecType::VTKVC_H264);
   enc->SetWidth(width);
@@ -80,19 +88,19 @@ int TestNvEncoderGLPushReceieveDisplayRGBA32(int argc, char* argv[])
 
   vtkNew<vtkCallbackCommand> exitCallback;
   exitCallback->SetClientData(enc);
-  exitCallback->SetCallback(
-    [](vtkObject* iren_ptr, unsigned long, void* enc_ptr, void*)
-    {
-      // drain needs an opengl context so it can release the resources.
-      auto encoder = reinterpret_cast<vtkVideoEncoder*>(enc_ptr);
-      auto result = encoder->Drain();
-      (void)result;
-      auto iren = reinterpret_cast<vtkRenderWindowInteractor*>(iren_ptr);
-      encoder->Shutdown();
-      iren->TerminateApp();
-    });
+  exitCallback->SetCallback([](vtkObject* iren_ptr, unsigned long, void* enc_ptr, void*) {
+    // drain needs an opengl context so it can release the resources.
+    auto encoder = reinterpret_cast<vtkVideoEncoder*>(enc_ptr);
+    auto result = encoder->Drain();
+    (void)result;
+    auto iren = reinterpret_cast<vtkRenderWindowInteractor*>(iren_ptr);
+    encoder->Shutdown();
+    iren->TerminateApp();
+  });
   iren->AddObserver(vtkCommand::ExitEvent, exitCallback);
-
+#if WRITE_BITSTREAM
+  std::ofstream file("cyl_rgba.h264", std::ios::out | std::ios::binary);
+#endif
   int frameId = 0;
   while (true)
   {
@@ -125,10 +133,10 @@ int TestNvEncoderGLPushReceieveDisplayRGBA32(int argc, char* argv[])
     {
       bitstream.push_back(data[i]);
     }
-    if (frameId > 0)
-    {
-      success &= bitstream.size() > 1000;
-    }
+#if WRITE_BITSTREAM
+    file.write((char*)bitstream.data(), bitstream.size());
+#endif
+    success &= bitstream.size() > 10;
     ++frameId;
   }
 

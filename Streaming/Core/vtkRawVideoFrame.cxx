@@ -16,9 +16,10 @@
 #include "vtkRawVideoFrame.h"
 #include "vtkLogger.h"
 
-#include <algorithm>
 #include <fstream>
 #include <vector>
+
+#define ALIGN_UP(s, a) ((s + a - 1) & ~(a - 1))
 
 //------------------------------------------------------------------------------
 vtkRawVideoFrame::vtkRawVideoFrame() = default;
@@ -30,8 +31,15 @@ vtkRawVideoFrame::~vtkRawVideoFrame() = default;
 void vtkRawVideoFrame::PrintSelf(ostream& os, vtkIndent indent)
 {
   this->Superclass::PrintSelf(os, indent);
-  os << "Width: " << this->Width << "\n";
-  os << "Height: " << this->Height << "\n";
+  os << "DisplayWidth: " << this->DisplayWidth << "\n";
+  os << "DisplayHeight: " << this->DisplayHeight << "\n";
+  os << "StorageWidth: " << this->StorageWidth << "\n";
+  os << "StorageHeight: " << this->StorageHeight << "\n";
+  os << "Strides: " << '\n';
+  for (int i = 0; i < 3; ++i)
+  {
+    os << i << ':' << this->Strides[i] << '\n';
+  }
   os << "PixelFormat: " << vtkPixelFormatTypeUtilities::ToString(this->PixelFormat) << '\n';
   os << "SliceOrder: ";
   switch (this->SliceOrder)
@@ -44,40 +52,48 @@ void vtkRawVideoFrame::PrintSelf(ostream& os, vtkIndent indent)
       os << "BottomUp\n";
       break;
   }
-
-  os << "Strides: " << '\n';
-  for (int i = 0; i < 3; ++i)
-  {
-    os << i << ':' << this->Strides[i] << '\n';
-  }
 }
 
 //------------------------------------------------------------------------------
 void vtkRawVideoFrame::SetWidth(int value) noexcept
 {
   vtkLogScopeFunction(TRACE);
-  this->Width = value;
+  this->DisplayWidth = value;
+  this->StorageWidth = ALIGN_UP(value, 8);
   this->Modified();
 }
 
 //------------------------------------------------------------------------------
 int vtkRawVideoFrame::GetWidth() const noexcept
 {
-  return this->Width;
+  return this->DisplayWidth;
+}
+
+//------------------------------------------------------------------------------
+int vtkRawVideoFrame::GetStorageWidth() const noexcept
+{
+  return this->StorageWidth;
 }
 
 //------------------------------------------------------------------------------
 void vtkRawVideoFrame::SetHeight(int value) noexcept
 {
   vtkLogScopeFunction(TRACE);
-  this->Height = value;
+  this->DisplayHeight = value;
+  this->StorageHeight = ALIGN_UP(value, 8);
   this->Modified();
 }
 
 //------------------------------------------------------------------------------
 int vtkRawVideoFrame::GetHeight() const noexcept
 {
-  return this->Height;
+  return this->DisplayHeight;
+}
+
+//------------------------------------------------------------------------------
+int vtkRawVideoFrame::GetStorageHeight() const noexcept
+{
+  return this->StorageHeight;
 }
 
 //------------------------------------------------------------------------------
@@ -109,59 +125,58 @@ vtkRawVideoFrame::SliceOrderType vtkRawVideoFrame::GetSliceOrderType() const noe
 }
 
 //------------------------------------------------------------------------------
+unsigned int vtkRawVideoFrame::AlignUp(int value, int bytes) noexcept
+{
+  return ALIGN_UP(value, bytes);
+}
+
+//------------------------------------------------------------------------------
 unsigned int vtkRawVideoFrame::GetWidthBytes(int width, VTKPixelFormatType pixelFormat) noexcept
 {
-  int widthBytes = 0;
+  const auto alignedW = ALIGN_UP(width, 8);
   switch (pixelFormat)
   {
     case VTKPixelFormatType::VTKPF_IYUV:
     case VTKPixelFormatType::VTKPF_NV12:
-      widthBytes = width;
-      break;
+      return alignedW;
     case VTKPixelFormatType::VTKPF_RGB24:
-      widthBytes = width * 3;
-      break;
+      return alignedW * 3;
     case VTKPixelFormatType::VTKPF_RGBA32:
-      widthBytes = width * 4;
-      break;
+      return alignedW * 4;
+    default:
+      return 0;
   }
-  return widthBytes;
 }
 
 //------------------------------------------------------------------------------
 unsigned int vtkRawVideoFrame::GetNumberOfChromaPlanes(VTKPixelFormatType pixelFormat) noexcept
 {
-  unsigned int numCrPlanes = 0;
   switch (pixelFormat)
   {
     case VTKPixelFormatType::VTKPF_IYUV:
-      numCrPlanes = 2;
-      break;
+      return 2;
     case VTKPixelFormatType::VTKPF_NV12:
-      numCrPlanes = 1;
-      break;
+      return 1;
     case VTKPixelFormatType::VTKPF_RGB24:
     case VTKPixelFormatType::VTKPF_RGBA32:
-      break;
+    default:
+      return 0;
   }
-  return numCrPlanes;
 }
 
 //------------------------------------------------------------------------------
 unsigned int vtkRawVideoFrame::GetChromaHeight(int height, VTKPixelFormatType pixelFormat) noexcept
 {
-  unsigned int chromaHeight = 0;
   switch (pixelFormat)
   {
     case VTKPixelFormatType::VTKPF_IYUV:
     case VTKPixelFormatType::VTKPF_NV12:
-      chromaHeight = (height + 1) >> 1;
-      break;
+      return ALIGN_UP(height, 8) >> 1;
     case VTKPixelFormatType::VTKPF_RGB24:
     case VTKPixelFormatType::VTKPF_RGBA32:
-      break;
+    default:
+      return 0;
   }
-  return chromaHeight;
 }
 
 //------------------------------------------------------------------------------
@@ -169,19 +184,21 @@ unsigned int vtkRawVideoFrame::GetEstimatedSize(
   int width, int height, VTKPixelFormatType pixelFormat, int* strides /*=nullptr*/) noexcept
 {
   unsigned int size = 0;
+  const auto alignedW = ALIGN_UP(width, 8);
+  const auto alignedH = ALIGN_UP(height, 8);
   if (strides == nullptr)
   {
     switch (pixelFormat)
     {
       case VTKPixelFormatType::VTKPF_IYUV:
       case VTKPixelFormatType::VTKPF_NV12:
-        size = width * (height + ((height + 1) >> 1));
+        size = alignedW * (alignedH + (alignedH >> 1));
         break;
       case VTKPixelFormatType::VTKPF_RGB24:
-        size = 3 * width * height;
+        size = 3 * alignedW * alignedH;
         break;
       case VTKPixelFormatType::VTKPF_RGBA32:
-        size = 4 * width * height;
+        size = 4 * alignedW * alignedH;
         break;
     }
   }
@@ -189,7 +206,7 @@ unsigned int vtkRawVideoFrame::GetEstimatedSize(
   {
     const auto chromaHeight = vtkRawVideoFrame::GetChromaHeight(height, pixelFormat);
     // clang-format off
-     size = strides[0] * height 
+     size = strides[0] * alignedH 
           + strides[1] * chromaHeight 
           + strides[2] * chromaHeight;
     // clang-format on
@@ -210,10 +227,10 @@ unsigned int vtkRawVideoFrame::GetChromaPitch(int width, VTKPixelFormatType pixe
   switch (pixelFormat)
   {
     case VTKPixelFormatType::VTKPF_IYUV:
-      chromaPitch = (vtkRawVideoFrame::GetPitch(width, pixelFormat) + 1) >> 1;
+      chromaPitch = vtkRawVideoFrame::GetPitch(width, pixelFormat) >> 1;
       break;
     case VTKPixelFormatType::VTKPF_NV12:
-      chromaPitch = vtkRawVideoFrame::GetPitch(width, pixelFormat);
+      chromaPitch = vtkRawVideoFrame::GetPitch(width, pixelFormat) >> 1;
       break;
     case VTKPixelFormatType::VTKPF_RGB24:
     case VTKPixelFormatType::VTKPF_RGBA32:
@@ -250,51 +267,28 @@ std::vector<unsigned int> vtkRawVideoFrame::GetChromaOffsets(
 //------------------------------------------------------------------------------
 void vtkRawVideoFrame::ComputeDefaultStrides()
 {
-  const auto widthBytes = vtkRawVideoFrame::GetWidthBytes(this->Width, this->PixelFormat);
+  const auto widthBytes = vtkRawVideoFrame::GetWidthBytes(this->DisplayWidth, this->PixelFormat);
+  const auto chromaPitch = vtkRawVideoFrame::GetChromaPitch(this->DisplayWidth, this->PixelFormat);
   this->Strides[0] = widthBytes;
-  switch (this->PixelFormat)
-  {
-    case VTKPixelFormatType::VTKPF_IYUV:
-    case VTKPixelFormatType::VTKPF_NV12:
-      this->Strides[1] = widthBytes >> 1;
-      this->Strides[2] = widthBytes >> 1;
-      break;
-    case VTKPixelFormatType::VTKPF_RGB24:
-    case VTKPixelFormatType::VTKPF_RGBA32:
-      this->Strides[1] = 0;
-      this->Strides[2] = 0;
-      break;
-  }
+  this->Strides[1] = chromaPitch;
+  this->Strides[2] = chromaPitch;
 }
 
 //------------------------------------------------------------------------------
-void vtkRawVideoFrame::SetStrides(int* strides, int size)
+void vtkRawVideoFrame::CopyData(unsigned char* from, int rowsize, int numrows)
 {
   vtkLogScopeFunction(TRACE);
-  for (int i = 0; i < 3 && i < size; ++i)
-  {
-    this->Strides[i] = strides[i];
-  }
+  this->CopyDataInternal(from, rowsize, numrows);
   this->Modified();
 }
 
 //------------------------------------------------------------------------------
-void vtkRawVideoFrame::SetStrides(int stride0, int stride1, int stride2)
+void vtkRawVideoFrame::CopyPlanarData(unsigned char* from, int rowsize, int numrows, int plane)
 {
-  this->Strides[0] = stride0;
-  this->Strides[1] = stride1;
-  this->Strides[2] = stride2;
-  this->Modified();
+  this->CopyPlanarDataInternal(from, rowsize, numrows, plane);
 }
 
 //------------------------------------------------------------------------------
-void vtkRawVideoFrame::CopyData(unsigned char* from, unsigned int size)
-{
-  vtkLogScopeFunction(TRACE);
-  this->CopyDataInternal(from, size);
-  this->Modified();
-}
-
 unsigned int vtkRawVideoFrame::GetData(unsigned char*& data)
 {
   vtkLogScopeFunction(TRACE);
@@ -302,14 +296,26 @@ unsigned int vtkRawVideoFrame::GetData(unsigned char*& data)
 }
 
 //------------------------------------------------------------------------------
-void vtkRawVideoFrame::CopyData(vtkUnsignedCharArray* from)
+void vtkRawVideoFrame::CopyData(vtkUnsignedCharArray* from, int rowsize, int numrows)
 {
   vtkLogScopeFunction(TRACE);
   if (from == nullptr)
   {
     return;
   }
-  this->CopyData(from->GetPointer(0), from->GetNumberOfValues());
+  this->CopyData(from->GetPointer(0), rowsize, numrows);
+}
+
+//------------------------------------------------------------------------------
+void vtkRawVideoFrame::CopyPlanarData(
+  vtkUnsignedCharArray* from, int rowsize, int numrows, int plane)
+{
+  vtkLogScopeFunction(TRACE);
+  if (from == nullptr)
+  {
+    return;
+  }
+  this->CopyPlanarData(from->GetPointer(0), rowsize, numrows, plane);
 }
 
 //------------------------------------------------------------------------------
@@ -321,7 +327,10 @@ vtkSmartPointer<vtkUnsignedCharArray> vtkRawVideoFrame::GetData()
   unsigned char* dataPtr = nullptr;
   unsigned int size = this->GetData(dataPtr);
   data->SetNumberOfValues(size);
-  std::copy(dataPtr, dataPtr + size, data->GetPointer(0));
+  for (unsigned int i = 0; i < size; ++i)
+  {
+    data->SetValue(i, dataPtr[i]);
+  }
 
   return data;
 }
@@ -330,8 +339,10 @@ vtkSmartPointer<vtkUnsignedCharArray> vtkRawVideoFrame::GetData()
 void vtkRawVideoFrame::ShallowCopy(vtkRawVideoFrame* from) noexcept
 {
   vtkLogScopeFunction(TRACE);
-  this->Width = from->Width;
-  this->Height = from->Height;
+  this->DisplayWidth = from->DisplayWidth;
+  this->DisplayHeight = from->DisplayHeight;
+  this->StorageWidth = from->StorageWidth;
+  this->StorageHeight = from->StorageHeight;
   this->PixelFormat = from->PixelFormat;
   this->SliceOrder = from->SliceOrder;
   for (int i = 0; i < 3; ++i)
@@ -345,8 +356,10 @@ void vtkRawVideoFrame::ShallowCopy(vtkRawVideoFrame* from) noexcept
 void vtkRawVideoFrame::DeepCopy(vtkRawVideoFrame* from)
 {
   vtkLogScopeFunction(TRACE);
-  this->Width = from->Width;
-  this->Height = from->Height;
+  this->DisplayWidth = from->DisplayWidth;
+  this->DisplayHeight = from->DisplayHeight;
+  this->StorageWidth = from->StorageWidth;
+  this->StorageHeight = from->StorageHeight;
   this->PixelFormat = from->PixelFormat;
   this->SliceOrder = from->SliceOrder;
   for (int i = 0; i < 3; ++i)

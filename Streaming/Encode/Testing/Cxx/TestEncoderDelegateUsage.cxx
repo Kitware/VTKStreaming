@@ -16,15 +16,23 @@
 // to bypass the processing delegate.
 // The aim is to verify that Push/GetResult do not use a delegate.
 
-#include "vtkCPUVideoFrame.h"
 #include "vtkIndent.h"
 #include "vtkLogger.h"
 #include "vtkMockVideoEncoder.h"
+#include "vtkOpenGLRenderWindow.h"
+#include "vtkOpenGLVideoFrame.h"
+#include "vtkRenderWindow.h"
+#include "vtkRenderer.h"
 #include "vtkSmartPointer.h"
 #include "vtkStreamingTestUtility.h"
 
 int TestEncoderDelegateUsage(int argc, char* argv[])
 {
+  vtkNew<vtkRenderWindow> window;
+  vtkNew<vtkRenderer> renderer;
+  window->AddRenderer(renderer);
+  window->Render();
+
   vtkStreamingTestUtility::SetLoggerVerbosityFromCli(argc, argv);
   // 1. AsyncModeOn
   {
@@ -60,9 +68,11 @@ int TestEncoderDelegateUsage(int argc, char* argv[])
   {
     vtkLog(TRACE, << "3. AsyncModeOn,Push,AsyncModeOff");
     vtkNew<vtkMockVideoEncoder> encoder;
-    vtkNew<vtkCPUVideoFrame> frame;
+    encoder->SetGraphicsContext(window);
+    vtkNew<vtkOpenGLVideoFrame> frame;
     frame->SetWidth(4);
     frame->SetHeight(4);
+    frame->SetContext(vtkOpenGLRenderWindow::SafeDownCast(window));
     frame->ComputeDefaultStrides();
     frame->AllocateDataStore();
 
@@ -90,9 +100,11 @@ int TestEncoderDelegateUsage(int argc, char* argv[])
   {
     vtkLog(TRACE, << "4. AsyncModeOff,Push,AsyncModeOn");
     vtkNew<vtkMockVideoEncoder> encoder;
-    vtkNew<vtkCPUVideoFrame> frame;
+    encoder->SetGraphicsContext(window);
+    vtkNew<vtkOpenGLVideoFrame> frame;
     frame->SetWidth(4);
     frame->SetHeight(4);
+    frame->SetContext(vtkOpenGLRenderWindow::SafeDownCast(window));
     frame->ComputeDefaultStrides();
     frame->AllocateDataStore();
 

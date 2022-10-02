@@ -40,7 +40,7 @@
 #define VTK_NV_CUDA_DRIVER_API_CHECKED_INVOKE(call)                                                \
   do                                                                                               \
   {                                                                                                \
-    vtkLogF(TRACE, "CUDRVAPI Trace %s", #call);                                                    \
+    vtkLogF(TRACE, "CUDRV %s", #call);                                                             \
     auto cufns = this->CUDADriverLoader->FunctionsList;                                            \
     status = cufns->call;                                                                          \
     if (status != CUDA_SUCCESS)                                                                    \
@@ -57,6 +57,18 @@ public:
   CUcontext Context;
   std::vector<CUgraphicsResource> Resources;
 };
+
+namespace
+{
+GUID presetMap[] = { NV_ENC_PRESET_P1_GUID, NV_ENC_PRESET_P2_GUID, NV_ENC_PRESET_P3_GUID,
+  NV_ENC_PRESET_P4_GUID, NV_ENC_PRESET_P5_GUID, NV_ENC_PRESET_P6_GUID, NV_ENC_PRESET_P7_GUID };
+
+GUID profileMap[] = { NV_ENC_CODEC_PROFILE_AUTOSELECT_GUID, NV_ENC_H264_PROFILE_BASELINE_GUID,
+  NV_ENC_H264_PROFILE_MAIN_GUID, NV_ENC_H264_PROFILE_HIGH_GUID, NV_ENC_H264_PROFILE_HIGH_444_GUID,
+  NV_ENC_H264_PROFILE_STEREO_GUID, NV_ENC_H264_PROFILE_PROGRESSIVE_HIGH_GUID,
+  NV_ENC_H264_PROFILE_CONSTRAINED_HIGH_GUID, NV_ENC_HEVC_PROFILE_MAIN_GUID,
+  NV_ENC_HEVC_PROFILE_MAIN10_GUID, NV_ENC_HEVC_PROFILE_FREXT_GUID };
+}
 
 vtkStandardNewMacro(vtkNvEncoderGL);
 
@@ -89,8 +101,15 @@ vtkIdType vtkNvEncoderGL::GetLastScaleTimeNS() const noexcept
 //------------------------------------------------------------------------------
 bool vtkNvEncoderGL::SupportsCodec(VTKVideoCodecType codec) const noexcept
 {
-  return false;
-};
+  switch (codec)
+  {
+    case VTKVideoCodecType::VTKVC_H264:
+    case VTKVideoCodecType::VTKVC_H265:
+      return true;
+    default:
+      return false;
+  }
+}
 
 //------------------------------------------------------------------------------
 bool vtkNvEncoderGL::InitializeInternal()
@@ -153,23 +172,40 @@ bool vtkNvEncoderGL::InitializeInternal()
   auto& internals = (*this->Internals);
   bool success = internals.OpenEncodeSession(NV_ENC_DEVICE_TYPE_CUDA, this->CUDAInstance->Context,
     this->Width, this->Height, vtkNvEncoderInternals::ParsePixelFormat(this->InputPixelFormat));
-  if (success)
-  {
-    NV_ENC_INITIALIZE_PARAMS initializeParams = { NV_ENC_INITIALIZE_PARAMS_VER };
-    NV_ENC_CONFIG encodeConfig = { NV_ENC_CONFIG_VER };
-    initializeParams.encodeConfig = &encodeConfig;
-    internals.CreateDefaultEncoderInitializeParams(&initializeParams, NV_ENC_CODEC_H264_GUID,
-      NV_ENC_PRESET_P3_GUID, NV_ENC_TUNING_INFO_ULTRA_LOW_LATENCY);
-    vtkNvEncoderInternals::TweakFromEncoderObject(&initializeParams, this);
-    this->Initialized = internals.InitializeEncodeCtx(&initializeParams);
-    std::string out = internals.FullParamToString(&initializeParams);
-    vtkLog(TRACE, << out);
-    return this->Initialized;
-  }
-  else
+
+  if (!success)
   {
     return false;
   }
+
+  auto nvCodec = NV_ENC_CODEC_H264_GUID;
+  if (this->Codec == VTKVideoCodecType::VTKVC_H265)
+  {
+    nvCodec = NV_ENC_CODEC_HEVC_GUID;
+  }
+  else if (!this->SupportsCodec(this->Codec))
+  {
+    vtkLogF(ERROR, "Unsupported codec : %s", vtkVideoCodecTypeUtilities::ToString(this->Codec));
+    return false;
+  }
+  auto nvProfile = ::profileMap[this->Profile - 1];
+  auto nvPreset = ::presetMap[this->Preset - 1];
+  auto nvTuneInfo = static_cast<NV_ENC_TUNING_INFO>(this->Tune);
+  if (nvTuneInfo == NV_ENC_TUNING_INFO_LOSSLESS)
+  {
+    vtkLogF(WARNING, "vtkNvEncoderGL does not support lossless YUV 4:4:4 encoding.");
+  }
+
+  NV_ENC_INITIALIZE_PARAMS initializeParams = { NV_ENC_INITIALIZE_PARAMS_VER };
+  NV_ENC_CONFIG encodeConfig = { NV_ENC_CONFIG_VER };
+  initializeParams.encodeConfig = &encodeConfig;
+  internals.CreateDefaultEncoderInitializeParams(
+    &initializeParams, nvCodec, nvPreset, nvProfile, nvTuneInfo);
+  vtkNvEncoderInternals::TweakFromEncoderObject(&initializeParams, this);
+  this->Initialized = internals.InitializeEncodeCtx(&initializeParams);
+  std::string out = internals.FullParamToString(&initializeParams);
+  vtkLog(TRACE, << out);
+  return this->Initialized;
 }
 
 //------------------------------------------------------------------------------
@@ -193,15 +229,6 @@ bool vtkNvEncoderGL::SetupEncoderFrame(int width, int height)
 }
 
 //------------------------------------------------------------------------------
-bool vtkNvEncoderGL::NeedsNewEncoderFrame(int width, int height)
-{
-  bool outdated = this->Width != width || this->Height != height;
-  this->Width = width;
-  this->Height = height;
-  return outdated;
-}
-
-//------------------------------------------------------------------------------
 void vtkNvEncoderGL::TearDownEncoderFrame()
 {
   this->ReleaseInputBuffers();
@@ -215,6 +242,7 @@ VTKVideoProcessingStatusType vtkNvEncoderGL::PushInternal(vtkRawVideoFrame* fram
   auto input = this->Internals->GetNextInputFrame();
 
   input->DeepCopy(frame);
+  glFlush();
 
   return vtkNvEncoderInternals::ParseNvEncodeAPIStatus(internals.Send(this->ForceIFrame));
 }
@@ -225,7 +253,7 @@ VTKVideoEncoderResultType vtkNvEncoderGL::GetResultInternal()
   vtkLogScopeFunction(TRACE);
   auto& internals = (*this->Internals);
   std::vector<vtkSmartPointer<vtkCompressedVideoPacket>> packets;
-  bool success = internals.Receive(packets);
+  bool success = internals.Receive(packets, true);
   return VTKVideoEncoderResultType(
     { success ? VTKVideoProcessingStatusType::VTKVPStatus_Success
               : VTKVideoProcessingStatusType::VTKVPStatus_UnknownError,
@@ -242,6 +270,10 @@ VTKVideoEncoderResultType vtkNvEncoderGL::EncodeInternal(vtkRawVideoFrame* frame
   input->DeepCopy(frame);
 
   auto status = internals.Send(this->ForceIFrame);
+  if (status != NV_ENC_SUCCESS)
+  {
+    return { vtkNvEncoderInternals::ParseNvEncodeAPIStatus(status), {} };
+  }
   std::vector<vtkSmartPointer<vtkCompressedVideoPacket>> packets;
   bool success = internals.Receive(packets);
 
@@ -263,10 +295,15 @@ VTKVideoEncoderResultType vtkNvEncoderGL::EncodeDisplayInternal()
   auto input = this->Internals->GetNextInputFrame();
 
   input->Capture(this->GraphicsContext);
+  glFlush();
 
   auto status = internals.Send(this->ForceIFrame);
+  if (status != NV_ENC_SUCCESS)
+  {
+    return { vtkNvEncoderInternals::ParseNvEncodeAPIStatus(status), {} };
+  }
   std::vector<vtkSmartPointer<vtkCompressedVideoPacket>> packets;
-  bool success = internals.Receive(packets);
+  bool success = internals.Receive(packets, true);
 
   if (success)
   {
@@ -313,8 +350,7 @@ bool vtkNvEncoderGL::AllocateInputBuffers()
 
   std::vector<void*> inputResources;
   std::vector<vtkSmartPointer<vtkRawVideoFrame>> inputFrames;
-  auto gfxContext =
-    this->HasDelegate() ? this->GetDelegateGraphicsContext() : this->GraphicsContext;
+  auto glContext = vtkOpenGLRenderWindow::SafeDownCast(this->GraphicsContext);
   for (std::size_t i = 0; i < internals.GetEncoderBufferCount(); ++i)
   {
     auto frame = vtk::TakeSmartPointer(vtkOpenGLVideoFrame::New());
@@ -323,7 +359,7 @@ bool vtkNvEncoderGL::AllocateInputBuffers()
     frame->SetPixelFormat(this->InputPixelFormat);
     frame->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::TopDown);
     frame->ComputeDefaultStrides();
-    frame->SetContext(vtkOpenGLRenderWindow::SafeDownCast(gfxContext));
+    frame->SetContext(glContext);
     frame->AllocateDataStore();
 
     auto vtkTexture = reinterpret_cast<vtkTextureObject*>(frame->GetResourceHandle());
@@ -367,8 +403,8 @@ bool vtkNvEncoderGL::AllocateInputBuffers()
   VTK_NV_CUDA_DRIVER_API_CHECKED_INVOKE(cuCtxPopCurrent_v2(nullptr));
 
   const auto bufFmt = vtkNvEncoderInternals::ParsePixelFormat(this->InputPixelFormat);
-  bool success = internals.RegisterInputResources(inputResources, inputFrames,
-    NV_ENC_INPUT_RESOURCE_TYPE_CUDAARRAY, this->Width, this->Height, this->Width, bufFmt);
+  bool success = internals.RegisterInputResources(
+    inputResources, inputFrames, NV_ENC_INPUT_RESOURCE_TYPE_CUDAARRAY, bufFmt);
   return success;
 }
 

@@ -16,7 +16,7 @@
  * @class   vtkFFmpegSoftwareDecoder
  * @brief   this class implements software decoder with FFMPEG.
  *
- * @sa vtkVideoDecoder, vtkCPUVideoFrame, vtkCompressedVideoPacket
+ * @sa vtkVideoDecoder, vtkCompressedVideoPacket
  */
 
 #ifndef vtkFFmpegSoftwareDecoder_h

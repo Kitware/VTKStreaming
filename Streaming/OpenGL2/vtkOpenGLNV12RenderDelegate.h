@@ -29,7 +29,7 @@ class vtkOpenGLNV12RenderDelegate
 public:
   void ReleaseGraphicsResources(vtkOpenGLRenderWindow* window);
   void Render(vtkTextureObject* nv12Texture, vtkOpenGLRenderWindow* window, int strides[3],
-    int chromaHeight, bool invert_y = false);
+    int lumaHeight, int chromaHeight, bool invert_y = false);
 
 private:
   vtkOpenGLHelper DrawHelper;

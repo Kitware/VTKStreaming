@@ -21,6 +21,7 @@
 #include "vtkStreamingNvEncodeModule.h" // for export macro
 
 #include <memory> // for ivar
+#include <vtkSetGet.h>
 
 class vtkNvEncoderInternals;
 class vtkCUDADriverLoader;
@@ -33,8 +34,18 @@ public:
   void PrintSelf(ostream& os, vtkIndent indent) override{};
   static vtkNvEncoderGL* New();
 
+  vtkSetClampMacro(Preset, int, 1, 7);
+  vtkGetMacro(Preset, int);
+
+  vtkSetClampMacro(Profile, int, 1, 11);
+  vtkGetMacro(Profile, int);
+
+  vtkSetClampMacro(Tune, int, 1, 4);
+  vtkGetMacro(Tune, int);
+
   bool IsHardwareAccelerated() const noexcept override { return true; }
   bool SupportsAsyncMode() const noexcept override { return false; }
+  bool SupportsZeroCopy() const noexcept override { return true; }
   vtkIdType GetLastEncodeTimeNS() const noexcept override;
   vtkIdType GetLastScaleTimeNS() const noexcept override;
   bool SupportsCodec(VTKVideoCodecType codec) const noexcept override;
@@ -43,12 +54,15 @@ protected:
   vtkNvEncoderGL();
   ~vtkNvEncoderGL() override;
 
+  int Preset = 1;  // NV_ENC_PRESET_P1_GUID
+  int Profile = 0; // NV_ENC_CODEC_PROFILE_AUTOSELECT_GUID
+  int Tune = 2;    // NV_ENC_TUNING_INFO_LOW_LATENCY
+
   bool InitializeInternal() override;
   void ShutdownInternal() override;
   void FlushInternal() override;
 
   bool SetupEncoderFrame(int, int) override;
-  bool NeedsNewEncoderFrame(int, int) override;
   void TearDownEncoderFrame() override;
 
   VTKVideoProcessingStatusType PushInternal(vtkRawVideoFrame* frame) override;

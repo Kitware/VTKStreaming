@@ -13,6 +13,8 @@ PRIVATE_DEPENDS
   VTK::RenderingOpenGL2
 TEST_DEPENDS
   VTK::RenderingOpenGL2
+  VTK::RenderingUI
+  VTK::InteractionStyle
   VTK::TestingCore
   VTK::ImagingCore
   VTK::IOImage

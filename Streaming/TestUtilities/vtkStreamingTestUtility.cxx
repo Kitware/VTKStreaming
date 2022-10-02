@@ -40,6 +40,22 @@ void vtkStreamingTestUtility::SetLoggerVerbosityFromCli(int argc, char** argv)
   }
 }
 
+bool vtkStreamingTestUtility::GetInteractive(int argc, char** argv)
+{
+  for (int i = 0; i < argc; ++i)
+  {
+    const char dash_token = '-';
+    const char verb_token = 'I';
+    int token_id = 0;
+    if (std::string(argv[i])[token_id++] == dash_token &&
+      std::string(argv[i])[token_id++] == verb_token)
+    {
+      return true;
+    }
+  }
+  return false;
+}
+
 vtkUnsignedCharArray* vtkStreamingTestUtility::GenerateRGBA32ColorBars(
   int width, int height, int shift /*=0*/)
 {
@@ -49,7 +65,7 @@ vtkUnsignedCharArray* vtkStreamingTestUtility::GenerateRGBA32ColorBars(
   reds = { 255, 255, 0, 0, 255, 255, 0, 0 };
   greens = { 255, 255, 255, 255, 0, 0, 0, 0 };
   blues = { 255, 0, 255, 0, 255, 0, 255, 0 };
-  for (int j = 0; j < height >> 1; ++j)
+  for (int j = 0; j<height>> 1; ++j)
   {
     for (int i = 0; i < width; ++i)
     {

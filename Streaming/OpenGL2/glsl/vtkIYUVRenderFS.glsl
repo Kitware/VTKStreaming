@@ -13,13 +13,23 @@
 
 =========================================================================*/
 
+/**
+ * Description: Shader program that converts IYUV(4:2:0) into RGB(1:1:1) suitable
+ *  for video encoders. Implements https://www.itu.int/rec/R-REC-BT.709-6-201506-I/en
+ */
+
 //VTK::System::Dec
 //VTK::Output::Dec
 in vec2 texCoord;
 
 uniform sampler2D iyuvTexture;
+// resolution of the IYUV texture
 uniform int resolution[2];
+// row sizes for the IYUV texture
 uniform int strides[3];
+// number of rows in luma block. (Y)
+uniform int lumaHeight;
+// overall height of the U + V contiguous memory block.
 uniform int chromaHeight;
 
 //VTK::IYUV::Decl
@@ -35,7 +45,7 @@ void main()
   int a_ = b & 1;
   int c = strides[0] >> 1; // luma pitch half
   int d = chromaHeight >> 1;
-  int e = ((resolution[1] + 1) >> 1) << 1; // nearest even number greater than l.h.s argument for '+'
+  int e = lumaHeight;
   int f = pixelCoord.y >> 2;
 
   // luminance.

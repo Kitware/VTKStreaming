@@ -53,13 +53,13 @@ public:
    * If needed, you can alos override the parameters with app-specific settings before
    * ::InitializeEncodeCtx()
    */
-  bool CreateDefaultEncoderInitializeParams(
-    NV_ENC_INITIALIZE_PARAMS* params, GUID codecGuid, GUID presetGuid, NV_ENC_TUNING_INFO tuneInfo);
+  bool CreateDefaultEncoderInitializeParams(NV_ENC_INITIALIZE_PARAMS* params, GUID codec,
+    GUID preset, GUID profile, NV_ENC_TUNING_INFO tuneInfo);
 
   /**
    * Initializes encoder session and output buffers.
    */
-  bool InitializeEncodeCtx(const NV_ENC_INITIALIZE_PARAMS* params);
+  bool InitializeEncodeCtx(const NV_ENC_INITIALIZE_PARAMS* params, std::size_t extra_delay = 0);
 
   /**
    * Returns true only if an encoder session is open and initialized for encoding.
@@ -71,8 +71,7 @@ public:
    */
   bool RegisterInputResources(const std::vector<void*>& inputResources,
     std::vector<vtkSmartPointer<vtkRawVideoFrame>>& inputFrames,
-    NV_ENC_INPUT_RESOURCE_TYPE resourceType, int width, int height, int pitch,
-    NV_ENC_BUFFER_FORMAT bufferFormat);
+    NV_ENC_INPUT_RESOURCE_TYPE resourceType, NV_ENC_BUFFER_FORMAT bufferFormat);
 
   /**
    * Registers cuda/d3d/opengl input or output buffers with NvEncodeAPI.

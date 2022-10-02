@@ -45,7 +45,8 @@ void vtkOpenGLIYUVRenderDelegate::ReleaseGraphicsResources(vtkOpenGLRenderWindow
 }
 
 void vtkOpenGLIYUVRenderDelegate::Render(vtkTextureObject* iyuvTexture,
-  vtkOpenGLRenderWindow* window, int strides[3], int chromaHeight, bool invert_y /* = false*/)
+  vtkOpenGLRenderWindow* window, int strides[3], int lumaHeight, int chromaHeight,
+  bool invert_y /* = false*/)
 {
   vtkLogScopeF(TRACE, "%s textureContext=%s, window=%s, Texture=%d", __func__,
     vtkLogIdentifier(iyuvTexture->GetContext()), vtkLogIdentifier(window),
@@ -111,6 +112,7 @@ void vtkOpenGLIYUVRenderDelegate::Render(vtkTextureObject* iyuvTexture,
     program->SetUniform1iv("resolution", 2, window->GetSize());
     program->SetUniformi("iyuvTexture", iyuvTexture->GetTextureUnit());
     program->SetUniformi("chromaHeight", chromaHeight);
+    program->SetUniformi("lumaHeight", lumaHeight);
     vtkOpenGLRenderUtilities::RenderTriangles(
       verts, 4, iboData, 6, nullptr, program, this->DrawHelper.VAO);
     iyuvTexture->Deactivate();

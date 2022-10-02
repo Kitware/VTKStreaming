@@ -22,7 +22,7 @@
 vtkVideoDecoder::vtkVideoDecoder() = default;
 
 //------------------------------------------------------------------------------
-vtkVideoDecoder::~vtkVideoDecoder() {}
+vtkVideoDecoder::~vtkVideoDecoder() = default;
 
 //------------------------------------------------------------------------------
 void vtkVideoDecoder::PrintSelf(ostream& os, vtkIndent indent)
@@ -30,6 +30,18 @@ void vtkVideoDecoder::PrintSelf(ostream& os, vtkIndent indent)
   this->Superclass::PrintSelf(os, indent);
   os << "Codec: " << vtkVideoCodecTypeUtilities::ToString(this->Codec) << '\n';
   os << "Initialized: " << this->Initialized << '\n';
+}
+
+//------------------------------------------------------------------------------
+void vtkVideoDecoder::SetGraphicsContext(vtkRenderWindow* context)
+{
+  this->GraphicsContext = context;
+}
+
+//------------------------------------------------------------------------------
+vtkRenderWindow* vtkVideoDecoder::GetGraphicsContext() const
+{
+  return this->GraphicsContext;
 }
 
 //------------------------------------------------------------------------------

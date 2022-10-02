@@ -14,7 +14,6 @@
 =========================================================================*/
 
 #include "vtkAsynchronousEncoderDelegate.h"
-#include "vtkCPUVideoFrame.h"
 #include "vtkLogger.h"
 #include "vtkObjectFactory.h"
 #include "vtkOpenGLRenderWindow.h"
@@ -24,6 +23,7 @@
 #include "vtkVideoProcessingStatusTypes.h"
 #include "vtkVideoProcessingWorkUnitTypes.h"
 
+#include <exception>
 #include <vtk_glew.h>
 
 #include <functional>
@@ -81,7 +81,7 @@ void vtkAsynchronousEncoderDelegate::PrintSelf(ostream& os, vtkIndent indent)
 //------------------------------------------------------------------------------
 void vtkAsynchronousEncoderDelegate::Sustain(VTKVideoEncoderInputType input)
 {
-  vtkLogScopeF(TRACE, "%s", __func__);
+  vtkLogScopeFunction(TRACE);
   ENSURE_MAIN_THREAD;
   this->FrameSustainer.push(input);
 }
@@ -89,7 +89,7 @@ void vtkAsynchronousEncoderDelegate::Sustain(VTKVideoEncoderInputType input)
 //------------------------------------------------------------------------------
 void vtkAsynchronousEncoderDelegate::Relinquish()
 {
-  vtkLogScopeF(TRACE, "%s", __func__);
+  vtkLogScopeFunction(TRACE);
   ENSURE_MAIN_THREAD;
   auto frame = this->FrameSustainer.front();
   this->FrameSustainer.pop();
@@ -98,7 +98,7 @@ void vtkAsynchronousEncoderDelegate::Relinquish()
 //------------------------------------------------------------------------------
 void vtkAsynchronousEncoderDelegate::RelinquishAll()
 {
-  vtkLogScopeF(TRACE, "%s", __func__);
+  vtkLogScopeFunction(TRACE);
   ENSURE_MAIN_THREAD;
   while (!this->FrameSustainer.empty())
   {
@@ -110,6 +110,7 @@ void vtkAsynchronousEncoderDelegate::RelinquishAll()
 void vtkAsynchronousEncoderDelegate::InitializeWorker(
   VTKVideoEncodeWorkerType workerFunc, vtkRenderWindow* mainGfxContext)
 {
+  vtkLogScopeFunction(TRACE);
   using namespace std::placeholders; // for _1;
   auto taskFunc = std::bind(&vtkAsynchronousEncoderDelegate::TaskExecute, this, _1);
 
@@ -128,6 +129,7 @@ void vtkAsynchronousEncoderDelegate::InitializeWorker(
 //------------------------------------------------------------------------------
 void vtkAsynchronousEncoderDelegate::Flush()
 {
+  vtkLogScopeFunction(TRACE);
   if (this->TaskQueue != nullptr)
   {
     this->TaskQueue->Flush();
@@ -216,7 +218,7 @@ VTKVideoEncoderResultType vtkAsynchronousEncoderDelegate::GetResult()
 //------------------------------------------------------------------------------
 void vtkAsynchronousEncoderDelegate::PreTaskExecute()
 {
-  vtkLogScopeF(TRACE, "%s", __func__);
+  vtkLogScopeFunction(TRACE);
   if (this->TaskId == 0)
   {
     // for the very first task.
@@ -228,7 +230,7 @@ void vtkAsynchronousEncoderDelegate::PreTaskExecute()
 VTKVideoEncoderResultType vtkAsynchronousEncoderDelegate::TaskExecute(
   VTKVideoEncoderInputType frame)
 {
-  vtkLogScopeF(TRACE, "%s", __func__);
+  vtkLogScopeFunction(TRACE);
   ENSURE_NOT_MAIN_THREAD;
 
   this->PreTaskExecute();
@@ -250,7 +252,7 @@ VTKVideoEncoderResultType vtkAsynchronousEncoderDelegate::TaskExecute(
 //------------------------------------------------------------------------------
 void vtkAsynchronousEncoderDelegate::PostTaskExecute()
 {
-  vtkLogScopeF(TRACE, "%s", __func__);
+  vtkLogScopeFunction(TRACE);
   if (this->NumberOfPendingTasks == 0 && this->DestroyResourcesNow)
   {
     // we're about to be terminated.
@@ -348,14 +350,16 @@ void vtkAsynchronousEncoderDelegate::PostInitializeWorker()
   }
   else
   {
-    // some other graphics implementation..
+    const char* msg = "Encoder does not have a graphics context. Please use ::SetContext.";
+    vtkLog(ERROR, << msg);
+    std::terminate();
   }
 }
 
 //------------------------------------------------------------------------------
 void vtkAsynchronousEncoderDelegate::PreTerminateWorker()
 {
-  vtkLogScopeF(TRACE, "%s", __func__);
+  vtkLogScopeFunction(TRACE);
   ENSURE_NOT_MAIN_THREAD;
 
   if (this->WorkerContext != nullptr)

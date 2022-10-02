@@ -1,9 +1,9 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    TestNvEncoderGLPushReceiveRGBA32.cxx
+  Module:    TestFFmpegEncoderPushReceiveRGBA32.cxx
 
-  Copyright (c) 2022 Kitware, Inc.
+  Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
   All rights reserved.
   See Copyright.txt or http://www.kitware.com/Copyright.htm for details.
 
@@ -15,9 +15,9 @@
 // This test exercises NvEnc h.264 encoder with RGBA32 inputs.
 
 #include "vtkActor.h"
+#include "vtkFFmpegSoftwareEncoder.h"
 #include "vtkLogger.h"
 #include "vtkNamedColors.h"
-#include "vtkNvEncoderGL.h"
 #include "vtkOpenGLError.h"
 #include "vtkOpenGLRenderWindow.h"
 #include "vtkOpenGLVideoFrame.h"
@@ -25,15 +25,11 @@
 #include "vtkStreamingTestUtility.h"
 #include "vtkVideoProcessingStatusTypes.h"
 
-#include <cstdint>
-#include <fstream>
-#include <ios>
-
 #ifndef WRITE_BITSTREAM
 #define WRITE_BITSTREAM 1
 #endif
 
-int TestNvEncoderGLPushReceiveRGBA32(int argc, char* argv[])
+int TestFFmpegEncoderPushReceiveRGBA32(int argc, char* argv[])
 {
   vtkStreamingTestUtility::SetLoggerVerbosityFromCli(argc, argv);
   bool success = true;
@@ -46,7 +42,7 @@ int TestNvEncoderGLPushReceiveRGBA32(int argc, char* argv[])
   renWin->Initialize();
   renWin->Render();
 
-  vtkNew<vtkNvEncoderGL> enc;
+  vtkNew<vtkFFmpegSoftwareEncoder> enc;
   enc->SetGraphicsContext(renWin);
   enc->SetWidth(width);
   enc->SetHeight(height);
@@ -75,40 +71,37 @@ int TestNvEncoderGLPushReceiveRGBA32(int argc, char* argv[])
 
     if (shift >= 64)
     {
-      // drain out remaining packets
       auto result = enc->Drain();
-      std::vector<uint8_t> bitstream;
-      for (const auto& packet : result.second)
+      if (!result.second.empty())
       {
-        auto data = reinterpret_cast<char*>(packet->GetData()->GetPointer(0));
-        auto size = packet->GetSize();
-        vtkLogF(INFO, "Recvd %d bytes", size);
-        for (int i = 0; i < size; ++i)
+        auto data = result.second[0]->GetData()->GetPointer(0);
+        auto size = result.second[0]->GetSize();
+        for (std::size_t i = 0; i < size; ++i)
         {
           bitstream.push_back(data[i]);
         }
-#if WRITE_BITSTREAM
-        file.write((char*)bitstream.data(), bitstream.size());
-#endif
       }
       enc->Shutdown();
       break;
     }
     rgba32Picture->CopyData(pixels, width * 4, height);
+    vtkOpenGLCheckErrors("ERROR uploading data to gl texture. ");
+
     rgba32Picture->Render(renWin);
 
+    vtkLogF(INFO, "Send %d bytes", rgba32Picture->GetActualSize());
     auto status = enc->Push(rgba32Picture);
-    vtkLogF(INFO, "Sent %d bytes", rgba32Picture->GetActualSize());
-    if (status == VTKVideoProcessingStatusType::VTKVPStatus_TrySendAgain)
-    {
-      continue;
-    }
+    vtkOpenGLCheckErrors("ERROR fetching data from gl texture. ");
+    vtkLogF(TRACE, "Push - %s", vtkVideoProcessingStatusTypeUtilities::ToString(status));
+
     auto result = enc->GetResult();
     vtkLogF(TRACE, "GetResult - %s", vtkVideoProcessingStatusTypeUtilities::ToString(result.first));
-    for (const auto& packet : result.second)
+
+    if (!result.second.empty() && result.second[0] != nullptr)
     {
-      auto data = reinterpret_cast<char*>(packet->GetData()->GetPointer(0));
-      auto size = packet->GetSize();
+      auto data = reinterpret_cast<char*>(result.second[0]->GetData()->GetPointer(0));
+      auto size = result.second[0]->GetSize();
+      vtkLogF(INFO, "Recv %d bytes", size);
       for (int i = 0; i < size; ++i)
       {
         bitstream.push_back(data[i]);
@@ -117,11 +110,7 @@ int TestNvEncoderGLPushReceiveRGBA32(int argc, char* argv[])
 #if WRITE_BITSTREAM
     file.write((char*)bitstream.data(), bitstream.size());
 #endif
-    if (frameId > 0)
-    {
-      assert(bitstream.size() > 10);
-      success &= bitstream.size() > 10;
-    }
+    success &= bitstream.size() > 10;
     ++frameId;
   }
   return success ? 0 : 1;

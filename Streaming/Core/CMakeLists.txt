@@ -1,7 +1,6 @@
 set(classes 
   vtkCompressedVideoPacket
   vtkRawVideoFrame
-  vtkCPUVideoFrame
 )
 
 set(headers

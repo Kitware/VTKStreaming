@@ -37,6 +37,7 @@
 
 class vtkAsynchronousDecoderDelegate;
 class vtkCompressedVideoPacket;
+class vtkRenderWindow;
 
 class VTKSTREAMINGDECODE_EXPORT vtkVideoDecoder : public vtkObject
 {
@@ -46,6 +47,14 @@ public:
 
   vtkSetEnumMacro(Codec, VTKVideoCodecType);
   vtkGetEnumMacro(Codec, VTKVideoCodecType);
+
+  ///@{
+  /**
+   * Set/Get a graphics context.
+   */
+  void SetGraphicsContext(vtkRenderWindow* context);
+  vtkRenderWindow* GetGraphicsContext() const;
+  ///@}
 
   ///@{
   /**
@@ -96,6 +105,7 @@ protected:
 
   VTKVideoCodecType Codec = VTKVideoCodecType::VTKVC_VP9;
   bool Initialized = false;
+  vtkRenderWindow* GraphicsContext = nullptr;
 
   ///@{
   /**

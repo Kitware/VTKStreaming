@@ -35,8 +35,8 @@ bool vtkFFmpegEncoderInternals::ConvertRGBA32ToEncoderPixFmt(vtkRawVideoFrame* r
 {
   vtkLogScopeFunction(TRACE);
 
-  const int& srcW = rgba32Image->GetWidth();
-  const int& srcH = rgba32Image->GetHeight();
+  const int& srcW = rgba32Image->GetStorageWidth();
+  const int& srcH = rgba32Image->GetStorageHeight();
   const int& dstW = this->SoftwareFrame->width;
   const int& dstH = this->SoftwareFrame->height;
 
@@ -193,8 +193,6 @@ bool vtkFFmpegEncoderInternals::InitializeSWFrame()
     vtkLog(ERROR, << "Could not allocate software frame data.");
     return false;
   }
-  this->LastEncodedFrameDims[0] = this->EncodeCtx->width;
-  this->LastEncodedFrameDims[1] = this->EncodeCtx->width;
   this->SoftwareFrame->pts = 0;
 
   return true;
@@ -270,7 +268,7 @@ bool vtkFFmpegEncoderInternals::SetupHWFrameCtx(AVPixelFormat HWPixelFormat)
 bool vtkFFmpegEncoderInternals::PreprocessInput(vtkRawVideoFrame* image)
 {
   vtkLogScopeFunction(TRACE);
-  bool success = false;
+  bool success = true;
   const auto height = image->GetHeight();
   const auto chromaHeight = image->GetChromaHeight(height, image->GetPixelFormat());
   auto tStart = std::chrono::high_resolution_clock::now();
@@ -296,10 +294,10 @@ bool vtkFFmpegEncoderInternals::PreprocessInput(vtkRawVideoFrame* image)
     std::copy(luma_end, cb_end, dst);
 
     dst = this->SoftwareFrame->data[2];
-    auto cr_end = cb_end + strides[2] * chromaHeight;
+    auto cr_end = src + size;
     std::copy(cb_end, cr_end, dst);
   }
-  else if (image->GetPixelFormat() == VTKPixelFormatType::VTKPF_IYUV)
+  else if (image->GetPixelFormat() == VTKPixelFormatType::VTKPF_NV12)
   {
     int* strides = image->GetStrides();
     for (int i = 0; i < 3; ++i)

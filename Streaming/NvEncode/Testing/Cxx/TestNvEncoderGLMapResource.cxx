@@ -15,7 +15,6 @@
 // This test exercises memory mapping procedure explicitly from host -> gpu
 // and from cpu -> nvenc chip.
 
-#include "vtkCPUVideoFrame.h"
 #include "vtkLogger.h"
 #include "vtkNvEncoderGL.h"
 #include "vtkOpenGLError.h"

@@ -16,7 +16,7 @@
 #ifndef vtkFFmpegDecoderInternals_h
 #define vtkFFmpegDecoderInternals_h
 
-#include "vtkType.h"
+#include "vtkRenderWindow.h"
 #include "vtkVideoProcessingStatusTypes.h"
 
 #include <chrono>
@@ -29,7 +29,7 @@ extern "C"
 #include <libavutil/pixfmt.h>
 }
 
-class vtkCPUVideoFrame;
+class vtkOpenGLVideoFrame;
 
 class vtkFFmpegDecoderInternals
 {
@@ -52,7 +52,7 @@ public:
   bool IsOutputFrameOutdated();
   bool InitializeOutputFrame(AVPixelFormat pixFmt);
   // returns a new raw video frame.
-  vtkCPUVideoFrame* GetOutputFrameFromDecodedFrame();
+  vtkOpenGLVideoFrame* GetOutputFrameFromDecodedFrame(vtkRenderWindow* context);
   static VTKVideoProcessingStatusType ParseFFMPEGStatus(int statusCode, bool during_send = true);
 };
 

@@ -17,14 +17,13 @@
 #include "vtkImageData.h"
 #include "vtkImageDifference.h"
 #include "vtkLogger.h"
-#include "vtkOpenGLError.h"
 #include "vtkOpenGLRenderWindow.h"
 #include "vtkOpenGLVideoFrame.h"
-#include "vtkPNGWriter.h"
 #include "vtkPixelFormatTypes.h"
 #include "vtkPointData.h"
 #include "vtkPolyDataMapper.h"
 #include "vtkProperty.h"
+#include "vtkRenderWindowInteractor.h"
 #include "vtkRenderer.h"
 #include "vtkStreamingTestUtility.h"
 #include "vtkTestUtilities.h"
@@ -37,6 +36,7 @@ int TestNV12TopDownCapture(int argc, char* argv[])
   const int width = 240, height = 240;
   auto pixels =
     vtk::TakeSmartPointer(vtkStreamingTestUtility::GenerateRGBA32ColorBars(width, height));
+  vtkNew<vtkRenderWindowInteractor> iren;
   vtkNew<vtkRenderWindow> win;
   vtkNew<vtkRenderer> ren;
 
@@ -44,8 +44,8 @@ int TestNV12TopDownCapture(int argc, char* argv[])
   auto renWin = vtkOpenGLRenderWindow::SafeDownCast(win);
   renWin->AddRenderer(ren);
   renWin->SetSize(width, height);
-
-  renWin->Initialize();
+  iren->SetRenderWindow(renWin);
+  iren->Initialize();
 
   vtkNew<vtkOpenGLVideoFrame> rgba32Picture;
   rgba32Picture->SetContext(renWin);
@@ -54,7 +54,7 @@ int TestNV12TopDownCapture(int argc, char* argv[])
   rgba32Picture->SetPixelFormat(VTKPixelFormatType::VTKPF_RGBA32);
   rgba32Picture->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::BottomUp);
   rgba32Picture->ComputeDefaultStrides();
-  rgba32Picture->CopyData(pixels);
+  rgba32Picture->CopyData(pixels, width * 4, height);
   rgba32Picture->Render(renWin);
 
   vtkNew<vtkOpenGLVideoFrame> nv12Picture;
@@ -66,13 +66,8 @@ int TestNV12TopDownCapture(int argc, char* argv[])
   nv12Picture->ComputeDefaultStrides();
 
   nv12Picture->AllocateDataStore();
-  vtkOpenGLCheckErrors("ERROR allocating gl texture. ");
-
   nv12Picture->Capture(renWin);
-  vtkOpenGLCheckErrors("ERROR capturing render window. ");
-
   nv12Picture->Render(renWin);
-  vtkOpenGLCheckErrors("ERROR rendering nv12. ");
 
   // we cannot use vtkRegressionTest macro because it re-renders and reads the front/back buffer.
   // both of which will not have nv12Picture overlay.
@@ -98,7 +93,29 @@ int TestNV12TopDownCapture(int argc, char* argv[])
   imageDiff->SetThreshold(15);
   imageDiff->Update();
 
-  cout << "Threshold diff " << imageDiff->GetThresholdedError();
+  vtkLog(INFO, << "Threshold diff " << imageDiff->GetThresholdedError());
+  if (vtkStreamingTestUtility::GetInteractive(argc, argv))
+  {
+    int frameId = 0;
+    while (true)
+    {
+      iren->ProcessEvents();
+      if (iren->GetDone())
+      {
+        break;
+      }
+      const int width = renWin->GetSize()[0];
+      const int height = renWin->GetSize()[1];
+      rgba32Picture->SetWidth(width);
+      rgba32Picture->SetHeight(height);
+      rgba32Picture->ComputeDefaultStrides();
+      pixels = vtk::TakeSmartPointer(
+        vtkStreamingTestUtility::GenerateRGBA32ColorBars(width, height, frameId++));
+      rgba32Picture->CopyData(pixels, width * 4, height);
+      rgba32Picture->Render(renWin);
+      nv12Picture->Capture(renWin);
+      nv12Picture->Render(renWin);
+    }
+  }
   return imageDiff->GetThresholdedError() < 0.5 ? 0 : 1;
-  return 0;
 }

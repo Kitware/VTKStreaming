@@ -1,7 +1,7 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    TestNvEncoderGLPushReceieveDisplayNV12.cxx
+  Module:    TestNvEncoderGLPushReceiveDisplayNV12.cxx
 
   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
   All rights reserved.
@@ -22,7 +22,6 @@
 #include "vtkLogger.h"
 #include "vtkNamedColors.h"
 #include "vtkNvEncoderGL.h"
-#include "vtkOpenGLError.h"
 #include "vtkOpenGLRenderWindow.h"
 #include "vtkPixelFormatTypes.h"
 #include "vtkPolyDataMapper.h"
@@ -35,12 +34,19 @@
 #include "vtkVideoProcessingStatusTypes.h"
 
 #include <array>
+#include <fstream>
+#include <iomanip>
+#include <string>
 
-int TestNvEncoderGLPushReceieveDisplayNV12(int argc, char* argv[])
+#ifndef WRITE_BITSTREAM
+#define WRITE_BITSTREAM 1
+#endif
+
+int TestNvEncoderGLPushReceiveDisplayNV12(int argc, char* argv[])
 {
   vtkStreamingTestUtility::SetLoggerVerbosityFromCli(argc, argv);
   bool success = true;
-  int width = 320, height = 240;
+  int width = 641, height = 953;
 
   vtkNew<vtkRenderWindowInteractor> iren;
   vtkNew<vtkRenderWindow> win;
@@ -80,20 +86,36 @@ int TestNvEncoderGLPushReceieveDisplayNV12(int argc, char* argv[])
 
   vtkNew<vtkCallbackCommand> exitCallback;
   exitCallback->SetClientData(enc);
-  exitCallback->SetCallback(
-    [](vtkObject* iren_ptr, unsigned long, void* enc_ptr, void*)
+  exitCallback->SetCallback([](vtkObject* iren_ptr, unsigned long, void* enc_ptr, void*) {
+    // drain needs an opengl context so it can release the resources.
+    auto encoder = reinterpret_cast<vtkVideoEncoder*>(enc_ptr);
+    auto result = encoder->Drain();
+    std::vector<uint8_t> bitstream;
+    for (const auto& packet : result.second)
     {
-      // drain needs an opengl context so it can release the resources.
-      auto encoder = reinterpret_cast<vtkVideoEncoder*>(enc_ptr);
-      auto result = encoder->Drain();
-      (void)result;
-      auto iren = reinterpret_cast<vtkRenderWindowInteractor*>(iren_ptr);
-      encoder->Shutdown();
-      iren->TerminateApp();
-    });
+      auto data = reinterpret_cast<char*>(packet->GetData()->GetPointer(0));
+      auto size = packet->GetSize();
+      vtkLogF(INFO, "Recvd %d bytes", size);
+      for (int i = 0; i < size; ++i)
+      {
+        bitstream.push_back(data[i]);
+      }
+#if WRITE_BITSTREAM
+      std::ofstream file("cyl_rgba.h264", std::ios::app | std::ios::binary);
+      file.write((char*)bitstream.data(), bitstream.size());
+#endif
+    }
+    (void)result;
+    auto iren = reinterpret_cast<vtkRenderWindowInteractor*>(iren_ptr);
+    encoder->Shutdown();
+    iren->TerminateApp();
+  });
   iren->AddObserver(vtkCommand::ExitEvent, exitCallback);
 
   int frameId = 0;
+#if WRITE_BITSTREAM
+  std::ofstream file("cyl_nv12.h264", std::ios::out | std::ios::binary);
+#endif
   while (true)
   {
     double azimuth = (frameId % 36) * 10;
@@ -108,27 +130,28 @@ int TestNvEncoderGLPushReceieveDisplayNV12(int argc, char* argv[])
     {
       break;
     }
-    vtkOpenGLCheckErrors("error uploading data to gl texture");
 
     auto result = enc->EncodeDisplay();
-
-    vtkLog(TRACE, << vtkVideoProcessingStatusTypeUtilities::ToString(result.first));
-    success &= !(result.second.empty() || result.second[0] == nullptr);
-    if (!success)
+    if (result.first == VTKVideoProcessingStatusType::VTKVPStatus_TrySendAgain)
     {
-      break;
+      continue;
     }
-    auto data = result.second[0]->GetData()->GetPointer(0);
-    auto size = result.second[0]->GetSize();
-    vtkLogF(INFO, "Recv %d bytes", size);
-    for (std::size_t i = 0; i < size; ++i)
+    vtkLogF(
+      TRACE, "EncodeDisplay - %s", vtkVideoProcessingStatusTypeUtilities::ToString(result.first));
+    for (const auto& packet : result.second)
     {
-      bitstream.push_back(data[i]);
+      auto data = reinterpret_cast<char*>(packet->GetData()->GetPointer(0));
+      auto size = packet->GetSize();
+      vtkLogF(INFO, "Recvd %d bytes", size);
+      for (int i = 0; i < size; ++i)
+      {
+        bitstream.push_back(data[i]);
+      }
+#if WRITE_BITSTREAM
+      file.write((char*)bitstream.data(), bitstream.size());
+#endif
     }
-    if (frameId > 0)
-    {
-      success &= bitstream.size() > 1000;
-    }
+    success &= bitstream.size() > 200;
     ++frameId;
   }
   return success ? 0 : 1;

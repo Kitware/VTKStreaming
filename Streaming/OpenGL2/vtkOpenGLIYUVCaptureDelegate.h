@@ -29,7 +29,7 @@ class vtkOpenGLIYUVCaptureDelegate
 public:
   void ReleaseGraphicsResources(vtkOpenGLRenderWindow* window);
   void Capture(vtkTextureObject* rgba32Texture, vtkOpenGLRenderWindow* window, int strides[3],
-    int chromaHeight, bool invert_y = false);
+    int lumaHeight, int chromaHeight, bool invert_y = false);
 
 private:
   vtkOpenGLHelper DrawHelper;

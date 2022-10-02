@@ -92,6 +92,13 @@ public:
   vtkTypeMacro(vtkVideoEncoder, vtkObject);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
+  enum class BRCType
+  {
+    CBR, // MaxBitRate = MinBitRate = BitRate
+    VBR, // Bitrate may fluctuate within set minimum and maximum.
+    CQP  // no bitrate control. Set QuantizationParameter
+  };
+
   ///@{
   /**
    * Set/Get a graphics context. Some hardware encoders
@@ -119,10 +126,9 @@ public:
    * Requests the encoder to return packets as soon as possible without
    * buffering frames internally.
    */
-  void SetForceLowLatency(bool val);
-  bool GetForceLowLatency();
-  void ForceLowLatencyOn();
-  void ForceLowLatencyOff();
+  vtkSetMacro(LowDelayMode, bool);
+  vtkGetMacro(LowDelayMode, bool);
+  vtkBooleanMacro(LowDelayMode, bool);
   ///@}
 
   ///@{
@@ -130,20 +136,9 @@ public:
    * Requests the encoder to return packets as soon as possible without
    * buffering frames internally.
    */
-  void SetKeyFramesOnly(bool val);
-  bool GetKeyFramesOnly();
-  void KeyFramesOnlyOn();
-  void KeyFramesOnlyOff();
-  ///@}
-
-  ///@{
-  /**
-   * Set/Get the quality.
-   * 1: Low image quality, faster encoding
-   * 100: High image quality, slower encoding
-   */
-  vtkGetMacro(Quality, int);
-  vtkSetClampMacro(Quality, int, 1, 100);
+  vtkSetMacro(KeyFramesOnly, bool);
+  vtkGetMacro(KeyFramesOnly, bool);
+  vtkBooleanMacro(KeyFramesOnly, bool);
   ///@}
 
   ///@{
@@ -210,6 +205,25 @@ public:
 
   ///@{
   /**
+   * Set/Get bitrate control mode of an encoder.
+   */
+  vtkSetEnumMacro(BitRateControlMode, BRCType);
+  vtkGetEnumMacro(BitRateControlMode, BRCType);
+  void SetBitRateControlMode(int mode);
+  ///@}
+
+  ///@{
+  /**
+   * Set/Get quantization parameter of an encoder.
+   * Note: This value is used only when the encoder and codec support rate-control
+   * AND they are configured in CQP (Constant Quantization Parameter) mode.
+   */
+  vtkSetClampMacro(QuantizationParameter, unsigned int, 1, 60);
+  vtkGetMacro(QuantizationParameter, unsigned int);
+  ///@}
+
+  ///@{
+  /**
    * Set/Get bitrate of an encoder.
    * Note: This value is used only when the encoder and codec support rate-control
    * AND they are configured in CBR (Constant Bit Rate) mode.
@@ -264,20 +278,6 @@ public:
 
   ///@{
   /**
-   * Force the encoder into CBR(Constant Bit Rate) mode.
-   *
-   * DevNote: All these should try their best to put the encoder into CBR mode.
-   * The abstract class simply sets MaxBitRate = MinBitRate = BitRate. Usually,
-   * this is sufficient.
-   */
-  virtual void SetForceCBR(bool val);
-  bool GetForceCBR();
-  void ForceCBROn();
-  void ForceCBROff();
-  ///@}
-
-  ///@{
-  /**
    * Public interface for the encoder. Concrete sub-classes are supposed to implement the
    * respective *Internal() methods to initialize and shutdown an encoding context.
    */
@@ -297,8 +297,10 @@ public:
    *
    * Call vtkVideoEncoder::GetResult() to access the encoded video packets.
    *
-   * Draining the encoder is different from a flush operation.
-   * Flush puts some encoder implementations in an uninitialized state whereas drain does not.
+   * Draining the encoder is different from a flush operation in two ways.
+   * - Flush puts some encoder implementations in an uninitialized state whereas drain does not.
+   * - Drain asks the encoder for any remaining packets and gives them to you. Flush doesn't care to
+   * do that.
    */
   VTKVideoProcessingStatusType Push(vtkRawVideoFrame* frame);
   VTKVideoEncoderResultType Encode(vtkRawVideoFrame* frame);
@@ -329,6 +331,7 @@ public:
    */
   virtual bool IsHardwareAccelerated() const noexcept = 0;
   virtual bool SupportsAsyncMode() const noexcept = 0;
+  virtual bool SupportsZeroCopy() const noexcept = 0;
   virtual vtkIdType GetLastEncodeTimeNS() const noexcept = 0;
   virtual vtkIdType GetLastScaleTimeNS() const noexcept = 0;
   virtual bool SupportsCodec(VTKVideoCodecType codec) const noexcept = 0;
@@ -340,9 +343,8 @@ protected:
 
   // 1. Codec context parameters.
   VTKVideoCodecType Codec = VTKVideoCodecType::VTKVC_VP9;
-  bool ForceLowLatency = true;
+  bool LowDelayMode = true;
   bool KeyFramesOnly = false;
-  int Quality = 100;
   // 2. Sequence parameters
   bool ForceIFrame = false;
   int TimeBaseStart = 1;
@@ -354,7 +356,8 @@ protected:
   int Height = 240;
   VTKPixelFormatType InputPixelFormat = VTKPixelFormatType::VTKPF_NV12;
   // 4. Bitrate control
-  bool ForceCBR = true;           // sets MaxBitRate = MinBitRate = BitRate
+  BRCType BitRateControlMode = BRCType::CBR;
+  unsigned int QuantizationParameter = 33;
   unsigned int BitRate = 1000000; // 1Mbps
   unsigned int MaxBitRate = 1000000;
   unsigned int MinBitRate = 1000000;
@@ -364,6 +367,7 @@ protected:
   vtkAsynchronousEncoderDelegate* Delegate = nullptr;
   // 7. Our graphics context.
   vtkRenderWindow* GraphicsContext = nullptr;
+  bool DirectDisplayEncodeMode = false;
 
   bool Initialized = false;
   bool IgnoreEncodeRequest = false;
@@ -384,7 +388,7 @@ protected:
    * resource.
    */
   virtual bool SetupEncoderFrame(int width, int height) = 0;
-  virtual bool NeedsNewEncoderFrame(int width, int height) = 0;
+  virtual bool NeedsNewEncoderFrame(int width, int height);
   virtual void TearDownEncoderFrame() = 0;
   ///@}
 

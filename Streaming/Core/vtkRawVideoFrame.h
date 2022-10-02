@@ -21,7 +21,7 @@
  * key parameters such as width, height, luminance-chroma pitches, offsets,
  * pixel format and slice order.
  *
- * @sa vtkCPUVideoFrame, vtkOpenGLVideoFrame
+ * @sa vtkOpenGLVideoFrame
  */
 
 #ifndef vtkRawVideoFrame_h
@@ -59,17 +59,22 @@ public:
   ///@{
   /**
    * Set/Get width of the frame.
+   * @warning StorageWidth may not always be equal to the provided width.
    */
   void SetWidth(int) noexcept;
   int GetWidth() const noexcept;
+  int GetStorageWidth() const noexcept;
   ///@}
 
   ///@{
   /**
    * Set/Get height of the frame.
+   * Storage height is the number of rows in this image.
+   * @warning StorageHeight may not always be equal to the provided height.
    */
   void SetHeight(int) noexcept;
   int GetHeight() const noexcept;
+  int GetStorageHeight() const noexcept;
   ///@}
 
   ///@{
@@ -101,10 +106,9 @@ public:
    * Set/Get the strides and use them to interpret the underlying data.
    * Refer https://docs.microsoft.com/en-us/windows/win32/medfound/image-stride for an
    * excellent description of planar image strides.
+   * This class uses 8-byte alignment.
    */
   void ComputeDefaultStrides();
-  void SetStrides(int* strides, int size);
-  void SetStrides(int stride0, int stride1, int stride2);
   int* GetStrides() VTK_SIZEHINT(3) { return this->Strides; }
   ///@}
 
@@ -127,7 +131,8 @@ public:
   /**
    * Copy data from another memory address into this frame.
    */
-  void CopyData(unsigned char* from, unsigned int size);
+  void CopyData(unsigned char* from, int rowsize, int numrows);
+  void CopyPlanarData(unsigned char* from, int rowsize, int numrows, int plane);
 
   /**
    * Get a pointer to underlying data. returns the size in bytes.
@@ -139,7 +144,8 @@ public:
   /**
    * Copy/Get the pixel data from/to a vtkUnsignedCharArray.
    */
-  void CopyData(vtkUnsignedCharArray* from);
+  void CopyData(vtkUnsignedCharArray* from, int rowsize, int numrows);
+  void CopyPlanarData(vtkUnsignedCharArray* from, int rowsize, int numrows, int plane);
   vtkSmartPointer<vtkUnsignedCharArray> GetData();
   ///@}
 
@@ -177,6 +183,7 @@ public:
    * Get chroma pitch of the frame.
    * Get chroma plane offsets of the frame.
    */
+  static unsigned int AlignUp(int value, int bytes) noexcept;
   static unsigned int GetWidthBytes(int width, VTKPixelFormatType pixelFormat) noexcept;
   static unsigned int GetNumberOfChromaPlanes(VTKPixelFormatType pixelFormat) noexcept;
   static unsigned int GetChromaHeight(int height, VTKPixelFormatType pixelFormat) noexcept;
@@ -192,14 +199,17 @@ protected:
   vtkRawVideoFrame();
   ~vtkRawVideoFrame() override;
 
-  int Width = 0;
-  int Height = 0;
+  int DisplayWidth = 0;
+  int DisplayHeight = 0;
   int Strides[3] = {};
+  int StorageWidth = 0;
+  int StorageHeight = 0;
   bool IsKeyFrame = false;
   VTKPixelFormatType PixelFormat = VTKPixelFormatType::VTKPF_NV12;
   SliceOrderType SliceOrder = SliceOrderType::TopDown;
 
-  virtual void CopyDataInternal(unsigned char* from, unsigned int size) = 0;
+  virtual void CopyDataInternal(unsigned char* from, int rowsize, int numrows) = 0;
+  virtual void CopyPlanarDataInternal(unsigned char* from, int rowsize, int numrows, int plane) = 0;
   virtual unsigned int GetDataInternal(unsigned char*& data) = 0;
 
 private:

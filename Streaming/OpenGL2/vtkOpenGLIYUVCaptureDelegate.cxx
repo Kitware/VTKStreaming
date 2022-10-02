@@ -44,7 +44,8 @@ void vtkOpenGLIYUVCaptureDelegate::ReleaseGraphicsResources(vtkOpenGLRenderWindo
 }
 
 void vtkOpenGLIYUVCaptureDelegate::Capture(vtkTextureObject* rgba32Texture,
-  vtkOpenGLRenderWindow* window, int* strides, int chromaHeight, bool invert_y /*=false*/)
+  vtkOpenGLRenderWindow* window, int strides[3], int lumaHeight, int chromaHeight,
+  bool invert_y /*=false*/)
 {
   vtkShaderProgram* program = this->DrawHelper.Program;
   vtkOpenGLShaderCache* shaderCache = window->GetShaderCache();
@@ -58,19 +59,19 @@ void vtkOpenGLIYUVCaptureDelegate::Capture(vtkTextureObject* rgba32Texture,
     if (invert_y)
     {
       vtkShaderProgram::Substitute(
-        FSSource, "//VTK::LumaFlipY::Impl", "srcIndex.y = resolution[1] - 1 - srcIndex.y;\n");
-      vtkShaderProgram::Substitute(
-        FSSource, "//VTK::CrFlipY::Impl", "start.y = resolution[1] - start.y - 2;\n");
-      vtkShaderProgram::Substitute(
-        FSSource, "//VTK::CbFlipY::Impl", "start.y = resolution[1] - start.y - 2;\n");
+        FSSource, "//VTK::LumaFlipY::Impl", "id_RGBA.y = resolution[1] - 1 - id_RGBA.y;\n");
+      vtkShaderProgram::Substitute(FSSource, "//VTK::CrFlipY::Impl",
+        "id_RGBA_start.y = resolution[1] - id_RGBA_start.y - 2;\n");
+      vtkShaderProgram::Substitute(FSSource, "//VTK::CbFlipY::Impl",
+        "id_RGBA_start.y = resolution[1] - id_RGBA_start.y - 2;\n");
     }
     program = shaderCache->ReadyShaderProgram(VSSource.c_str(), FSSource.c_str(), GSSource.c_str());
   }
 
   if (program != nullptr)
   {
-    const int width = window->GetActualSize()[0];
-    const int height = window->GetActualSize()[1] + chromaHeight;
+    const int width = strides[0];
+    const int height = lumaHeight + chromaHeight;
     float verts[] = { -1.0f, -1.0f, 0.0f, 1.0f, -1.0f, 0.0f, -1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f };
     GLuint iboData[] = { 0, 1, 2, 2, 1, 3 };
 
@@ -96,6 +97,8 @@ void vtkOpenGLIYUVCaptureDelegate::Capture(vtkTextureObject* rgba32Texture,
     program->SetUniform1iv("resolution", 2, window->GetSize());
     program->SetUniform1iv("strides", 3, strides);
     program->SetUniformi("rgba32Texture", rgba32Texture->GetTextureUnit());
+    program->SetUniformi("lumaHeight", lumaHeight);
+    program->SetUniformi("chromaHeight", chromaHeight);
     vtkOpenGLRenderUtilities::RenderTriangles(
       verts, 4, iboData, 6, nullptr, program, this->DrawHelper.VAO);
     rgba32Texture->Deactivate();

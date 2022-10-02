@@ -11,3 +11,5 @@ DEPENDS
   VTK::CommonDataModel
   VTKStreaming::Encode
   VTKStreaming::Decode
+  VTKStreaming::OpenGL2
+  VTK::RenderingOpenGL2
