@@ -25,6 +25,10 @@
 #include "vtkStreamingTestUtility.h"
 #include "vtkVideoProcessingStatusTypes.h"
 
+#include <cstdint>
+#include <fstream>
+#include <ios>
+
 #ifndef WRITE_BITSTREAM
 #define WRITE_BITSTREAM 1
 #endif
@@ -71,37 +75,40 @@ int TestNvEncoderGLPushReceiveRGBA32(int argc, char* argv[])
 
     if (shift >= 64)
     {
+      // drain out remaining packets
       auto result = enc->Drain();
-      if (!result.second.empty())
+      std::vector<uint8_t> bitstream;
+      for (const auto& packet : result.second)
       {
-        auto data = result.second[0]->GetData()->GetPointer(0);
-        auto size = result.second[0]->GetSize();
-        for (std::size_t i = 0; i < size; ++i)
+        auto data = reinterpret_cast<char*>(packet->GetData()->GetPointer(0));
+        auto size = packet->GetSize();
+        vtkLogF(INFO, "Recvd %d bytes", size);
+        for (int i = 0; i < size; ++i)
         {
           bitstream.push_back(data[i]);
         }
+#if WRITE_BITSTREAM
+        file.write((char*)bitstream.data(), bitstream.size());
+#endif
       }
       enc->Shutdown();
       break;
     }
     rgba32Picture->CopyData(pixels, width * 4, height);
-    vtkOpenGLCheckErrors("ERROR uploading data to gl texture. ");
-
     rgba32Picture->Render(renWin);
 
-    vtkLogF(INFO, "Send %d bytes", rgba32Picture->GetActualSize());
     auto status = enc->Push(rgba32Picture);
-    vtkOpenGLCheckErrors("ERROR fetching data from gl texture. ");
-    vtkLogF(TRACE, "Push - %s", vtkVideoProcessingStatusTypeUtilities::ToString(status));
-
+    vtkLogF(INFO, "Sent %d bytes", rgba32Picture->GetActualSize());
+    if (status == VTKVideoProcessingStatusType::VTKVPStatus_TrySendAgain)
+    {
+      continue;
+    }
     auto result = enc->GetResult();
     vtkLogF(TRACE, "GetResult - %s", vtkVideoProcessingStatusTypeUtilities::ToString(result.first));
-
-    if (!result.second.empty() && result.second[0] != nullptr)
+    for (const auto& packet : result.second)
     {
-      auto data = reinterpret_cast<char*>(result.second[0]->GetData()->GetPointer(0));
-      auto size = result.second[0]->GetSize();
-      vtkLogF(INFO, "Recv %d bytes", size);
+      auto data = reinterpret_cast<char*>(packet->GetData()->GetPointer(0));
+      auto size = packet->GetSize();
       for (int i = 0; i < size; ++i)
       {
         bitstream.push_back(data[i]);
@@ -112,6 +119,7 @@ int TestNvEncoderGLPushReceiveRGBA32(int argc, char* argv[])
 #endif
     if (frameId > 0)
     {
+      assert(bitstream.size() > 10);
       success &= bitstream.size() > 10;
     }
     ++frameId;

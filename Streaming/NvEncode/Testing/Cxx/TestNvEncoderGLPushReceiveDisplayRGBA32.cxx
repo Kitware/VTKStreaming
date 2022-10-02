@@ -22,7 +22,6 @@
 #include "vtkLogger.h"
 #include "vtkNamedColors.h"
 #include "vtkNvEncoderGL.h"
-#include "vtkOpenGLError.h"
 #include "vtkOpenGLRenderWindow.h"
 #include "vtkPixelFormatTypes.h"
 #include "vtkPolyDataMapper.h"
@@ -41,7 +40,7 @@
 #include <string>
 
 #ifndef WRITE_BITSTREAM
-#define WRITE_BITSTREAM 0
+#define WRITE_BITSTREAM 1
 #endif
 
 int TestNvEncoderGLPushReceiveDisplayRGBA32(int argc, char* argv[])
@@ -92,6 +91,21 @@ int TestNvEncoderGLPushReceiveDisplayRGBA32(int argc, char* argv[])
     // drain needs an opengl context so it can release the resources.
     auto encoder = reinterpret_cast<vtkVideoEncoder*>(enc_ptr);
     auto result = encoder->Drain();
+    std::vector<uint8_t> bitstream;
+    for (const auto& packet : result.second)
+    {
+      auto data = reinterpret_cast<char*>(packet->GetData()->GetPointer(0));
+      auto size = packet->GetSize();
+      vtkLogF(INFO, "Recvd %d bytes", size);
+      for (int i = 0; i < size; ++i)
+      {
+        bitstream.push_back(data[i]);
+      }
+#if WRITE_BITSTREAM
+      std::ofstream file("cyl_rgba.h264", std::ios::app | std::ios::binary);
+      file.write((char*)bitstream.data(), bitstream.size());
+#endif
+    }
     (void)result;
     auto iren = reinterpret_cast<vtkRenderWindowInteractor*>(iren_ptr);
     encoder->Shutdown();
@@ -116,26 +130,27 @@ int TestNvEncoderGLPushReceiveDisplayRGBA32(int argc, char* argv[])
     {
       break;
     }
-    vtkOpenGLCheckErrors("error uploading data to gl texture");
 
     auto result = enc->EncodeDisplay();
-
-    vtkLog(TRACE, << vtkVideoProcessingStatusTypeUtilities::ToString(result.first));
-    success &= !(result.second.empty() || result.second[0] == nullptr);
-    if (!success)
+    if (result.first == VTKVideoProcessingStatusType::VTKVPStatus_TrySendAgain)
     {
-      break;
+      continue;
     }
-    auto data = result.second[0]->GetData()->GetPointer(0);
-    auto size = result.second[0]->GetSize();
-    vtkLogF(INFO, "Recv %d bytes", size);
-    for (std::size_t i = 0; i < size; ++i)
+    vtkLogF(
+      TRACE, "EncodeDisplay - %s", vtkVideoProcessingStatusTypeUtilities::ToString(result.first));
+    for (const auto& packet : result.second)
     {
-      bitstream.push_back(data[i]);
-    }
+      auto data = reinterpret_cast<char*>(packet->GetData()->GetPointer(0));
+      auto size = packet->GetSize();
+      vtkLogF(INFO, "Recvd %d bytes", size);
+      for (int i = 0; i < size; ++i)
+      {
+        bitstream.push_back(data[i]);
+      }
 #if WRITE_BITSTREAM
-    file.write((char*)bitstream.data(), bitstream.size());
+      file.write((char*)bitstream.data(), bitstream.size());
 #endif
+    }
     success &= bitstream.size() > 200;
     ++frameId;
   }

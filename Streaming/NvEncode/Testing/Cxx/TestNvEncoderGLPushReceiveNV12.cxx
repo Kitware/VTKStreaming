@@ -19,7 +19,6 @@
 #include "vtkLogger.h"
 #include "vtkNamedColors.h"
 #include "vtkNvEncoderGL.h"
-#include "vtkOpenGLError.h"
 #include "vtkOpenGLRenderWindow.h"
 #include "vtkOpenGLVideoFrame.h"
 #include "vtkPixelFormatTypes.h"
@@ -36,7 +35,7 @@
 #include <ios>
 
 #ifndef WRITE_BITSTREAM
-#define WRITE_BITSTREAM 0
+#define WRITE_BITSTREAM 1
 #endif
 
 int TestNvEncoderGLPushReceiveNV12(int argc, char* argv[])
@@ -91,37 +90,39 @@ int TestNvEncoderGLPushReceiveNV12(int argc, char* argv[])
 
     if (numRead != estSize)
     {
+      // drain out remaining packets
       auto result = enc->Drain();
-      if (!result.second.empty())
+      for (const auto& packet : result.second)
       {
-        auto data = result.second[0]->GetData()->GetPointer(0);
-        auto size = result.second[0]->GetSize();
+        auto data = packet->GetData()->GetPointer(0);
+        auto size = packet->GetSize();
+        vtkLogF(INFO, "Recvd %d bytes", size);
         for (std::size_t i = 0; i < size; ++i)
         {
           bitstream.push_back(data[i]);
         }
+#if WRITE_BITSTREAM
+        file.write((char*)bitstream.data(), bitstream.size());
+#endif
       }
       enc->Shutdown();
       break;
     }
     nv12Picture->CopyData(pixels.get(), width, height + ((height + 1) >> 1));
-    vtkOpenGLCheckErrors("ERROR uploading data to gl texture");
-
     nv12Picture->Render(renWin);
 
-    vtkLogF(INFO, "Send %d bytes", nv12Picture->GetActualSize());
     auto status = enc->Push(nv12Picture);
-    vtkOpenGLCheckErrors("ERROR fetching data from gl texture");
-    vtkLogF(TRACE, "Push - %s", vtkVideoProcessingStatusTypeUtilities::ToString(status));
-
-    auto result = enc->GetResult();
-    vtkLogF(TRACE, "GetResult - %s", vtkVideoProcessingStatusTypeUtilities::ToString(result.first));
-
-    if (!result.second.empty() && result.second[0] != nullptr)
+    vtkLogF(INFO, "Sent %d bytes", nv12Picture->GetActualSize());
+    if (status == VTKVideoProcessingStatusType::VTKVPStatus_TrySendAgain)
     {
-      auto data = reinterpret_cast<char*>(result.second[0]->GetData()->GetPointer(0));
-      auto size = result.second[0]->GetSize();
-      vtkLogF(INFO, "Recv %d bytes", size);
+      continue;
+    }
+    auto result = enc->GetResult();
+    for (const auto& packet : result.second)
+    {
+      auto data = reinterpret_cast<char*>(packet->GetData()->GetPointer(0));
+      auto size = packet->GetSize();
+      vtkLogF(INFO, "Recvd %d bytes", size);
       for (int i = 0; i < size; ++i)
       {
         bitstream.push_back(data[i]);
@@ -132,7 +133,8 @@ int TestNvEncoderGLPushReceiveNV12(int argc, char* argv[])
 #endif
     if (frameId > 0)
     {
-      success &= bitstream.size() > 200;
+      assert(bitstream.size() > 10);
+      success &= bitstream.size() > 10;
     }
     ++frameId;
   }
