@@ -59,7 +59,7 @@ public:
   /**
    * Initializes encoder session and output buffers.
    */
-  bool InitializeEncodeCtx(const NV_ENC_INITIALIZE_PARAMS* params);
+  bool InitializeEncodeCtx(const NV_ENC_INITIALIZE_PARAMS* params, std::size_t extra_delay = 0);
 
   /**
    * Returns true only if an encoder session is open and initialized for encoding.

@@ -347,7 +347,8 @@ bool vtkNvEncoderInternals::CreateDefaultEncoderInitializeParams(NV_ENC_INITIALI
 }
 
 //------------------------------------------------------------------------------
-bool vtkNvEncoderInternals::InitializeEncodeCtx(const NV_ENC_INITIALIZE_PARAMS* params)
+bool vtkNvEncoderInternals::InitializeEncodeCtx(
+  const NV_ENC_INITIALIZE_PARAMS* params, std::size_t extra_delay /*=0*/)
 {
   vtkLogScopeFunction(TRACE);
   if (this->NvEncSession == nullptr)
@@ -415,6 +416,7 @@ bool vtkNvEncoderInternals::InitializeEncodeCtx(const NV_ENC_INITIALIZE_PARAMS* 
   this->MaxHeight = this->NvEncInitializeParams.maxEncodeHeight;
 
   // 5. Compute the number of input/output buffers needed.
+  this->NvEncExtraOutputDelay = extra_delay;
   this->NvEncBufferCount = this->NvEncConfig.frameIntervalP +
     this->NvEncConfig.rcParams.lookaheadDepth + this->NvEncExtraOutputDelay;
   if (!this->NvEncBufferCount)
