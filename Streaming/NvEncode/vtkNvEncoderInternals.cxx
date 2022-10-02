@@ -994,7 +994,7 @@ bool vtkNvEncoderInternals::TweakFromEncoderObject(
   {
     params->encodeConfig->rcParams.rateControlMode = NV_ENC_PARAMS_RC_CONSTQP;
     const auto q = encoderObject->GetQuantizationParameter();
-    vtkLog(ERROR, << "Applied cqp " << q);
+    vtkLogF(TRACE, "Applied CQP with qp=%d", q);
     params->encodeConfig->rcParams.constQP = { q, q, q };
   }
 
