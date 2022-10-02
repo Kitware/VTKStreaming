@@ -23,6 +23,7 @@ class vtkUnsignedCharArray;
 struct VTKSTREAMINGTESTUTILITES_EXPORT vtkStreamingTestUtility
 {
   static void SetLoggerVerbosityFromCli(int argc, char* argv[]);
+  static bool GetInteractive(int argc, char** argv);
   static vtkUnsignedCharArray* GenerateRGBA32ColorBars(int width, int height, int shift = 0);
 };
 #endif
