@@ -17,7 +17,6 @@
 #include "vtkImageData.h"
 #include "vtkImageDifference.h"
 #include "vtkLogger.h"
-#include "vtkOpenGLError.h"
 #include "vtkOpenGLRenderWindow.h"
 #include "vtkOpenGLVideoFrame.h"
 #include "vtkPointData.h"
@@ -31,6 +30,8 @@ int TestRGBA32SliceOrderBottomUp(int argc, char* argv[])
   vtkStreamingTestUtility::SetLoggerVerbosityFromCli(argc, argv);
   bool success = true;
   const int width = 240, height = 240;
+  auto pixels =
+    vtk::TakeSmartPointer(vtkStreamingTestUtility::GenerateRGBA32ColorBars(width, height));
 
   vtkNew<vtkRenderWindow> win;
   vtkNew<vtkRenderer> ren;
@@ -51,15 +52,8 @@ int TestRGBA32SliceOrderBottomUp(int argc, char* argv[])
   rgba32Picture->ComputeDefaultStrides();
 
   rgba32Picture->AllocateDataStore();
-  vtkOpenGLCheckErrors("ERROR allocating gl texture. ");
-
-  auto pixels =
-    vtk::TakeSmartPointer(vtkStreamingTestUtility::GenerateRGBA32ColorBars(width, height));
-  rgba32Picture->CopyData(pixels);
-  vtkOpenGLCheckErrors("ERROR uploading pixels to gl texture. ");
-
+  rgba32Picture->CopyData(pixels, width * 4, height);
   rgba32Picture->Render(renWin);
-  vtkOpenGLCheckErrors("ERROR rendering rgba32. ");
 
   // we cannot use vtkRegressionTest macro because it re-renders and reads the front/back buffer.
   // both of which will not have rgba32Picture overlay.
@@ -85,6 +79,6 @@ int TestRGBA32SliceOrderBottomUp(int argc, char* argv[])
   imageDiff->SetThreshold(15);
   imageDiff->Update();
 
-  cout << "Threshold diff " << imageDiff->GetThresholdedError();
+  vtkLog(INFO, << "Threshold diff " << imageDiff->GetThresholdedError());
   return imageDiff->GetThresholdedError() < 0.5 ? 0 : 1;
 }

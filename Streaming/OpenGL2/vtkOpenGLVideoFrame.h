@@ -97,9 +97,10 @@ protected:
 
   unsigned int ActualSize = 0;
 
-  void CopyDataInternal(unsigned char* from, unsigned int size) override;
+  void CopyDataInternal(unsigned char* from, int rowsize, int numrows) override;
+  void CopyPlanarDataInternal(unsigned char* from, int rowsize, int numrows, int plane) override;
   unsigned int GetDataInternal(unsigned char*& data) override;
-  void UploadData(unsigned char* data);
+  void UploadData(unsigned char* from, int rowsize, int numrows, int plane);
 
 private:
   vtkOpenGLVideoFrame(const vtkOpenGLVideoFrame&) = delete;

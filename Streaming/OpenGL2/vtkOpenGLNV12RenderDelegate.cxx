@@ -45,8 +45,8 @@ void vtkOpenGLNV12RenderDelegate::ReleaseGraphicsResources(vtkOpenGLRenderWindow
 }
 
 void vtkOpenGLNV12RenderDelegate::Render(vtkTextureObject* nv12Texture,
-  vtkOpenGLRenderWindow* window, int strides[3], int vtkNotUsed(chromaHeight),
-  bool invert_y /* = false*/)
+  vtkOpenGLRenderWindow* window, int vtkNotUsed(strides)[3], int lumaHeight,
+  int vtkNotUsed(chromaHeight), bool invert_y /* = false*/)
 {
   vtkLogScopeF(TRACE, "%s textureContext=%s, window=%s, Texture=%d", __func__,
     vtkLogIdentifier(nv12Texture->GetContext()), vtkLogIdentifier(window),
@@ -108,9 +108,9 @@ void vtkOpenGLNV12RenderDelegate::Render(vtkTextureObject* nv12Texture,
     // bind and activate the texture before rendering that quad.
     vtkOpenGLState::ScopedglActiveTexture textureSave(state);
     nv12Texture->Activate();
-    program->SetUniform1iv("strides", 3, strides);
     program->SetUniform1iv("resolution", 2, window->GetSize());
     program->SetUniformi("nv12Texture", nv12Texture->GetTextureUnit());
+    program->SetUniformi("lumaHeight", lumaHeight);
     vtkOpenGLRenderUtilities::RenderTriangles(
       verts, 4, iboData, 6, nullptr, program, this->DrawHelper.VAO);
     nv12Texture->Deactivate();

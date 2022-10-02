@@ -1,7 +1,7 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    TestNV12SliceOrderTopDown.cxx
+  Module:    TestIYUVTopDownRender.cxx
 
   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
   All rights reserved.
@@ -12,26 +12,26 @@
      PURPOSE.  See the above copyright notice for more information.
 
 =========================================================================*/
-// This test exercises the shader programs that draw NV12 top-down pictures.
+// This test exercises the shader programs that draw IYUV top-down pictures.
 
 #include "vtkImageData.h"
 #include "vtkImageDifference.h"
 #include "vtkLogger.h"
-#include "vtkOpenGLError.h"
 #include "vtkOpenGLRenderWindow.h"
 #include "vtkOpenGLVideoFrame.h"
 #include "vtkPNGReader.h"
 #include "vtkPointData.h"
+#include "vtkProperty.h"
 #include "vtkRenderer.h"
 #include "vtkStreamingTestUtility.h"
 #include "vtkTestUtilities.h"
 
-int TestNV12SliceOrderTopDown(int argc, char* argv[])
+int TestIYUVTopDownRender(int argc, char* argv[])
 {
   vtkStreamingTestUtility::SetLoggerVerbosityFromCli(argc, argv);
   bool success = true;
   const int width = 320, height = 240;
-  char* filename = vtkTestUtilities::ExpandDataFileName(argc, argv, "cars_320x240.nv12");
+  char* filename = vtkTestUtilities::ExpandDataFileName(argc, argv, "cars_320x240.iyuv");
   vtkLogF(INFO, "Read %s", filename);
   std::ifstream fpIn(filename, std::ifstream::in | std::ifstream::binary);
   if (!fpIn)
@@ -52,28 +52,21 @@ int TestNV12SliceOrderTopDown(int argc, char* argv[])
   // display blank screen.
   renWin->Render();
 
-  auto estSize = vtkRawVideoFrame::GetEstimatedSize(width, height, VTKPixelFormatType::VTKPF_NV12);
+  auto estSize = vtkRawVideoFrame::GetEstimatedSize(width, height, VTKPixelFormatType::VTKPF_IYUV);
   std::unique_ptr<uint8_t[]> pixels(new uint8_t[estSize]);
   std::streamsize numRead = fpIn.read(reinterpret_cast<char*>(pixels.get()), estSize).gcount();
 
-  vtkNew<vtkOpenGLVideoFrame> nv12Picture;
-  nv12Picture->SetContext(renWin);
-  nv12Picture->SetWidth(width);
-  nv12Picture->SetHeight(height);
-  nv12Picture->SetPixelFormat(VTKPixelFormatType::VTKPF_NV12);
-  nv12Picture->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::TopDown);
-  nv12Picture->ComputeDefaultStrides();
+  vtkNew<vtkOpenGLVideoFrame> iyuvPicture;
+  iyuvPicture->SetContext(renWin);
+  iyuvPicture->SetWidth(width);
+  iyuvPicture->SetHeight(height);
+  iyuvPicture->SetPixelFormat(VTKPixelFormatType::VTKPF_IYUV);
+  iyuvPicture->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::TopDown);
+  iyuvPicture->ComputeDefaultStrides();
 
-  nv12Picture->AllocateDataStore();
-  vtkOpenGLCheckErrors("Error allocating gl texture. ");
-
-  nv12Picture->CopyData(pixels.get(), numRead);
-  vtkOpenGLCheckErrors("Error uploading pixels to gl texture. ");
-
-  nv12Picture->Print(std::cout);
-
-  nv12Picture->Render(renWin);
-  vtkOpenGLCheckErrors("Error rendering NV12. ");
+  iyuvPicture->AllocateDataStore();
+  iyuvPicture->CopyData(pixels.get(), width, height + ((height + 1) >> 1));
+  iyuvPicture->Render(renWin);
 
   // we cannot use vtkRegressionTest macro because it re-renders and reads the front/back buffer.
   // both of which will not have rgba32Picture overlay.
@@ -101,6 +94,6 @@ int TestNV12SliceOrderTopDown(int argc, char* argv[])
   imageDiff->SetThreshold(15);
   imageDiff->Update();
 
-  cout << "Threshold diff " << imageDiff->GetThresholdedError();
+  vtkLog(INFO, << "Threshold diff " << imageDiff->GetThresholdedError());
   return imageDiff->GetThresholdedError() < 0.5 ? 0 : 1;
 }

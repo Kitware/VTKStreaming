@@ -13,13 +13,20 @@
 
 =========================================================================*/
 
+/**
+ * Description: Shader program that converts NV12(4:2:0) into RGB(1:1:1) suitable
+ *  for video encoders. Implements https://www.itu.int/rec/R-REC-BT.709-6-201506-I/en
+ */
+
 //VTK::System::Dec
 //VTK::Output::Dec
 in vec2 texCoord;
 
 uniform sampler2D nv12Texture;
+// resolution of the NV12 texture
 uniform int resolution[2];
-uniform int strides[3];
+// number of rows in luma block. (Y)
+uniform int lumaHeight;
 
 //VTK::NV12::Decl
 
@@ -30,7 +37,7 @@ void main()
   ivec2 pixelCoord = ivec2(gl_FragCoord.x - 0.5, yCoord);
   
   int a = (pixelCoord.x >> 1) << 1; // nearest even number lesser than l.h.s argument for '+'
-  int b = ((resolution[1] + 1) >> 1) << 1; // nearest even number greater than l.h.s argument for '+'
+  int b = lumaHeight;
   int c = pixelCoord.y >> 1;
 
   // luminance.
