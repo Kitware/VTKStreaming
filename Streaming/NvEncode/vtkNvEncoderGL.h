@@ -55,7 +55,7 @@ protected:
   ~vtkNvEncoderGL() override;
 
   int Preset = 1;  // NV_ENC_PRESET_P1_GUID
-  int Profile = 0; // NV_ENC_CODEC_PROFILE_AUTOSELECT_GUID
+  int Profile = 1; // NV_ENC_CODEC_PROFILE_AUTOSELECT_GUID
   int Tune = 2;    // NV_ENC_TUNING_INFO_LOW_LATENCY
 
   bool InitializeInternal() override;
