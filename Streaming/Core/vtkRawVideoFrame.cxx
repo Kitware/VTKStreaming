@@ -275,30 +275,10 @@ void vtkRawVideoFrame::ComputeDefaultStrides()
 }
 
 //------------------------------------------------------------------------------
-void vtkRawVideoFrame::SetStrides(int* strides, int size)
+void vtkRawVideoFrame::CopyData(unsigned char* from, int rowsize, int numrows)
 {
   vtkLogScopeFunction(TRACE);
-  for (int i = 0; i < 3 && i < size; ++i)
-  {
-    this->Strides[i] = strides[i];
-  }
-  this->Modified();
-}
-
-//------------------------------------------------------------------------------
-void vtkRawVideoFrame::SetStrides(int stride0, int stride1, int stride2)
-{
-  this->Strides[0] = stride0;
-  this->Strides[1] = stride1;
-  this->Strides[2] = stride2;
-  this->Modified();
-}
-
-//------------------------------------------------------------------------------
-void vtkRawVideoFrame::CopyData(unsigned char* from, unsigned int size)
-{
-  vtkLogScopeFunction(TRACE);
-  this->CopyDataInternal(from, size);
+  this->CopyDataInternal(from, rowsize, numrows);
   this->Modified();
 }
 
@@ -316,14 +296,26 @@ unsigned int vtkRawVideoFrame::GetData(unsigned char*& data)
 }
 
 //------------------------------------------------------------------------------
-void vtkRawVideoFrame::CopyData(vtkUnsignedCharArray* from)
+void vtkRawVideoFrame::CopyData(vtkUnsignedCharArray* from, int rowsize, int numrows)
 {
   vtkLogScopeFunction(TRACE);
   if (from == nullptr)
   {
     return;
   }
-  this->CopyData(from->GetPointer(0), from->GetNumberOfValues());
+  this->CopyData(from->GetPointer(0), rowsize, numrows);
+}
+
+//------------------------------------------------------------------------------
+void vtkRawVideoFrame::CopyPlanarData(
+  vtkUnsignedCharArray* from, int rowsize, int numrows, int plane)
+{
+  vtkLogScopeFunction(TRACE);
+  if (from == nullptr)
+  {
+    return;
+  }
+  this->CopyPlanarData(from->GetPointer(0), rowsize, numrows, plane);
 }
 
 //------------------------------------------------------------------------------
