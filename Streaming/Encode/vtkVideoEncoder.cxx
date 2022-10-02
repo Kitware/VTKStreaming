@@ -173,6 +173,17 @@ void vtkVideoEncoder::AsyncModeOff()
 }
 
 //------------------------------------------------------------------------------
+void vtkVideoEncoder::SetCodec(int codec)
+{
+  vtkLogScopeFunction(TRACE);
+  if (codec >= 0 && codec < static_cast<int>(VTKVideoCodecType::VTKVC_MaxNumberOfSupportedCodecs))
+  {
+    this->Codec = static_cast<VTKVideoCodecType>(codec);
+    this->Modified();
+  }
+}
+
+//------------------------------------------------------------------------------
 bool vtkVideoEncoder::NeedsNewEncoderFrame(int width, int height)
 {
   auto alignedW = vtkRawVideoFrame::AlignUp(width, 8);

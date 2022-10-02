@@ -147,6 +147,7 @@ public:
    */
   vtkSetEnumMacro(Codec, VTKVideoCodecType);
   vtkGetEnumMacro(Codec, VTKVideoCodecType);
+  void SetCodec(int codec);
   ///@}
 
   ///@{
