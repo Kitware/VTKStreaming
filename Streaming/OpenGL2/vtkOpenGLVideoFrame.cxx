@@ -81,10 +81,6 @@ void vtkOpenGLVideoFrame::PrintSelf(ostream& os, vtkIndent indent)
 void vtkOpenGLVideoFrame::SetContext(vtkOpenGLRenderWindow* window)
 {
   auto& internals = (*this->Internals);
-  if (window == internals.VtkTexture->GetContext())
-  {
-    return;
-  }
 
   vtkLogScopeF(
     TRACE, "%s->%s, window=%s", vtkLogIdentifier(this), __func__, vtkLogIdentifier(window));
@@ -273,23 +269,46 @@ void vtkOpenGLVideoFrame::UploadData(unsigned char* from, int rowsize, int numro
   glGetIntegerv(GL_UNPACK_ROW_LENGTH, &oldUnpack);
 
   int yofst = 0;
+  int ymin = 0;
+  int ymax = 0;
+  unsigned char* dptr = from;
+  int rowId = 0;
+  int width = tex->GetWidth();
   if (this->PixelFormat == VTKPixelFormatType::VTKPF_IYUV)
   {
     switch (plane)
     {
       case 0:
-        ostate->vtkglPixelStorei(GL_UNPACK_ROW_LENGTH, rowsize);
-        glTexSubImage2D(target, 0, 0, 0, tex->GetWidth(), numrows, format, datatype, from);
+        ymax = this->StorageHeight;
+        for (int yofst = ymin, rowId = 0; yofst < ymax; ++yofst && ++rowId)
+        {
+          glTexSubImage2D(target, 0, 0, yofst, width, 1, format, datatype, &dptr[rowId * rowsize]);
+        }
         break;
       case 1:
-        yofst = this->StorageHeight;
-        ostate->vtkglPixelStorei(GL_UNPACK_ROW_LENGTH, rowsize << 1);
-        glTexSubImage2D(target, 0, 0, yofst, tex->GetWidth(), numrows >> 1, format, datatype, from);
+        ymin = this->StorageHeight;
+        ymax = this->StorageHeight + (chromaHeight >> 1);
+        for (int yofst = ymin, rowId = 0; yofst < ymax; ++yofst && ++rowId)
+        {
+          glTexSubImage2D(
+            target, 0, 0, yofst, (width >> 1), 1, format, datatype, &dptr[rowId * rowsize]);
+          ++rowId;
+          glTexSubImage2D(target, 0, (width >> 1), yofst, (width >> 1), 1, format, datatype,
+            &dptr[rowId * rowsize]);
+        }
         break;
       case 2:
-        yofst = this->StorageHeight + (chromaHeight >> 1);
-        ostate->vtkglPixelStorei(GL_UNPACK_ROW_LENGTH, rowsize << 1);
-        glTexSubImage2D(target, 0, 0, yofst, tex->GetWidth(), numrows >> 1, format, datatype, from);
+        ymin = this->StorageHeight + (chromaHeight >> 1);
+        ymax = this->StorageHeight + chromaHeight;
+        for (int yofst = ymin, rowId = 0; yofst < ymax; ++yofst && ++rowId)
+        {
+          glTexSubImage2D(
+            target, 0, 0, yofst, (width >> 1), 1, format, datatype, &dptr[rowId * rowsize]);
+          ++rowId;
+          glTexSubImage2D(target, 0, (width >> 1), yofst, (width >> 1), 1, format, datatype,
+            &dptr[rowId * rowsize]);
+        }
+        break;
         break;
       default:
         break;
@@ -300,13 +319,19 @@ void vtkOpenGLVideoFrame::UploadData(unsigned char* from, int rowsize, int numro
     switch (plane)
     {
       case 0:
-        ostate->vtkglPixelStorei(GL_UNPACK_ROW_LENGTH, rowsize);
-        glTexSubImage2D(target, 0, 0, 0, tex->GetWidth(), numrows, format, datatype, from);
+        ymax = this->StorageHeight;
+        for (int yofst = ymin, rowId = 0; yofst < ymax; ++yofst && ++rowId)
+        {
+          glTexSubImage2D(target, 0, 0, yofst, width, 1, format, datatype, &dptr[rowId * rowsize]);
+        }
         break;
       case 1:
-        yofst = this->StorageHeight;
-        ostate->vtkglPixelStorei(GL_UNPACK_ROW_LENGTH, rowsize);
-        glTexSubImage2D(target, 0, 0, yofst, tex->GetWidth(), numrows, format, datatype, from);
+        ymin = this->StorageHeight;
+        ymax = this->StorageHeight + chromaHeight;
+        for (int yofst = ymin, rowId = 0; yofst < ymax; ++yofst && ++rowId)
+        {
+          glTexSubImage2D(target, 0, 0, yofst, width, 1, format, datatype, &dptr[rowId * rowsize]);
+        }
         break;
       default:
         break;

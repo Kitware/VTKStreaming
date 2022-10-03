@@ -64,7 +64,8 @@ int TestNV12TopDownRender(int argc, char* argv[])
   nv12Picture->ComputeDefaultStrides();
 
   nv12Picture->AllocateDataStore();
-  nv12Picture->CopyData(pixels.get(), width, height + ((height + 1) >> 1));
+  nv12Picture->CopyPlanarData(pixels.get(), width, height, 0);
+  nv12Picture->CopyPlanarData(pixels.get() + width * height, width, (height + 1) >> 1, 1);
   nv12Picture->Render(renWin);
 
   // we cannot use vtkRegressionTest macro because it re-renders and reads the front/back buffer.

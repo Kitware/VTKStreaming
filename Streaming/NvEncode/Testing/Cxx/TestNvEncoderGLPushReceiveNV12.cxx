@@ -76,6 +76,7 @@ int TestNvEncoderGLPushReceiveNV12(int argc, char* argv[])
   nv12Picture->SetPixelFormat(VTKPixelFormatType::VTKPF_NV12);
   nv12Picture->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::TopDown);
   nv12Picture->ComputeDefaultStrides();
+  nv12Picture->AllocateDataStore();
 
   auto estSize = vtkRawVideoFrame::GetEstimatedSize(width, height, VTKPixelFormatType::VTKPF_NV12);
   int frameId = 0;
@@ -108,7 +109,8 @@ int TestNvEncoderGLPushReceiveNV12(int argc, char* argv[])
       enc->Shutdown();
       break;
     }
-    nv12Picture->CopyData(pixels.get(), width, height + ((height + 1) >> 1));
+    nv12Picture->CopyPlanarData(pixels.get(), width, height, 0);
+    nv12Picture->CopyPlanarData(pixels.get() + width * height, width, (height + 1) >> 1, 1);
     nv12Picture->Render(renWin);
 
     auto status = enc->Push(nv12Picture);
