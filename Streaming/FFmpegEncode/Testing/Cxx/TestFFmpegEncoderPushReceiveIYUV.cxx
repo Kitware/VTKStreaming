@@ -80,6 +80,7 @@ int TestFFmpegEncoderPushReceiveIYUV(int argc, char* argv[])
   iyuvPicture->SetPixelFormat(VTKPixelFormatType::VTKPF_IYUV);
   iyuvPicture->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::TopDown);
   iyuvPicture->ComputeDefaultStrides();
+  iyuvPicture->AllocateDataStore();
 
   auto estSize = vtkRawVideoFrame::GetEstimatedSize(width, height, VTKPixelFormatType::VTKPF_IYUV);
   int frameId = 0;
@@ -107,7 +108,10 @@ int TestFFmpegEncoderPushReceiveIYUV(int argc, char* argv[])
       enc->Shutdown();
       break;
     }
-    iyuvPicture->CopyData(pixels.get(), width, height + ((height + 1) >> 1));
+    iyuvPicture->CopyPlanarData(pixels.get(), width, height, 0);
+    iyuvPicture->CopyPlanarData(pixels.get() + width * height, (width >> 1), (height + 1) >> 1, 1);
+    iyuvPicture->CopyPlanarData(
+      pixels.get() + (width * height * 5 / 4), (width >> 1), (height + 1) >> 1, 2);
     vtkOpenGLCheckErrors("ERROR uploading data to gl texture");
 
     iyuvPicture->Render(renWin);
