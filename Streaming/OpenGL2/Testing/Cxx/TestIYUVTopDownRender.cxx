@@ -65,7 +65,10 @@ int TestIYUVTopDownRender(int argc, char* argv[])
   iyuvPicture->ComputeDefaultStrides();
 
   iyuvPicture->AllocateDataStore();
-  iyuvPicture->CopyData(pixels.get(), width, height + ((height + 1) >> 1));
+  iyuvPicture->CopyPlanarData(pixels.get(), width, height, 0);
+  iyuvPicture->CopyPlanarData(pixels.get() + width * height, (width >> 1), (height + 1) >> 1, 1);
+  iyuvPicture->CopyPlanarData(
+    pixels.get() + (width * height * 5 / 4), (width >> 1), (height + 1) >> 1, 2);
   iyuvPicture->Render(renWin);
 
   // we cannot use vtkRegressionTest macro because it re-renders and reads the front/back buffer.
