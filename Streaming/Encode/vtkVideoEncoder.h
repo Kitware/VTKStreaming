@@ -166,6 +166,7 @@ public:
    */
   vtkSetEnumMacro(InputPixelFormat, VTKPixelFormatType);
   vtkGetEnumMacro(InputPixelFormat, VTKPixelFormatType);
+  void SetInputPixelFormat(int pixFmt);
   ///@}
 
   ///@{
