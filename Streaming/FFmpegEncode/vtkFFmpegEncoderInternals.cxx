@@ -278,6 +278,11 @@ bool vtkFFmpegEncoderInternals::PreprocessInput(vtkRawVideoFrame* image)
   }
   else if (image->GetPixelFormat() == VTKPixelFormatType::VTKPF_IYUV)
   {
+    if (av_frame_make_writable(this->SoftwareFrame) < 0)
+    {
+      vtkLog(ERROR, "Failed to make frame writable");
+      return false;
+    }
     int* strides = image->GetStrides();
     for (int i = 0; i < 3; ++i)
     {
@@ -299,6 +304,11 @@ bool vtkFFmpegEncoderInternals::PreprocessInput(vtkRawVideoFrame* image)
   }
   else if (image->GetPixelFormat() == VTKPixelFormatType::VTKPF_NV12)
   {
+    if (av_frame_make_writable(this->SoftwareFrame) < 0)
+    {
+      vtkLog(ERROR, "Failed to make frame writable");
+      return false;
+    }
     int* strides = image->GetStrides();
     for (int i = 0; i < 3; ++i)
     {
