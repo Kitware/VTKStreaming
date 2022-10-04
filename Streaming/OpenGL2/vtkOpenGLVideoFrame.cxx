@@ -400,10 +400,12 @@ void vtkOpenGLVideoFrame::AllocateDataStore()
                      "vtkOpenGLRenderWindow.");
     return;
   }
+  this->ComputeDefaultStrides();
   const auto estimate = vtkRawVideoFrame::GetEstimatedSize(
     this->DisplayWidth, this->DisplayHeight, this->PixelFormat, this->Strides);
   if (this->ActualSize == estimate)
   {
+    vtkLogF(TRACE, "ActualSize (%d) == estimate (%d)", this->ActualSize, estimate);
     return;
   }
 
