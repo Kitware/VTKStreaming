@@ -26,6 +26,7 @@
 #include "vtkOpenGLFramebufferObject.h"
 #include "vtkTextureObject.h"
 #include "vtkUnsignedCharArray.h"
+#include <thread>
 
 class vtkOpenGLVideoFrameInternals
 {
@@ -33,6 +34,7 @@ public:
   vtkNew<vtkUnsignedCharArray> Cache;
   vtkNew<vtkTextureObject> VtkTexture;
   vtkNew<vtkOpenGLFramebufferObject> VtkFrameBuffer;
+  std::thread::id Tid{ std::this_thread::get_id() };
 };
 
 #endif
