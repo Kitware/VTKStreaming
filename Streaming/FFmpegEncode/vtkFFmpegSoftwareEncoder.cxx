@@ -206,7 +206,7 @@ VTKVideoEncoderResultType vtkFFmpegSoftwareEncoder::DrainInternal()
 }
 
 //------------------------------------------------------------------------------
-VTKVideoProcessingStatusType vtkFFmpegSoftwareEncoder::PushInternal(vtkRawVideoFrame* frame)
+VTKVideoProcessingStatusType vtkFFmpegSoftwareEncoder::PushInternal(VTKVideoEncoderInputType frame)
 {
   vtkLogScopeFunction(TRACE);
   auto& internals = *(this->Internals);
@@ -249,7 +249,7 @@ VTKVideoEncoderResultType vtkFFmpegSoftwareEncoder::GetResultInternal()
 }
 
 //------------------------------------------------------------------------------
-VTKVideoEncoderResultType vtkFFmpegSoftwareEncoder::EncodeInternal(vtkRawVideoFrame* frame)
+VTKVideoEncoderResultType vtkFFmpegSoftwareEncoder::EncodeInternal(VTKVideoEncoderInputType frame)
 {
   vtkLogScopeFunction(TRACE);
   VTKVideoEncoderResultType result;

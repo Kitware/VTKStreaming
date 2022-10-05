@@ -305,7 +305,7 @@ public:
    * do that.
    */
   VTKVideoProcessingStatusType Push(vtkRawVideoFrame* frame);
-  VTKVideoEncoderResultType Encode(vtkRawVideoFrame* frame);
+  VTKVideoEncoderResultType Encode(VTKVideoEncoderInputType frame);
   bool HasResult(); // always returns false when not using an asynchronous delegate.
   VTKVideoEncoderResultType GetResult();
   VTKVideoEncoderResultType Drain();
@@ -405,9 +405,9 @@ protected:
    * thread-safe, please call that non-thread-safe functionaility outside this method.
    *
    */
-  virtual VTKVideoProcessingStatusType PushInternal(vtkRawVideoFrame* frame) = 0;
+  virtual VTKVideoProcessingStatusType PushInternal(VTKVideoEncoderInputType frame) = 0;
   virtual VTKVideoEncoderResultType GetResultInternal() = 0;
-  virtual VTKVideoEncoderResultType EncodeInternal(vtkRawVideoFrame* frame) = 0;
+  virtual VTKVideoEncoderResultType EncodeInternal(VTKVideoEncoderInputType frame) = 0;
   virtual VTKVideoEncoderResultType DrainInternal() = 0;
   ///@}
 

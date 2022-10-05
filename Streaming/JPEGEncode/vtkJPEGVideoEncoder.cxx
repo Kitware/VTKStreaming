@@ -101,7 +101,7 @@ VTKVideoEncoderResultType vtkJPEGVideoEncoder::DrainInternal()
 }
 
 //------------------------------------------------------------------------------
-VTKVideoProcessingStatusType vtkJPEGVideoEncoder::PushInternal(vtkRawVideoFrame* frame)
+VTKVideoProcessingStatusType vtkJPEGVideoEncoder::PushInternal(VTKVideoEncoderInputType frame)
 {
   vtkLogScopeFunction(TRACE);
   auto pixFmt = frame->GetPixelFormat();
@@ -111,7 +111,7 @@ VTKVideoProcessingStatusType vtkJPEGVideoEncoder::PushInternal(vtkRawVideoFrame*
     return VTKVideoProcessingStatusType::VTKVPStatus_InvalidValue;
   }
   vtkNew<vtkImageData> img;
-  img->SetDimensions(frame->GetWidth(), frame->GetHeight(), 1);
+  img->SetDimensions(frame->GetStorageWidth(), frame->GetStorageHeight(), 1);
   if (pixFmt == VTKPixelFormatType::VTKPF_RGB24)
   {
     img->AllocateScalars(VTK_UNSIGNED_CHAR, 3);
@@ -155,7 +155,7 @@ VTKVideoEncoderResultType vtkJPEGVideoEncoder::GetResultInternal()
 }
 
 //------------------------------------------------------------------------------
-VTKVideoEncoderResultType vtkJPEGVideoEncoder::EncodeInternal(vtkRawVideoFrame* frame)
+VTKVideoEncoderResultType vtkJPEGVideoEncoder::EncodeInternal(VTKVideoEncoderInputType frame)
 {
   vtkLogScopeFunction(TRACE);
   VTKVideoEncoderResultType result;

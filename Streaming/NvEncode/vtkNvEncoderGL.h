@@ -65,9 +65,9 @@ protected:
   bool SetupEncoderFrame(int, int) override;
   void TearDownEncoderFrame() override;
 
-  VTKVideoProcessingStatusType PushInternal(vtkRawVideoFrame* frame) override;
+  VTKVideoProcessingStatusType PushInternal(VTKVideoEncoderInputType frame) override;
   VTKVideoEncoderResultType GetResultInternal() override;
-  VTKVideoEncoderResultType EncodeInternal(vtkRawVideoFrame* frame) override;
+  VTKVideoEncoderResultType EncodeInternal(VTKVideoEncoderInputType frame) override;
   VTKVideoEncoderResultType DrainInternal() override;
 
   VTKVideoEncoderResultType EncodeDisplayInternal() override;

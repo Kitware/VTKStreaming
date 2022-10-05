@@ -355,7 +355,7 @@ VTKVideoProcessingStatusType vtkVideoEncoder::Push(vtkRawVideoFrame* frame)
 }
 
 //------------------------------------------------------------------------------
-VTKVideoEncoderResultType vtkVideoEncoder::Encode(vtkRawVideoFrame* frame)
+VTKVideoEncoderResultType vtkVideoEncoder::Encode(VTKVideoEncoderInputType frame)
 {
   vtkLogScopeFunction(TRACE);
   if (this->IgnoreEncodeRequest)
