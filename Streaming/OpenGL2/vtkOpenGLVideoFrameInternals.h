@@ -28,6 +28,8 @@
 #include "vtkUnsignedCharArray.h"
 #include <thread>
 
+#include <vtk_glew.h>
+
 class vtkOpenGLVideoFrameInternals
 {
 public:
@@ -35,6 +37,7 @@ public:
   vtkNew<vtkTextureObject> VtkTexture;
   vtkNew<vtkOpenGLFramebufferObject> VtkFrameBuffer;
   std::thread::id Tid{ std::this_thread::get_id() };
+  GLsync sync = nullptr;
 };
 
 #endif

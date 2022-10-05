@@ -224,6 +224,7 @@ void vtkOpenGLVideoFrame::Capture(vtkRenderWindow* window)
       break;
     }
   }
+
   this->Modified();
 }
 
@@ -376,6 +377,24 @@ unsigned int vtkOpenGLVideoFrame::GetDataInternal(unsigned char*& data)
   data = internals.Cache->GetPointer(0);
   std::fill(data, data + this->ActualSize, 0);
 
+  if (internals.sync != nullptr)
+  {
+    // 5 seconds seems sensible.
+    auto timeout = 5000000000;
+    auto result = glClientWaitSync(internals.sync, GL_SYNC_FLUSH_COMMANDS_BIT, timeout);
+    if (result == GL_TIMEOUT_EXPIRED)
+    {
+      vtkLogF(WARNING, "Timeout! waited longer than %lds. Giving up..", timeout);
+      return 0;
+    }
+    else if (result == GL_WAIT_FAILED)
+    {
+      vtkLog(ERROR, << "Wait failed!");
+      return 0;
+    }
+    internals.sync = nullptr;
+  }
+
   auto& tex = internals.VtkTexture;
   tex->GetContext()->MakeCurrent();
   tex->Activate();
@@ -497,6 +516,9 @@ void vtkOpenGLVideoFrame::ShallowCopy(vtkRawVideoFrame* from) noexcept
     internals.VtkTexture->SetInternalFormat(internalFormat);
     internals.VtkTexture->SetDataType(dataType);
     this->ActualSize = glFrame->ActualSize;
+    // setup synchronization.
+    internals.sync = glFrame->Internals->sync;
+    glFrame->Internals->sync = nullptr;
   }
   else
   {
@@ -569,6 +591,7 @@ void vtkOpenGLVideoFrame::DeepCopy(vtkRawVideoFrame* from)
   glBindTexture(internals.VtkTexture->GetTarget(), 0);
   internals.VtkFrameBuffer->RemoveColorAttachments(0);
   internals.VtkFrameBuffer->RestorePreviousBindingsAndBuffers();
+  internals.sync = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 }
 
 //------------------------------------------------------------------------------

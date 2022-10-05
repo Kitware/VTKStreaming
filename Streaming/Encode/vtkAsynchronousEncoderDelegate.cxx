@@ -270,7 +270,6 @@ VTKVideoEncoderInputType vtkAsynchronousEncoderDelegate::PrepareThreadLocalResou
   else
   {
     tlFrame->DeepCopy(from);
-    glFlush();
   }
   return tlFrame;
 }
