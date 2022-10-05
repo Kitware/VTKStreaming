@@ -24,8 +24,8 @@
 
 #include "vtkObject.h"
 
+#include "vtkAsyncTaskQueue.h"               // for async
 #include "vtkSmartPointer.h"                 // for ivar
-#include "vtkThreadedTaskQueue.h"            // for taskqueue
 #include "vtkVideoProcessingWorkUnitTypes.h" // for return value
 
 #include <memory>
@@ -38,8 +38,6 @@ public:
   vtkTypeMacro(vtkAsynchronousEncoderDelegate, vtkObject);
   void PrintSelf(ostream& os, vtkIndent indent) override;
   static vtkAsynchronousEncoderDelegate* New();
-
-  using TaskQueueType = vtkThreadedTaskQueue<VTKVideoEncoderResultType, VTKVideoEncoderInputType>;
 
   /**
    * Construct `TaskQueueType` with strict ordering, infinite buffer size and
@@ -60,17 +58,18 @@ public:
    */
   void Terminate();
 
-  void PushWorkUnit(vtkRawVideoFrame* frame);
+  void PushWorkUnit(VTKVideoEncoderInputType frame);
   VTKVideoEncoderResultType GetResult();
   bool HasResult();
 
-  VTKVideoEncoderResultType TaskExecute(VTKVideoEncoderInputType frame);
+  VTKVideoEncoderResultType Execute(VTKVideoEncoderInputType frame);
 
 protected:
   vtkAsynchronousEncoderDelegate();
   ~vtkAsynchronousEncoderDelegate() override;
 
-  std::unique_ptr<TaskQueueType> TaskQueue;
+  vtkAsyncTaskQueue TaskQueue;
+  WaitingQueue<VTKVideoEncoderResultType> AwaitableQ;
   VTKVideoEncodeWorkerType WorkerFunction;
   VTKVideoEncoderResultType Result;
   std::atomic<bool> TrySucceeded;
@@ -89,27 +88,12 @@ protected:
   // it shares OpenGL object lists with another window on the main thread.
   vtkSmartPointer<vtkRenderWindow> WorkerContext;
   vtkRenderWindow* MainGfxContext = nullptr;
-  // are worker thread-local resources (rendering/capture contexts) setup?
-  std::atomic<bool> ResourcesInitialized;
-  // are worker thread-local resources (rendering/capture contexts) destroyed?
-  std::atomic<bool> ResourcesDestroyed;
-  // request worker thread to initialize thread-local resources
-  std::atomic<bool> InitializeResourcesNow;
-  // request worker thread to destroy thread-local resources
-  std::atomic<bool> DestroyResourcesNow;
-  // orchestrate worker, main thread vtkRenderWindow setup and teardown.
-  std::condition_variable InitResourcesCV;
-  std::condition_variable DestroyResourcesCV;
-  std::mutex InitResourcesMtx;
-  std::mutex DestroyResourcesMtx;
   ///@}
 
   ///{@
   /**
    * Thread safe task tracking.
    */
-  std::atomic<vtkIdType> TaskId;
-  std::atomic<vtkIdType> NumberOfPendingTasks;
   std::thread::id Tid;
   ///@}
 
@@ -127,35 +111,10 @@ protected:
   ///@}
 
   /**
-   * The worker and main thread invoke this before execution of the very first task.
-   * "first task" relates to `TaskId == 0` i.e, the first `PushWorkUnit` after `InitializeWorker`.
-   */
-  void PostInitializeWorker();
-
-  /**
-   * The worker thread invokes it right before it's going to be terminated.
-   * It knows it's time to kick the bucket when `NumberOfPendingTasks == 0`
-   * and main thread set `DestroyResourcesNow = true`.
-   */
-  void PreTerminateWorker();
-
-  /**
-   * Do some checks to determine if worker thread
-   * needs to invoke PostInitializeWorker.
-   */
-  void PreTaskExecute();
-
-  /**
-   * Check if conditions are right to do some cleanup before
-   * we're terminated.
-   */
-  void PostTaskExecute();
-
-  /**
    * Sets up resources necessary for a work unit on the worker/main thread.
    */
-  void PrepareThreadLocalResources(
-    vtkRawVideoFrame* from, VTKVideoEncoderInputType& dstFrame, bool shallow_copy = false);
+  VTKVideoEncoderInputType PrepareThreadLocalResources(
+    VTKVideoEncoderInputType from, bool shallow_copy = false);
 
 private:
   vtkAsynchronousEncoderDelegate(const vtkAsynchronousEncoderDelegate&) = delete;
