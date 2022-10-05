@@ -93,6 +93,11 @@ void vtkAsynchronousEncoderDelegate::Relinquish()
   vtkLogScopeFunction(TRACE);
   ENSURE_MAIN_THREAD;
   auto frame = this->FrameSustainer.front();
+  if (frame->GetReferenceCount() == 2)
+  {
+    // the task queue did not yet release reference to the input.
+    return;
+  }
   this->FrameSustainer.pop();
 }
 
@@ -103,7 +108,15 @@ void vtkAsynchronousEncoderDelegate::RelinquishAll()
   ENSURE_MAIN_THREAD;
   while (!this->FrameSustainer.empty())
   {
-    this->Relinquish();
+    auto frame = this->FrameSustainer.front();
+    if (frame->GetReferenceCount() == 2)
+    {
+      // the task queue did not yet release reference to the input.
+      // flush the queue with empty task.
+      auto fut = this->TaskQueue.Push([]() {});
+      fut.wait();
+    }
+    this->FrameSustainer.pop();
   }
 }
 
