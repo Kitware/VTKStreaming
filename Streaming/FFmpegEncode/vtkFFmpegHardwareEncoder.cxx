@@ -165,6 +165,19 @@ bool vtkFFmpegHardwareEncoder::InitializeInternal()
   }
 
   bool success = true;
+  switch (this->InputPixelFormat)
+  {
+    case VTKPixelFormatType::VTKPF_IYUV:
+      internals.InputPixFmt = AV_PIX_FMT_YUV420P;
+      break;
+    case VTKPixelFormatType::VTKPF_NV12:
+      internals.InputPixFmt = AV_PIX_FMT_NV12;
+      break;
+    case VTKPixelFormatType::VTKPF_RGBA32:
+    case VTKPixelFormatType::VTKPF_RGB24:
+      internals.InputPixFmt = AV_PIX_FMT_YUV420P;
+      break;
+  }
   switch (this->HWEncoderType)
   {
     case HardwareEncoderTypeEnum::VAAPI:
@@ -172,12 +185,10 @@ bool vtkFFmpegHardwareEncoder::InitializeInternal()
       {
         case VTKVideoCodecType::VTKVC_H264:
           internals.CodecName = "h264_vaapi";
-          internals.InputPixFmt = AV_PIX_FMT_NV12;
           success = internals.InitializeHWEncodeCtx(AV_HWDEVICE_TYPE_VAAPI);
           break;
         case VTKVideoCodecType::VTKVC_H265:
           internals.CodecName = "hevc_vaapi";
-          internals.InputPixFmt = AV_PIX_FMT_NV12;
           success = internals.InitializeHWEncodeCtx(AV_HWDEVICE_TYPE_VAAPI);
           break;
         case VTKVideoCodecType::VTKVC_AV1:
@@ -191,7 +202,6 @@ bool vtkFFmpegHardwareEncoder::InitializeInternal()
         case VTKVideoCodecType::VTKVC_VP9:
         default:
           internals.CodecName = "vp9_vaapi";
-          internals.InputPixFmt = AV_PIX_FMT_NV12;
           success = internals.InitializeHWEncodeCtx(AV_HWDEVICE_TYPE_VAAPI);
           break;
       }
@@ -201,12 +211,10 @@ bool vtkFFmpegHardwareEncoder::InitializeInternal()
       {
         case VTKVideoCodecType::VTKVC_H264:
           internals.CodecName = "h264_qsv";
-          internals.InputPixFmt = AV_PIX_FMT_NV12;
           success = internals.InitializeHWEncodeCtx(AV_HWDEVICE_TYPE_QSV);
           break;
         case VTKVideoCodecType::VTKVC_H265:
           internals.CodecName = "hevc_qsv";
-          internals.InputPixFmt = AV_PIX_FMT_NV12;
           success = internals.InitializeHWEncodeCtx(AV_HWDEVICE_TYPE_QSV);
           break;
         case VTKVideoCodecType::VTKVC_AV1:
@@ -220,7 +228,6 @@ bool vtkFFmpegHardwareEncoder::InitializeInternal()
         case VTKVideoCodecType::VTKVC_VP9:
         default:
           internals.CodecName = "vp9_qsv";
-          internals.InputPixFmt = AV_PIX_FMT_NV12;
           success = internals.InitializeHWEncodeCtx(AV_HWDEVICE_TYPE_QSV);
           break;
       }
@@ -230,12 +237,10 @@ bool vtkFFmpegHardwareEncoder::InitializeInternal()
       {
         case VTKVideoCodecType::VTKVC_H264:
           internals.CodecName = "h264_amf";
-          internals.InputPixFmt = AV_PIX_FMT_NV12;
           success = false; // TODO: Confirm on AMD gpu.
           break;
         case VTKVideoCodecType::VTKVC_H265:
           internals.CodecName = "hevc_amf";
-          internals.InputPixFmt = AV_PIX_FMT_NV12;
           success = false; // TODO: Confirm on AMD gpu.
           break;
         case VTKVideoCodecType::VTKVC_AV1:
@@ -258,12 +263,10 @@ bool vtkFFmpegHardwareEncoder::InitializeInternal()
       {
         case VTKVideoCodecType::VTKVC_H264:
           internals.CodecName = "h264_nvenc";
-          internals.InputPixFmt = AV_PIX_FMT_NV12;
           success = internals.InitializeHWEncodeCtx(AV_HWDEVICE_TYPE_CUDA);
           break;
         case VTKVideoCodecType::VTKVC_H265:
           internals.CodecName = "hevc_nvenc";
-          internals.InputPixFmt = AV_PIX_FMT_NV12;
           success = internals.InitializeHWEncodeCtx(AV_HWDEVICE_TYPE_CUDA);
           break;
         case VTKVideoCodecType::VTKVC_AV1:
@@ -286,13 +289,11 @@ bool vtkFFmpegHardwareEncoder::InitializeInternal()
       {
         case VTKVideoCodecType::VTKVC_H264:
           internals.CodecName = "h264_videotoolbox";
-          internals.InputPixFmt = AV_PIX_FMT_NV12;
           success = internals.InitializeHWEncodeCtx(AV_HWDEVICE_TYPE_VIDEOTOOLBOX);
           success = false; // TODO: Confirm on mac.
           break;
         case VTKVideoCodecType::VTKVC_H265:
           internals.CodecName = "hevc_videotoolbox";
-          internals.InputPixFmt = AV_PIX_FMT_NV12;
           success = internals.InitializeHWEncodeCtx(AV_HWDEVICE_TYPE_VIDEOTOOLBOX);
           success = false; // TODO: Confirm on mac.
           break;
@@ -316,12 +317,10 @@ bool vtkFFmpegHardwareEncoder::InitializeInternal()
       {
         case VTKVideoCodecType::VTKVC_H264:
           internals.CodecName = "h264_mediafoundation";
-          internals.InputPixFmt = AV_PIX_FMT_NV12;
           success = false; // TODO: Confirm on windows.
           break;
         case VTKVideoCodecType::VTKVC_H265:
           internals.CodecName = "hevc_mediafoundation";
-          internals.InputPixFmt = AV_PIX_FMT_NV12;
           success = false; // TODO: Confirm on windows.
           break;
         case VTKVideoCodecType::VTKVC_AV1:
@@ -363,7 +362,7 @@ void vtkFFmpegHardwareEncoder::FlushInternal()
 }
 
 //------------------------------------------------------------------------------
-VTKVideoProcessingStatusType vtkFFmpegHardwareEncoder::PushInternal(vtkRawVideoFrame* frame)
+VTKVideoProcessingStatusType vtkFFmpegHardwareEncoder::PushInternal(VTKVideoEncoderInputType frame)
 {
   vtkLogScopeFunction(TRACE);
   auto& internals = *(this->Internals);
@@ -407,7 +406,7 @@ VTKVideoEncoderResultType vtkFFmpegHardwareEncoder::GetResultInternal()
 }
 
 //------------------------------------------------------------------------------
-VTKVideoEncoderResultType vtkFFmpegHardwareEncoder::EncodeInternal(vtkRawVideoFrame* frame)
+VTKVideoEncoderResultType vtkFFmpegHardwareEncoder::EncodeInternal(VTKVideoEncoderInputType frame)
 {
   vtkLogScopeFunction(TRACE);
   VTKVideoEncoderResultType result;

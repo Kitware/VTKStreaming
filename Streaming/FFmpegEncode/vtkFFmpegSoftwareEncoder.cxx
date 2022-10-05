@@ -84,24 +84,30 @@ bool vtkFFmpegSoftwareEncoder::InitializeInternal()
   {
     case VTKVideoCodecType::VTKVC_H264:
       internals.CodecName = "libx264";
-      internals.InputPixFmt = AV_PIX_FMT_YUV420P;
-      this->InputPixelFormat = VTKPixelFormatType::VTKPF_IYUV;
       break;
     case VTKVideoCodecType::VTKVC_H265:
       internals.CodecName = "libx265";
-      internals.InputPixFmt = AV_PIX_FMT_YUV420P;
-      this->InputPixelFormat = VTKPixelFormatType::VTKPF_IYUV;
       break;
     case VTKVideoCodecType::VTKVC_AV1:
       internals.CodecName = "libaom-av1";
-      internals.InputPixFmt = AV_PIX_FMT_YUV420P;
-      this->InputPixelFormat = VTKPixelFormatType::VTKPF_IYUV;
       break;
     case VTKVideoCodecType::VTKVC_VP9:
     default:
       internals.CodecName = "libvpx-vp9";
+      break;
+  }
+
+  switch (this->InputPixelFormat)
+  {
+    case VTKPixelFormatType::VTKPF_IYUV:
       internals.InputPixFmt = AV_PIX_FMT_YUV420P;
-      this->InputPixelFormat = VTKPixelFormatType::VTKPF_IYUV;
+      break;
+    case VTKPixelFormatType::VTKPF_NV12:
+      internals.InputPixFmt = AV_PIX_FMT_NV12;
+      break;
+    case VTKPixelFormatType::VTKPF_RGBA32:
+    case VTKPixelFormatType::VTKPF_RGB24:
+      internals.InputPixFmt = AV_PIX_FMT_YUV420P;
       break;
   }
 
@@ -133,6 +139,7 @@ bool vtkFFmpegSoftwareEncoder::SetupEncoderFrame(int width, int height)
   internals.EncodeCtx->bit_rate = this->BitRate;
   internals.EncodeCtx->rc_max_rate = this->MaxBitRate;
   internals.EncodeCtx->rc_min_rate = this->MinBitRate;
+  internals.EncodeCtx->qmax = this->QuantizationParameter;
   internals.EncodeCtx->thread_count = this->NumberOfEncoderThreads;
   internals.EncodeCtx->width = this->Width;
   internals.EncodeCtx->height = this->Height;
@@ -199,7 +206,7 @@ VTKVideoEncoderResultType vtkFFmpegSoftwareEncoder::DrainInternal()
 }
 
 //------------------------------------------------------------------------------
-VTKVideoProcessingStatusType vtkFFmpegSoftwareEncoder::PushInternal(vtkRawVideoFrame* frame)
+VTKVideoProcessingStatusType vtkFFmpegSoftwareEncoder::PushInternal(VTKVideoEncoderInputType frame)
 {
   vtkLogScopeFunction(TRACE);
   auto& internals = *(this->Internals);
@@ -242,7 +249,7 @@ VTKVideoEncoderResultType vtkFFmpegSoftwareEncoder::GetResultInternal()
 }
 
 //------------------------------------------------------------------------------
-VTKVideoEncoderResultType vtkFFmpegSoftwareEncoder::EncodeInternal(vtkRawVideoFrame* frame)
+VTKVideoEncoderResultType vtkFFmpegSoftwareEncoder::EncodeInternal(VTKVideoEncoderInputType frame)
 {
   vtkLogScopeFunction(TRACE);
   VTKVideoEncoderResultType result;

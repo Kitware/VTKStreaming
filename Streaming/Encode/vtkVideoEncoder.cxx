@@ -178,8 +178,16 @@ void vtkVideoEncoder::SetCodec(int codec)
   vtkLogScopeFunction(TRACE);
   if (codec >= 0 && codec < static_cast<int>(VTKVideoCodecType::VTKVC_MaxNumberOfSupportedCodecs))
   {
-    this->Codec = static_cast<VTKVideoCodecType>(codec);
-    this->Modified();
+    this->SetCodec(static_cast<VTKVideoCodecType>(codec));
+  }
+}
+//------------------------------------------------------------------------------
+void vtkVideoEncoder::SetInputPixelFormat(int pixFmt)
+{
+  vtkLogScopeFunction(TRACE);
+  if (pixFmt >= 0 && pixFmt <= 3)
+  {
+    this->SetInputPixelFormat(static_cast<VTKPixelFormatType>(pixFmt));
   }
 }
 
@@ -347,7 +355,7 @@ VTKVideoProcessingStatusType vtkVideoEncoder::Push(vtkRawVideoFrame* frame)
 }
 
 //------------------------------------------------------------------------------
-VTKVideoEncoderResultType vtkVideoEncoder::Encode(vtkRawVideoFrame* frame)
+VTKVideoEncoderResultType vtkVideoEncoder::Encode(VTKVideoEncoderInputType frame)
 {
   vtkLogScopeFunction(TRACE);
   if (this->IgnoreEncodeRequest)

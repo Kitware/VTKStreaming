@@ -20,6 +20,7 @@
 #include "vtkJPEGReader.h"
 #include "vtkLogger.h"
 #include "vtkObjectFactory.h"
+#include "vtkOpenGLRenderWindow.h"
 #include "vtkOpenGLVideoFrame.h"
 #include "vtkPixelFormatTypes.h"
 #include "vtkPointData.h"
@@ -96,12 +97,13 @@ VTKVideoDecoderResultType vtkJPEGVideoDecoder::GetResultInternal()
   VTKVideoDecoderResultType result;
 
   result.first = VTKVideoProcessingStatusType::VTKVPStatus_Success;
-  result.second.emplace_back(vtk::TakeSmartPointer(vtkOpenGLVideoFrame::New()));
+  auto frame = vtk::TakeSmartPointer(vtkOpenGLVideoFrame::New());
+  result.second.emplace_back(frame);
 
-  auto frame = result.second.front();
   int dims[3] = {};
   auto img = vtk::MakeSmartPointer(this->Reader->GetOutput());
   img->GetDimensions(dims);
+  frame->SetContext(vtkOpenGLRenderWindow::SafeDownCast(this->GraphicsContext));
   frame->SetWidth(dims[0]);
   frame->SetHeight(dims[1]);
   frame->SetPixelFormat(VTKPixelFormatType::VTKPF_RGBA32); // guess.

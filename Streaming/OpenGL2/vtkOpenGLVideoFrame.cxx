@@ -36,6 +36,16 @@
 
 vtkStandardNewMacro(vtkOpenGLVideoFrame);
 
+#define ENSURE_MAIN_THREAD                                                                         \
+  do                                                                                               \
+  {                                                                                                \
+    if (this->Internals->Tid != std::this_thread::get_id())                                        \
+    {                                                                                              \
+      vtkLog(ERROR, "Attempted to execute thread-unsafe code from worker thread.");                \
+      abort();                                                                                     \
+    }                                                                                              \
+  } while (0)
+
 //------------------------------------------------------------------------------
 vtkOpenGLVideoFrame::vtkOpenGLVideoFrame()
   : IYUVGrabber(std::unique_ptr<vtkOpenGLIYUVCaptureDelegate>(new vtkOpenGLIYUVCaptureDelegate()))
@@ -52,6 +62,7 @@ vtkOpenGLVideoFrame::vtkOpenGLVideoFrame()
 //------------------------------------------------------------------------------
 vtkOpenGLVideoFrame::~vtkOpenGLVideoFrame()
 {
+  ENSURE_MAIN_THREAD;
   this->ReleaseGraphicsResources();
 }
 
@@ -400,10 +411,12 @@ void vtkOpenGLVideoFrame::AllocateDataStore()
                      "vtkOpenGLRenderWindow.");
     return;
   }
+  this->ComputeDefaultStrides();
   const auto estimate = vtkRawVideoFrame::GetEstimatedSize(
     this->DisplayWidth, this->DisplayHeight, this->PixelFormat, this->Strides);
   if (this->ActualSize == estimate)
   {
+    vtkLogF(TRACE, "ActualSize (%d) == estimate (%d)", this->ActualSize, estimate);
     return;
   }
 

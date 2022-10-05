@@ -151,7 +151,7 @@ int TestNvEncoderGLPushReceiveDisplayRGBA32(int argc, char* argv[])
       file.write((char*)bitstream.data(), bitstream.size());
 #endif
     }
-    success &= bitstream.size() > 200;
+    success &= bitstream.size() > 10;
     ++frameId;
   }
 
