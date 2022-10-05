@@ -265,33 +265,33 @@ bool vtkFFmpegEncoderInternals::SetupHWFrameCtx(AVPixelFormat HWPixelFormat)
 }
 
 //------------------------------------------------------------------------------
-bool vtkFFmpegEncoderInternals::PreprocessInput(vtkRawVideoFrame* image)
+bool vtkFFmpegEncoderInternals::PreprocessInput(vtkRawVideoFrame* frame)
 {
   vtkLogScopeFunction(TRACE);
   bool success = true;
-  const auto height = image->GetHeight();
-  const auto chromaHeight = image->GetChromaHeight(height, image->GetPixelFormat());
+  const auto height = frame->GetHeight();
+  const auto chromaHeight = frame->GetChromaHeight(height, frame->GetPixelFormat());
   auto tStart = std::chrono::high_resolution_clock::now();
-  if (image->GetPixelFormat() == VTKPixelFormatType::VTKPF_RGBA32)
+  if (frame->GetPixelFormat() == VTKPixelFormatType::VTKPF_RGBA32)
   {
-    success = this->ConvertRGBA32ToEncoderPixFmt(image);
+    success = this->ConvertRGBA32ToEncoderPixFmt(frame);
   }
-  else if (image->GetPixelFormat() == VTKPixelFormatType::VTKPF_IYUV)
+  else if (frame->GetPixelFormat() == VTKPixelFormatType::VTKPF_IYUV)
   {
     if (av_frame_make_writable(this->SoftwareFrame) < 0)
     {
       vtkLog(ERROR, "Failed to make frame writable");
       return false;
     }
-    int* strides = image->GetStrides();
+    int* strides = frame->GetStrides();
     for (int i = 0; i < 3; ++i)
     {
       this->SoftwareFrame->linesize[i] = strides[i];
     }
     unsigned char* src = nullptr;
-    auto size = image->GetData(src);
+    auto size = frame->GetData(src);
     unsigned char* dst = this->SoftwareFrame->data[0];
-    auto luma_end = src + strides[0] * image->GetStorageHeight();
+    auto luma_end = src + strides[0] * frame->GetStorageHeight();
     std::copy(src, luma_end, dst);
 
     dst = this->SoftwareFrame->data[1];
@@ -302,20 +302,20 @@ bool vtkFFmpegEncoderInternals::PreprocessInput(vtkRawVideoFrame* image)
     auto cr_end = cb_end + strides[0] * (chromaHeight >> 1);
     std::copy(cb_end, cr_end, dst);
   }
-  else if (image->GetPixelFormat() == VTKPixelFormatType::VTKPF_NV12)
+  else if (frame->GetPixelFormat() == VTKPixelFormatType::VTKPF_NV12)
   {
     if (av_frame_make_writable(this->SoftwareFrame) < 0)
     {
       vtkLog(ERROR, "Failed to make frame writable");
       return false;
     }
-    int* strides = image->GetStrides();
+    int* strides = frame->GetStrides();
     this->SoftwareFrame->linesize[0] = strides[0];
     this->SoftwareFrame->linesize[1] = strides[1] << 1;
     unsigned char* src = nullptr;
-    auto size = image->GetData(src);
+    auto size = frame->GetData(src);
     unsigned char* dst = this->SoftwareFrame->data[0];
-    auto luma_end = src + strides[0] * image->GetStorageHeight();
+    auto luma_end = src + strides[0] * frame->GetStorageHeight();
     std::copy(src, luma_end, dst);
 
     auto uv_end = luma_end + (strides[1] << 1) * chromaHeight;
