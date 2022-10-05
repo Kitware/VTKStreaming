@@ -69,8 +69,6 @@
 //VTK::System::Dec
 //VTK::Output::Dec
 
-in vec2 texCoord;
-
 // texture with 4-component tuples r,g,b,a
 uniform sampler2D rgba32Texture;
 // resolution of the RGBA32 texture
@@ -136,7 +134,7 @@ vec3 getRGB(ivec2 idx)
  */
 vec3 getDownSampledRGB(ivec2 begin, ivec2 end)
 {
-  vec3 rgb;
+  vec3 rgb = vec3(0, 0, 0);
   int k = 0;
   for (int i = begin.x; i < end.x; ++i)
   {
@@ -214,5 +212,10 @@ void main()
     float cr = (dot(rgb, cr_multiplier) + 128.0f) / 255.0f;
 
     gl_FragData[0] = vec4(cr, 0.0, 0.0, 0.0);
+  }
+  else
+  {
+    // special value to indicate failure. for debugging.
+    gl_FragData[0] = vec4(0.8, 0.0, 0.0, 0.0);
   }
 }
