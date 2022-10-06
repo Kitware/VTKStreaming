@@ -85,9 +85,8 @@ bool vtkJPEGVideoEncoder::SetupEncoderFrame(int w, int h)
     this->GLFrame->SetContext(gfxContext);
     this->GLFrame->SetWidth(this->Width);
     this->GLFrame->SetHeight(this->Height);
-    this->GLFrame->SetPixelFormat(VTKPixelFormatType::VTKPF_RGBA32);
+    this->GLFrame->SetPixelFormat(VTKPixelFormatType::VTKPF_RGB24);
     this->GLFrame->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::BottomUp);
-    this->GLFrame->ComputeDefaultStrides();
     this->GLFrame->AllocateDataStore();
   }
   return true;
