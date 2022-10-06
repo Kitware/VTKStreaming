@@ -106,13 +106,12 @@ VTKVideoDecoderResultType vtkJPEGVideoDecoder::GetResultInternal()
   frame->SetContext(vtkOpenGLRenderWindow::SafeDownCast(this->GraphicsContext));
   frame->SetWidth(dims[0]);
   frame->SetHeight(dims[1]);
-  frame->SetPixelFormat(VTKPixelFormatType::VTKPF_RGBA32); // guess.
+  frame->SetPixelFormat(VTKPixelFormatType::VTKPF_RGB24);
   frame->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::BottomUp);
-  frame->ComputeDefaultStrides();
   frame->AllocateDataStore();
 
   auto src = reinterpret_cast<unsigned char*>(img->GetScalarPointer());
-  frame->CopyData(src, dims[0] * 4, dims[1]);
+  frame->CopyData(src, dims[0] * 3, dims[1]);
 
   return result;
 }
