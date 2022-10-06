@@ -61,6 +61,7 @@ protected:
   ~vtkJPEGVideoEncoder() override;
 
   int Quality = 60;
+  uint64_t SendCounter = 0;
   vtkOpenGLVideoFrame* GLFrame = nullptr;
 
   ///@{
@@ -91,7 +92,7 @@ private:
   void operator=(const vtkJPEGVideoEncoder&) = delete;
 
   vtkJPEGWriter* Writer = nullptr;
-  vtkIdType EncodeTime = 0;
+  vtkIdType EncodeTime = 0, ScaleTime = 0;
 };
 
 #endif // vtkJPEGVideoEncoder_h

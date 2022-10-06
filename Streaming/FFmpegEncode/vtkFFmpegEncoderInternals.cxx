@@ -42,9 +42,8 @@ bool vtkFFmpegEncoderInternals::ConvertRGBA32ToEncoderPixFmt(vtkRawVideoFrame* r
 
   vtkLog(TRACE, "Scale " << srcW << 'x' << srcH << "->" << dstW << 'x' << dstH);
 
-  unsigned char* rgba32UcharArr = nullptr;
-  auto size = rgba32Image->GetData(rgba32UcharArr);
-  (void)size;
+  auto array = rgba32Image->GetData();
+  auto dptr = array->GetPointer(0);
 
   this->SwScaleCtx = sws_getCachedContext(this->SwScaleCtx, srcW, srcH, AV_PIX_FMT_RGBA, dstW, dstH,
     this->InputPixFmt, 0, nullptr, nullptr, nullptr);
@@ -63,10 +62,10 @@ bool vtkFFmpegEncoderInternals::ConvertRGBA32ToEncoderPixFmt(vtkRawVideoFrame* r
   if (rgba32Image->GetSliceOrderType() == vtkRawVideoFrame::SliceOrderType::BottomUp)
   {
     sign = -1;
-    rgba32UcharArr += static_cast<ptrdiff_t>(4 * srcW * (srcH - 1));
+    dptr += static_cast<ptrdiff_t>(4 * srcW * (srcH - 1));
   }
   // sws_scale requires a full const cast.
-  auto rgba32 = (const uint8_t* const*)&rgba32UcharArr;
+  auto rgba32 = (const uint8_t* const*)&dptr;
   // r, g, b, a -> four components, total size = 4 * w * h, linesize = total_size/h
   const int inLinesize[1] = { sign * 4 * srcW };
   sws_scale(this->SwScaleCtx, rgba32, inLinesize, 0, srcH, this->SoftwareFrame->data,
@@ -288,8 +287,8 @@ bool vtkFFmpegEncoderInternals::PreprocessInput(vtkRawVideoFrame* frame)
     {
       this->SoftwareFrame->linesize[i] = strides[i];
     }
-    unsigned char* src = nullptr;
-    auto size = frame->GetData(src);
+    auto array = frame->GetData();
+    unsigned char* src = array->GetPointer(0);
     unsigned char* dst = this->SoftwareFrame->data[0];
     auto luma_end = src + strides[0] * frame->GetStorageHeight();
     std::copy(src, luma_end, dst);
@@ -312,8 +311,9 @@ bool vtkFFmpegEncoderInternals::PreprocessInput(vtkRawVideoFrame* frame)
     int* strides = frame->GetStrides();
     this->SoftwareFrame->linesize[0] = strides[0];
     this->SoftwareFrame->linesize[1] = strides[1] << 1;
-    unsigned char* src = nullptr;
-    auto size = frame->GetData(src);
+
+    auto array = frame->GetData();
+    unsigned char* src = array->GetPointer(0);
     unsigned char* dst = this->SoftwareFrame->data[0];
     auto luma_end = src + strides[0] * frame->GetStorageHeight();
     std::copy(src, luma_end, dst);

@@ -31,6 +31,8 @@
 #include "vtkVideoProcessingWorkUnitTypes.h"
 
 #include <chrono>
+#include <cstdint>
+#include <limits>
 
 //------------------------------------------------------------------------------
 vtkStandardNewMacro(vtkJPEGVideoEncoder);
@@ -41,7 +43,7 @@ vtkJPEGVideoEncoder::vtkJPEGVideoEncoder()
   , GLFrame(vtkOpenGLVideoFrame::New())
 {
   this->Writer->WriteToMemoryOn();
-  this->InputPixelFormat = VTKPixelFormatType::VTKPF_RGBA32;
+  this->InputPixelFormat = VTKPixelFormatType::VTKPF_RGB24;
 }
 
 //------------------------------------------------------------------------------
@@ -110,23 +112,21 @@ VTKVideoProcessingStatusType vtkJPEGVideoEncoder::PushInternal(VTKVideoEncoderIn
     vtkLogF(ERROR, "Invalid pixel format %s", vtkPixelFormatTypeUtilities::ToString(pixFmt));
     return VTKVideoProcessingStatusType::VTKVPStatus_InvalidValue;
   }
+
+  auto tStart = std::chrono::high_resolution_clock::now();
   vtkNew<vtkImageData> img;
   img->SetDimensions(frame->GetStorageWidth(), frame->GetStorageHeight(), 1);
-  if (pixFmt == VTKPixelFormatType::VTKPF_RGB24)
-  {
-    img->AllocateScalars(VTK_UNSIGNED_CHAR, 3);
-  }
-  else
-  {
-    img->AllocateScalars(VTK_UNSIGNED_CHAR, 4);
-  }
-  auto srcArr = frame->GetData();
-  auto dst = reinterpret_cast<unsigned char*>(img->GetPointData()->GetScalars()->GetVoidPointer(0));
-  auto src = srcArr->GetPointer(0);
-  auto size = srcArr->GetNumberOfValues();
-  std::copy(src, src + size, dst);
+  auto pixels = frame->GetData();
+  img->GetPointData()->SetScalars(pixels);
+  this->ScaleTime = (std::chrono::high_resolution_clock::now() - tStart).count();
+
   this->Writer->SetInputData(img);
   this->Writer->SetQuality(this->Quality);
+
+  if (this->SendCounter == std::numeric_limits<uint64_t>::max() - 1)
+  {
+    this->SendCounter = 0;
+  }
   return VTKVideoProcessingStatusType::VTKVPStatus_Success;
 }
 
@@ -149,6 +149,7 @@ VTKVideoEncoderResultType vtkJPEGVideoEncoder::GetResultInternal()
   packet->SetWidth(dims[0]);
   packet->SetWidth(dims[1]);
   packet->SetSize(this->Writer->GetResult()->GetSize());
+  packet->SetPresentationTS(this->SendCounter++);
   packet->CopyData(this->Writer->GetResult());
 
   return result;
@@ -187,12 +188,11 @@ bool vtkJPEGVideoEncoder::SupportsCodec(VTKVideoCodecType codec) const noexcept
 //------------------------------------------------------------------------------
 vtkIdType vtkJPEGVideoEncoder::GetLastEncodeTimeNS() const noexcept
 {
-  vtkLogScopeFunction(TRACE);
   return this->EncodeTime;
 }
 
 //------------------------------------------------------------------------------
 vtkIdType vtkJPEGVideoEncoder::GetLastScaleTimeNS() const noexcept
 {
-  return 0;
+  return this->ScaleTime;
 }
