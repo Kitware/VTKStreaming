@@ -20,7 +20,6 @@
 
 //VTK::System::Dec
 //VTK::Output::Dec
-in vec2 texCoord;
 
 uniform sampler2D nv12Texture;
 // resolution of the NV12 texture

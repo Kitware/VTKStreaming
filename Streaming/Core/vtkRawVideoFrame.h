@@ -135,18 +135,22 @@ public:
   void CopyPlanarData(unsigned char* from, int rowsize, int numrows, int plane);
 
   /**
-   * Get a pointer to underlying data. returns the size in bytes.
-   * Subsequent calls to this function may not return the same memory address.
+   * Get a pointer to underlying data. Caller is responsible
+   * for memory management of `data`.
+   *
+   * @note Please use the other `vtkSmartPointer<vtkUnsignedCharArray> GetData()`
+   *       when integrating with vtk image writers. It sets up the correct number
+   *       of components and indirectly calls the first method. A second copy is not made.
    */
   unsigned int GetData(unsigned char*& data);
+  vtkSmartPointer<vtkUnsignedCharArray> GetData();
 
   ///@{
   /**
-   * Copy/Get the pixel data from/to a vtkUnsignedCharArray.
+   * Copy the pixel data from an `vtkUnsignedCharArray`.
    */
   void CopyData(vtkUnsignedCharArray* from, int rowsize, int numrows);
   void CopyPlanarData(vtkUnsignedCharArray* from, int rowsize, int numrows, int plane);
-  vtkSmartPointer<vtkUnsignedCharArray> GetData();
   ///@}
 
   ///@{

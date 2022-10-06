@@ -235,7 +235,7 @@ void vtkNvEncoderGL::TearDownEncoderFrame()
 }
 
 //------------------------------------------------------------------------------
-VTKVideoProcessingStatusType vtkNvEncoderGL::PushInternal(vtkRawVideoFrame* frame)
+VTKVideoProcessingStatusType vtkNvEncoderGL::PushInternal(VTKVideoEncoderInputType frame)
 {
   vtkLogScopeFunction(TRACE);
   auto& internals = (*this->Internals);
@@ -261,7 +261,7 @@ VTKVideoEncoderResultType vtkNvEncoderGL::GetResultInternal()
 }
 
 //------------------------------------------------------------------------------
-VTKVideoEncoderResultType vtkNvEncoderGL::EncodeInternal(vtkRawVideoFrame* frame)
+VTKVideoEncoderResultType vtkNvEncoderGL::EncodeInternal(VTKVideoEncoderInputType frame)
 {
   vtkLogScopeFunction(TRACE);
   auto& internals = (*this->Internals);

@@ -61,6 +61,7 @@ protected:
   ~vtkJPEGVideoEncoder() override;
 
   int Quality = 60;
+  uint64_t SendCounter = 0;
   vtkOpenGLVideoFrame* GLFrame = nullptr;
 
   ///@{
@@ -79,9 +80,9 @@ protected:
   bool SetupEncoderFrame(int width, int height) override;
   void TearDownEncoderFrame() override;
   VTKVideoEncoderResultType DrainInternal() override;
-  VTKVideoProcessingStatusType PushInternal(vtkRawVideoFrame* frame) override;
+  VTKVideoProcessingStatusType PushInternal(VTKVideoEncoderInputType frame) override;
   VTKVideoEncoderResultType GetResultInternal() override;
-  VTKVideoEncoderResultType EncodeInternal(vtkRawVideoFrame* frame) override;
+  VTKVideoEncoderResultType EncodeInternal(VTKVideoEncoderInputType frame) override;
   ///@}
 
   VTKVideoEncoderResultType EncodeDisplayInternal() override;
@@ -91,7 +92,7 @@ private:
   void operator=(const vtkJPEGVideoEncoder&) = delete;
 
   vtkJPEGWriter* Writer = nullptr;
-  vtkIdType EncodeTime = 0;
+  vtkIdType EncodeTime = 0, ScaleTime = 0;
 };
 
 #endif // vtkJPEGVideoEncoder_h

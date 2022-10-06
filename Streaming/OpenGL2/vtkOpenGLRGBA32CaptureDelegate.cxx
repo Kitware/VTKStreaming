@@ -1,9 +1,9 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    vtkOpenGLRGB24RenderDelegate.h
+  Module:    vtkOpenGLRGBA32CaptureDelegate.cxx
 
-  Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
+  Copyright (c) 2022 Kitware, Inc
   All rights reserved.
   See Copyright.txt or http://www.kitware.com/Copyright.htm for details.
 
@@ -13,14 +13,14 @@
 
 =========================================================================*/
 
-#include "vtkOpenGLRGB24RenderDelegate.h"
-#include "vtkLogger.h"
+#include "vtkOpenGLRGBA32CaptureDelegate.h"
 #include "vtkObject.h"
 #include "vtkOpenGLError.h"
 #include "vtkOpenGLRenderUtilities.h"
 #include "vtkOpenGLRenderWindow.h"
 #include "vtkOpenGLShaderCache.h"
 #include "vtkOpenGLState.h"
+#include "vtkRGBA32CaptureFS.h"
 #include "vtkShaderProgram.h"
 #include "vtkTextureObject.h"
 
@@ -38,63 +38,36 @@ const char* VertexShader =
   )***";
 }
 
-void vtkOpenGLRGB24RenderDelegate::ReleaseGraphicsResources(vtkOpenGLRenderWindow* window)
+void vtkOpenGLRGBA32CaptureDelegate::ReleaseGraphicsResources(vtkOpenGLRenderWindow* window)
 {
   this->DrawHelper.ReleaseGraphicsResources(window);
 }
 
-void vtkOpenGLRGB24RenderDelegate::Render(
-  vtkTextureObject* rgb24Texture, vtkOpenGLRenderWindow* window, bool invert_y /* = false*/)
+void vtkOpenGLRGBA32CaptureDelegate::Capture(vtkTextureObject* rgba32Texture,
+  vtkOpenGLRenderWindow* window, int destWidth, int destHeight, bool invert_y /*= false*/,
+  bool ignore_alpha /*= true*/)
 {
-  vtkLogScopeF(TRACE, "%s textureContext=%s, window=%s, Texture=%d", __func__,
-    vtkLogIdentifier(rgb24Texture->GetContext()), vtkLogIdentifier(window),
-    rgb24Texture->GetHandle());
-
   vtkShaderProgram* program = this->DrawHelper.Program;
   vtkOpenGLShaderCache* shaderCache = window->GetShaderCache();
 
   if (program == nullptr)
   {
-    // create shader programs.
     std::string VSSource = ::VertexShader;
-    std::string FSSource = vtkOpenGLRenderUtilities::GetFullScreenQuadFragmentShaderTemplate();
+    std::string FSSource = vtkRGBA32CaptureFS;
     std::string GSSource;
 
-    vtkShaderProgram::Substitute(FSSource, "//VTK::FSQ::Decl",
-      "uniform sampler2D rgb24Texture;\n"
-      "uniform int windowHeight;\n");
     if (invert_y)
     {
-      vtkShaderProgram::Substitute(FSSource, "//VTK::FSQ::Impl",
-        "float yCoord = windowHeight - gl_FragCoord.y - 0.5;\n"
-        "//VTK::FSQ::Impl");
+      vtkShaderProgram::Substitute(
+        FSSource, "//VTK::RGBA32FlipY::Impl", "id_RGBA.y = resolution[1] - 1 - id_RGBA.y;\n");
     }
-    else
-    {
-      vtkShaderProgram::Substitute(FSSource, "//VTK::FSQ::Impl",
-        "float yCoord = gl_FragCoord.y - 0.5;\n"
-        "//VTK::FSQ::Impl");
-    }
-    vtkShaderProgram::Substitute(FSSource, "//VTK::FSQ::Impl",
-      "ivec2 pixelPos = ivec2(gl_FragCoord.x - 0.5, yCoord);\n"
-      "vec3 rgb = texelFetch(rgb24Texture, pixelPos, 0).xyz;\n"
-      "gl_FragData[0] = vec4(rgb.xyz,1.0f);\n");
     program = shaderCache->ReadyShaderProgram(VSSource.c_str(), FSSource.c_str(), GSSource.c_str());
   }
 
   if (program != nullptr)
   {
-    const int width = window->GetActualSize()[0];
-    const int height = window->GetActualSize()[1];
     float verts[] = { -1.0f, -1.0f, 0.0f, 1.0f, -1.0f, 0.0f, -1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f };
     GLuint iboData[] = { 0, 1, 2, 2, 1, 3 };
-    bool startedWindowRender = false;
-
-    if (!window->CheckInRenderStatus())
-    {
-      window->Start();
-      startedWindowRender = true;
-    }
 
     shaderCache->ReadyShaderProgram(program);
     vtkOpenGLCheckErrors("Error readying shader program ");
@@ -110,21 +83,15 @@ void vtkOpenGLRGB24RenderDelegate::Render(
     state->vtkglDisable(GL_BLEND);
 
     vtkOpenGLState::ScopedglViewport vportSave(state);
-    state->vtkglViewport(0, 0, width, height);
+    state->vtkglViewport(0, 0, destWidth, destHeight);
 
     // bind and activate the texture before rendering that quad.
     vtkOpenGLState::ScopedglActiveTexture textureSave(state);
-    rgb24Texture->Activate();
-    program->SetUniformi("rgb24Texture", rgb24Texture->GetTextureUnit());
-    program->SetUniformi("windowHeight", window->GetSize()[1]);
+    rgba32Texture->Activate();
+    program->SetUniform1iv("resolution", 2, window->GetSize());
+    program->SetUniformi("rgba32Texture", rgba32Texture->GetTextureUnit());
     vtkOpenGLRenderUtilities::RenderTriangles(
       verts, 4, iboData, 6, nullptr, program, this->DrawHelper.VAO);
-    rgb24Texture->Deactivate();
-
-    if (startedWindowRender)
-    {
-      window->End();
-      window->Frame();
-    }
+    rgba32Texture->Deactivate();
   }
 }

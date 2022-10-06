@@ -77,7 +77,7 @@ bool vtkMockVideoEncoder::NeedsNewEncoderFrame(int, int)
 void vtkMockVideoEncoder::TearDownEncoderFrame() {}
 
 //------------------------------------------------------------------------------
-VTKVideoProcessingStatusType vtkMockVideoEncoder::PushInternal(vtkRawVideoFrame* frame)
+VTKVideoProcessingStatusType vtkMockVideoEncoder::PushInternal(VTKVideoEncoderInputType frame)
 {
   return VTKVideoProcessingStatusType::VTKVPStatus_Success;
 }
@@ -89,7 +89,7 @@ VTKVideoEncoderResultType vtkMockVideoEncoder::GetResultInternal()
 }
 
 //------------------------------------------------------------------------------
-VTKVideoEncoderResultType vtkMockVideoEncoder::EncodeInternal(vtkRawVideoFrame* frame)
+VTKVideoEncoderResultType vtkMockVideoEncoder::EncodeInternal(VTKVideoEncoderInputType frame)
 {
   vtkLogScopeFunction(TRACE);
   if (this->MockLargeFramePeriod && this->FrameCounter % this->MockLargeFramePeriod)

@@ -11,6 +11,7 @@ DEPENDS
 PRIVATE_DEPENDS
   VTK::IOImage
   VTKStreaming::OpenGL2
+  VTK::RenderingOpenGL2
 TEST_DEPENDS
   VTKStreaming::OpenGL2
   VTK::TestingCore
