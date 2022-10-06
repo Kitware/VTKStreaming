@@ -330,7 +330,7 @@ VTKVideoEncoderResultType vtkFFmpegEncoderInternals::Encode(bool keyFrame /*=fal
 {
   vtkLogScopeFunction(TRACE);
   VTKVideoEncoderResultType result;
-  int statusCode = this->Send();
+  int statusCode = this->Send(keyFrame);
   auto status = ParseFFMPEGStatus(statusCode, /*during_send*/ true);
   if (statusCode < 0)
   {
