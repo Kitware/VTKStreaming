@@ -22,7 +22,9 @@
 #include "vtkOpenGLIYUVRenderDelegate.h"
 #include "vtkOpenGLNV12CaptureDelegate.h"
 #include "vtkOpenGLNV12RenderDelegate.h"
+#include "vtkOpenGLRGB24CaptureDelegate.h"
 #include "vtkOpenGLRGB24RenderDelegate.h"
+#include "vtkOpenGLRGBA32CaptureDelegate.h"
 #include "vtkOpenGLRGBA32RenderDelegate.h"
 #include "vtkOpenGLRenderUtilities.h"
 #include "vtkOpenGLRenderWindow.h"
@@ -50,6 +52,10 @@ vtkStandardNewMacro(vtkOpenGLVideoFrame);
 vtkOpenGLVideoFrame::vtkOpenGLVideoFrame()
   : IYUVGrabber(std::unique_ptr<vtkOpenGLIYUVCaptureDelegate>(new vtkOpenGLIYUVCaptureDelegate()))
   , NV12Grabber(std::unique_ptr<vtkOpenGLNV12CaptureDelegate>(new vtkOpenGLNV12CaptureDelegate()))
+  , RGBA32Grabber(
+      std::unique_ptr<vtkOpenGLRGBA32CaptureDelegate>(new vtkOpenGLRGBA32CaptureDelegate()))
+  , RGB24Grabber(
+      std::unique_ptr<vtkOpenGLRGB24CaptureDelegate>(new vtkOpenGLRGB24CaptureDelegate()))
   , IYUVRenderer(std::unique_ptr<vtkOpenGLIYUVRenderDelegate>(new vtkOpenGLIYUVRenderDelegate()))
   , NV12Renderer(std::unique_ptr<vtkOpenGLNV12RenderDelegate>(new vtkOpenGLNV12RenderDelegate()))
   , RGB24Renderer(std::unique_ptr<vtkOpenGLRGB24RenderDelegate>(new vtkOpenGLRGB24RenderDelegate()))
@@ -77,9 +83,6 @@ void vtkOpenGLVideoFrame::PrintSelf(ostream& os, vtkIndent indent)
 
   os << "FrameBuffer: \n";
   this->Internals->VtkFrameBuffer->PrintSelf(os, indent.GetNextIndent());
-
-  os << "Cache: \n";
-  this->Internals->Cache->PrintSelf(os, indent.GetNextIndent());
 
   os << "Context: \n";
   if (this->Internals->VtkTexture->GetContext())
@@ -142,43 +145,46 @@ void vtkOpenGLVideoFrame::Capture(vtkRenderWindow* window)
   {
     case VTKPixelFormatType::VTKPF_RGB24:
     {
-      vtkLogF(ERROR, "Capture API only supports RGBA32, IYUV, NV12 pixel formats.");
+      internals.VtkFrameBuffer->SaveCurrentBindingsAndBuffers();
+      internals.VtkFrameBuffer->AddColorAttachment(
+        0, internals.VtkTexture, 0, internals.VtkTexture->GetTarget(), 0);
+      vtkOpenGLCheckErrorMacro("Failed to add output texture to read framebuffer. ");
+
+      internals.VtkFrameBuffer->CheckFrameBufferStatus(GL_FRAMEBUFFER);
+      internals.VtkFrameBuffer->Bind(GL_DRAW_FRAMEBUFFER);
+      internals.VtkFrameBuffer->ActivateDrawBuffers(1);
+      vtkOpenGLCheckErrorMacro("Failed to bind draw framebuffer. ");
+
+      auto rgba32Texture = oglRenWin->GetDisplayFramebuffer()->GetColorAttachmentAsTextureObject(0);
+      // video frames do not care about alpha-channel anyway, so skip it always.
+      this->RGB24Grabber->Capture(
+        rgba32Texture, oglRenWin, this->StorageWidth, this->StorageHeight, invert_y);
+      vtkOpenGLCheckErrors("ERROR capturing render window. ");
+
+      internals.VtkFrameBuffer->RemoveColorAttachments(0);
+      internals.VtkFrameBuffer->RestorePreviousBindingsAndBuffers();
       break;
     }
     case VTKPixelFormatType::VTKPF_RGBA32:
     {
-      oglRenWin->MakeCurrent();
-      oglRenWin->GetState()->PushReadFramebufferBinding();
-      oglRenWin->GetDisplayFramebuffer()->Bind(GL_READ_FRAMEBUFFER);
-      oglRenWin->GetDisplayFramebuffer()->ActivateReadBuffer(0);
-      internals.VtkTexture->Bind();
+      internals.VtkFrameBuffer->SaveCurrentBindingsAndBuffers();
+      internals.VtkFrameBuffer->AddColorAttachment(
+        0, internals.VtkTexture, 0, internals.VtkTexture->GetTarget(), 0);
+      vtkOpenGLCheckErrorMacro("Failed to add output texture to read framebuffer. ");
 
-      if (invert_y)
-      {
-        vtkLog(TRACE, "Desired slice order is TopDown. Will invert picture along Y dimension.");
+      internals.VtkFrameBuffer->CheckFrameBufferStatus(GL_FRAMEBUFFER);
+      internals.VtkFrameBuffer->Bind(GL_DRAW_FRAMEBUFFER);
+      internals.VtkFrameBuffer->ActivateDrawBuffers(1);
+      vtkOpenGLCheckErrorMacro("Failed to bind draw framebuffer. ");
 
-        int xsrc = 0;
-        int xofst = 0;
-        int width = this->DisplayWidth;
-        int height = 1;
+      auto rgba32Texture = oglRenWin->GetDisplayFramebuffer()->GetColorAttachmentAsTextureObject(0);
+      // video frames do not care about alpha-channel anyway, so skip it always.
+      this->RGBA32Grabber->Capture(rgba32Texture, oglRenWin, this->StorageWidth,
+        this->StorageHeight, /*ignore_alpha=*/true, invert_y);
+      vtkOpenGLCheckErrors("ERROR capturing render window. ");
 
-        for (int i1 = 0, i2 = this->DisplayHeight - 1; i1 < this->DisplayHeight && i2 >= 0;
-             ++i1, --i2)
-        {
-          int yofst = i2;
-          int ysrc = i1;
-          glCopyTexSubImage2D(
-            internals.VtkTexture->GetTarget(), 0, xofst, yofst, xsrc, ysrc, width, height);
-        }
-      }
-      else
-      {
-        glCopyTexSubImage2D(internals.VtkTexture->GetTarget(), 0, 0, 0, 0, 0, this->DisplayWidth,
-          this->DisplayHeight);
-      }
-      vtkOpenGLCheckErrorMacro("ERROR FBO->Internals->VtkTexture xfer failed ");
-      glBindTexture(internals.VtkTexture->GetTarget(), 0);
-      oglRenWin->GetState()->PopReadFramebufferBinding();
+      internals.VtkFrameBuffer->RemoveColorAttachments(0);
+      internals.VtkFrameBuffer->RestorePreviousBindingsAndBuffers();
       break;
     }
     case VTKPixelFormatType::VTKPF_IYUV:
@@ -368,15 +374,6 @@ unsigned int vtkOpenGLVideoFrame::GetDataInternal(unsigned char*& data)
   vtkLogScopeF(TRACE, "%s->%s myWindow=%s, handle=%d", vtkLogIdentifier(this), __func__,
     vtkLogIdentifier(internals.VtkTexture->GetContext()), internals.VtkTexture->GetHandle());
 
-  if (internals.Cache->GetMTime() > this->MTime)
-  {
-    data = internals.Cache->GetPointer(0);
-    return internals.Cache->GetNumberOfValues();
-  }
-  internals.Cache->SetNumberOfValues(this->ActualSize);
-  data = internals.Cache->GetPointer(0);
-  std::fill(data, data + this->ActualSize, 0);
-
   if (internals.sync != nullptr)
   {
     // 5 seconds seems sensible.
@@ -395,6 +392,7 @@ unsigned int vtkOpenGLVideoFrame::GetDataInternal(unsigned char*& data)
     internals.sync = nullptr;
   }
 
+  data = new unsigned char[this->ActualSize];
   auto& tex = internals.VtkTexture;
   tex->GetContext()->MakeCurrent();
   tex->Activate();
@@ -541,9 +539,8 @@ void vtkOpenGLVideoFrame::DeepCopy(vtkRawVideoFrame* from)
   }
   else
   {
-    unsigned char* data = nullptr;
-    const unsigned int size = from->GetData(data);
-    this->CopyDataInternal(data, from->GetStrides()[0], from->GetStorageHeight());
+    auto array = from->GetData();
+    this->CopyDataInternal(array->GetPointer(0), from->GetStrides()[0], from->GetStorageHeight());
     return;
   }
 

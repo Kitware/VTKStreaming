@@ -324,14 +324,23 @@ vtkSmartPointer<vtkUnsignedCharArray> vtkRawVideoFrame::GetData()
   vtkLogScopeFunction(TRACE);
   auto data = vtk::TakeSmartPointer(vtkUnsignedCharArray::New());
 
-  unsigned char* dataPtr = nullptr;
-  unsigned int size = this->GetData(dataPtr);
-  data->SetNumberOfValues(size);
-  for (unsigned int i = 0; i < size; ++i)
+  unsigned char* dptr = nullptr;
+  unsigned int size = this->GetData(dptr);
+  switch (this->PixelFormat)
   {
-    data->SetValue(i, dataPtr[i]);
+    case VTKPixelFormatType::VTKPF_RGBA32:
+      data->SetNumberOfComponents(4);
+      break;
+    case VTKPixelFormatType::VTKPF_RGB24:
+      data->SetNumberOfComponents(3);
+      break;
+    case VTKPixelFormatType::VTKPF_IYUV:
+    case VTKPixelFormatType::VTKPF_NV12:
+    default:
+      data->SetNumberOfComponents(1);
+      break;
   }
-
+  data->SetArray(dptr, size, 0);
   return data;
 }
 
@@ -375,7 +384,6 @@ void vtkRawVideoFrame::Save(const char* filename)
 {
   vtkLogScopeFunction(TRACE);
   std::ofstream file(filename, std::ofstream::out | std::ofstream::binary);
-  unsigned char* data = nullptr;
-  const unsigned int size = this->GetData(data);
-  file.write(reinterpret_cast<char*>(data), size);
+  auto array = this->GetData();
+  file.write(reinterpret_cast<char*>(array->GetPointer(0)), array->GetNumberOfValues());
 }

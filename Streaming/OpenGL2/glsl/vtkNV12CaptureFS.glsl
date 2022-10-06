@@ -15,7 +15,7 @@
 =========================================================================*/
 
 /**
- * Description: Shader program that converts RGB(1:1:1) into NV12(4:2:0) suitable
+ * Description: Shader program that renders RGBA(1:1:1:1) into NV12(4:2:0) suitable
  *  for video encoders. Implements https://www.itu.int/rec/R-REC-BT.709-6-201506-I/en
  *
  * Generates 4:2:0 chroma-subsamples.

@@ -44,6 +44,8 @@ class vtkOpenGLFramebufferObject;
 
 class vtkOpenGLIYUVCaptureDelegate;
 class vtkOpenGLNV12CaptureDelegate;
+class vtkOpenGLRGBA32CaptureDelegate;
+class vtkOpenGLRGB24CaptureDelegate;
 class vtkOpenGLIYUVRenderDelegate;
 class vtkOpenGLNV12RenderDelegate;
 class vtkOpenGLRGB24RenderDelegate;
@@ -108,6 +110,8 @@ private:
 
   std::unique_ptr<vtkOpenGLIYUVCaptureDelegate> IYUVGrabber;
   std::unique_ptr<vtkOpenGLNV12CaptureDelegate> NV12Grabber;
+  std::unique_ptr<vtkOpenGLRGB24CaptureDelegate> RGB24Grabber;
+  std::unique_ptr<vtkOpenGLRGBA32CaptureDelegate> RGBA32Grabber;
 
   std::unique_ptr<vtkOpenGLIYUVRenderDelegate> IYUVRenderer;
   std::unique_ptr<vtkOpenGLNV12RenderDelegate> NV12Renderer;
