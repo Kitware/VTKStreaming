@@ -146,7 +146,7 @@ VTKVideoEncoderResultType vtkJPEGVideoEncoder::GetResultInternal()
   this->Writer->GetInput()->GetDimensions(dims);
   packet->SetMimeType("image/jpeg");
   packet->SetWidth(dims[0]);
-  packet->SetWidth(dims[1]);
+  packet->SetHeight(dims[1]);
   packet->SetSize(this->Writer->GetResult()->GetSize());
   packet->SetPresentationTS(this->SendCounter++);
   packet->CopyData(this->Writer->GetResult());
