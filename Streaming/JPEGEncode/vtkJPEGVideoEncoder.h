@@ -23,10 +23,10 @@
 
 #include "vtkVideoEncoder.h"
 
+#include "vtkJPEGWriter.h"                // for ivar
+#include "vtkNew.h"                       // for ivar
+#include "vtkOpenGLVideoFrame.h"          // for ivar
 #include "vtkStreamingJPEGEncodeModule.h" // for export macro
-
-class vtkJPEGWriter;
-class vtkOpenGLVideoFrame;
 
 class VTKSTREAMINGJPEGENCODE_EXPORT vtkJPEGVideoEncoder : public vtkVideoEncoder
 {
@@ -62,7 +62,9 @@ protected:
 
   int Quality = 60;
   uint64_t SendCounter = 0;
-  vtkOpenGLVideoFrame* GLFrame = nullptr;
+  vtkNew<vtkOpenGLVideoFrame> GLFrame;
+  vtkNew<vtkJPEGWriter> Writer;
+  vtkIdType EncodeTime = 0, ScaleTime = 0;
 
   ///@{
   /**
@@ -90,9 +92,6 @@ protected:
 private:
   vtkJPEGVideoEncoder(const vtkJPEGVideoEncoder&) = delete;
   void operator=(const vtkJPEGVideoEncoder&) = delete;
-
-  vtkJPEGWriter* Writer = nullptr;
-  vtkIdType EncodeTime = 0, ScaleTime = 0;
 };
 
 #endif // vtkJPEGVideoEncoder_h
