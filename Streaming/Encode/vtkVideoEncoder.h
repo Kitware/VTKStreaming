@@ -77,14 +77,15 @@
 #include "vtkObject.h"
 
 #include "vtkPixelFormatTypes.h"             // for enum
+#include "vtkRenderWindow.h"                 // for ivar
 #include "vtkStreamingEncodeModule.h"        // for export macro
 #include "vtkVideoCodecTypes.h"              // for enum
 #include "vtkVideoProcessingStatusTypes.h"   // for enum
 #include "vtkVideoProcessingWorkUnitTypes.h" // for work unit
+#include "vtkWeakPointer.h"                  // for ivar
 
 class vtkAsynchronousEncoderDelegate;
 class vtkRawVideoFrame;
-class vtkRenderWindow;
 
 class VTKSTREAMINGENCODE_EXPORT vtkVideoEncoder : public vtkObject
 {
@@ -368,7 +369,7 @@ protected:
   // 6. Processing delegate
   vtkAsynchronousEncoderDelegate* Delegate = nullptr;
   // 7. Our graphics context.
-  vtkRenderWindow* GraphicsContext = nullptr;
+  vtkWeakPointer<vtkRenderWindow> GraphicsContext;
   bool DirectDisplayEncodeMode = false;
 
   bool Initialized = false;

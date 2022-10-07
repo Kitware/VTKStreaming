@@ -24,6 +24,7 @@
 #include "vtkOpenGLError.h"
 #include "vtkOpenGLFramebufferObject.h"
 #include "vtkOpenGLRenderWindow.h"
+#include "vtkOpenGLResourceFreeCallback.h"
 #include "vtkOpenGLState.h"
 #include "vtkOpenGLVideoFrame.h"
 #include "vtkRawVideoFrame.h"
@@ -78,12 +79,15 @@ vtkNvEncoderGL::vtkNvEncoderGL()
   , CUDADriverLoader(std::unique_ptr<vtkCUDADriverLoader>(new vtkCUDADriverLoader()))
   , CUDAInstance(std::unique_ptr<vtkCUDAContext>(new vtkCUDAContext()))
 {
+  this->ResourceCallback =
+    new vtkOpenGLResourceFreeCallback<vtkNvEncoderGL>(this, &vtkNvEncoderGL::ReleaseGLResources);
 }
 
 //------------------------------------------------------------------------------
 vtkNvEncoderGL::~vtkNvEncoderGL()
 {
   this->Shutdown();
+  delete this->ResourceCallback;
 }
 
 //------------------------------------------------------------------------------
@@ -211,8 +215,11 @@ bool vtkNvEncoderGL::InitializeInternal()
 //------------------------------------------------------------------------------
 void vtkNvEncoderGL::ShutdownInternal()
 {
-  this->ReleaseGLResources();
-  this->Internals->Shutdown();
+  if (this->GraphicsContext != nullptr)
+  {
+    this->ReleaseGLResources(this->GraphicsContext);
+    this->Internals->Shutdown();
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -412,11 +419,11 @@ bool vtkNvEncoderGL::AllocateInputBuffers()
 void vtkNvEncoderGL::ReleaseInputBuffers()
 {
   vtkLogScopeFunction(TRACE);
-  return this->ReleaseGLResources();
+  return this->ReleaseGLResources(this->GraphicsContext);
 }
 
 //------------------------------------------------------------------------------
-void vtkNvEncoderGL::ReleaseGLResources()
+void vtkNvEncoderGL::ReleaseGLResources(vtkWindow* window)
 {
   vtkLogScopeFunction(TRACE);
   auto& internals = (*this->Internals);
@@ -432,6 +439,7 @@ void vtkNvEncoderGL::ReleaseGLResources()
   auto& ctx = this->CUDAInstance->Context;
   VTK_NV_CUDA_DRIVER_API_CHECKED_INVOKE(cuCtxPushCurrent_v2(ctx));
 
+  window->MakeCurrent();
   auto& frames = internals.NvEncInputFrames;
   auto& resources = internals.NvEncInputResources;
   for (std::size_t i = 0; i < frames.size(); ++i)

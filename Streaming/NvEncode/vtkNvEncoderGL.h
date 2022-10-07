@@ -21,11 +21,11 @@
 #include "vtkStreamingNvEncodeModule.h" // for export macro
 
 #include <memory> // for ivar
-#include <vtkSetGet.h>
 
 class vtkNvEncoderInternals;
 class vtkCUDADriverLoader;
 class vtkOpenGLRenderWindow;
+class vtkGenericOpenGLResourceFreeCallback;
 
 class VTKSTREAMINGNVENCODE_EXPORT vtkNvEncoderGL : public vtkVideoEncoder
 {
@@ -58,6 +58,8 @@ protected:
   int Profile = 1; // NV_ENC_CODEC_PROFILE_AUTOSELECT_GUID
   int Tune = 2;    // NV_ENC_TUNING_INFO_LOW_LATENCY
 
+  vtkGenericOpenGLResourceFreeCallback* ResourceCallback = nullptr;
+
   bool InitializeInternal() override;
   void ShutdownInternal() override;
   void FlushInternal() override;
@@ -74,7 +76,7 @@ protected:
 
   bool AllocateInputBuffers();
   void ReleaseInputBuffers();
-  void ReleaseGLResources();
+  void ReleaseGLResources(vtkWindow* window);
 
 private:
   vtkNvEncoderGL(const vtkNvEncoderGL&) = delete;

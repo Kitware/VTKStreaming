@@ -8,6 +8,7 @@ KIT
   VTKStreaming::Encode
 DEPENDS
   VTKStreaming::Core
+  VTK::RenderingCore
 PRIVATE_DEPENDS
   VTK::ParallelCore
   VTK::RenderingOpenGL2
