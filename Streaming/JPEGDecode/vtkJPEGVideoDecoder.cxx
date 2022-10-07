@@ -17,7 +17,6 @@
 
 #include "vtkCompressedVideoPacket.h"
 #include "vtkImageData.h"
-#include "vtkJPEGReader.h"
 #include "vtkLogger.h"
 #include "vtkObjectFactory.h"
 #include "vtkOpenGLRenderWindow.h"
@@ -35,17 +34,11 @@
 vtkStandardNewMacro(vtkJPEGVideoDecoder);
 
 //------------------------------------------------------------------------------
-vtkJPEGVideoDecoder::vtkJPEGVideoDecoder()
-  : Reader(vtkJPEGReader::New())
-{
-}
-
+vtkJPEGVideoDecoder::vtkJPEGVideoDecoder() = default;
 //------------------------------------------------------------------------------
 vtkJPEGVideoDecoder::~vtkJPEGVideoDecoder()
 {
   this->Shutdown();
-  this->Reader->Delete();
-  this->Reader = nullptr;
 }
 
 //------------------------------------------------------------------------------
@@ -101,7 +94,7 @@ VTKVideoDecoderResultType vtkJPEGVideoDecoder::GetResultInternal()
   result.second.emplace_back(frame);
 
   int dims[3] = {};
-  auto img = vtk::MakeSmartPointer(this->Reader->GetOutput());
+  auto img = this->Reader->GetOutput();
   img->GetDimensions(dims);
   frame->SetContext(vtkOpenGLRenderWindow::SafeDownCast(this->GraphicsContext));
   frame->SetWidth(dims[0]);
