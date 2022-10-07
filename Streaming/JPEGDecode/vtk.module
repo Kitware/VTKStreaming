@@ -8,8 +8,8 @@ KIT
   VTKStreaming::JPEGDecode
 DEPENDS
   VTKStreaming::Decode
-PRIVATE_DEPENDS
   VTK::IOImage
+PRIVATE_DEPENDS
   VTKStreaming::OpenGL2
   VTK::RenderingOpenGL2
 TEST_DEPENDS

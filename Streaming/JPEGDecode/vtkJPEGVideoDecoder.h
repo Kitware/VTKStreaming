@@ -24,9 +24,9 @@
 
 #include "vtkVideoDecoder.h"
 
+#include "vtkJPEGReader.h"                // for ivar
+#include "vtkNew.h"                       // for ivar
 #include "vtkStreamingJPEGDecodeModule.h" // for export macro
-
-class vtkJPEGReader;
 
 class VTKSTREAMINGJPEGDECODE_EXPORT vtkJPEGVideoDecoder : public vtkVideoDecoder
 {
@@ -48,6 +48,9 @@ class VTKSTREAMINGJPEGDECODE_EXPORT vtkJPEGVideoDecoder : public vtkVideoDecoder
 protected:
   vtkJPEGVideoDecoder();
   ~vtkJPEGVideoDecoder() override;
+
+  vtkNew<vtkJPEGReader> Reader;
+  vtkIdType DecodeTime = 0;
 
   ///@{
   /**
@@ -71,9 +74,6 @@ protected:
 private:
   vtkJPEGVideoDecoder(const vtkJPEGVideoDecoder&) = delete;
   void operator=(const vtkJPEGVideoDecoder&) = delete;
-
-  vtkJPEGReader* Reader = nullptr;
-  vtkIdType DecodeTime = 0;
 };
 
 #endif // vtkJPEGVideoDecoder_h
