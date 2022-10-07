@@ -17,11 +17,9 @@
 
 #include "vtkCompressedVideoPacket.h"
 #include "vtkImageData.h"
-#include "vtkJPEGWriter.h"
 #include "vtkLogger.h"
 #include "vtkObjectFactory.h"
 #include "vtkOpenGLRenderWindow.h"
-#include "vtkOpenGLVideoFrame.h"
 #include "vtkPixelFormatTypes.h"
 #include "vtkPointData.h"
 #include "vtkRawVideoFrame.h"
@@ -39,8 +37,6 @@ vtkStandardNewMacro(vtkJPEGVideoEncoder);
 
 //------------------------------------------------------------------------------
 vtkJPEGVideoEncoder::vtkJPEGVideoEncoder()
-  : Writer(vtkJPEGWriter::New())
-  , GLFrame(vtkOpenGLVideoFrame::New())
 {
   this->Writer->WriteToMemoryOn();
   this->InputPixelFormat = VTKPixelFormatType::VTKPF_RGB24;
@@ -50,8 +46,6 @@ vtkJPEGVideoEncoder::vtkJPEGVideoEncoder()
 vtkJPEGVideoEncoder::~vtkJPEGVideoEncoder()
 {
   this->Shutdown();
-  this->Writer->Delete();
-  this->Writer = nullptr;
 }
 
 //------------------------------------------------------------------------------
