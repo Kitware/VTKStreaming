@@ -381,7 +381,7 @@ unsigned int vtkOpenGLVideoFrame::GetDataInternal(unsigned char*& data)
     auto result = glClientWaitSync(internals.sync, GL_SYNC_FLUSH_COMMANDS_BIT, timeout);
     if (result == GL_TIMEOUT_EXPIRED)
     {
-      vtkLogF(WARNING, "Timeout! waited longer than %lds. Giving up..", timeout);
+      vtkLogF(WARNING, "GPU unresponsive! timeout=%1.fs.", timeout / 1e9);
       return 0;
     }
     else if (result == GL_WAIT_FAILED)
