@@ -110,6 +110,10 @@ VTKVideoProcessingStatusType vtkJPEGVideoEncoder::PushInternal(VTKVideoEncoderIn
   vtkNew<vtkImageData> img;
   img->SetDimensions(frame->GetStorageWidth(), frame->GetStorageHeight(), 1);
   auto pixels = frame->GetData();
+  if (!pixels->GetNumberOfValues())
+  {
+    return VTKVideoProcessingStatusType::VTKVPStatus_TrySendAgain;
+  }
   img->GetPointData()->SetScalars(pixels);
   this->ScaleTime = (std::chrono::high_resolution_clock::now() - tStart).count();
 

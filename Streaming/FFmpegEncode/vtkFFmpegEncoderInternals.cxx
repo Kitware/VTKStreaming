@@ -288,6 +288,10 @@ bool vtkFFmpegEncoderInternals::PreprocessInput(vtkRawVideoFrame* frame)
       this->SoftwareFrame->linesize[i] = strides[i];
     }
     auto array = frame->GetData();
+    if (array->GetNumberOfValues() == 0)
+    {
+      return false;
+    }
     unsigned char* src = array->GetPointer(0);
     unsigned char* dst = this->SoftwareFrame->data[0];
     auto luma_end = src + strides[0] * frame->GetStorageHeight();
@@ -313,6 +317,10 @@ bool vtkFFmpegEncoderInternals::PreprocessInput(vtkRawVideoFrame* frame)
     this->SoftwareFrame->linesize[1] = strides[1] << 1;
 
     auto array = frame->GetData();
+    if (array->GetNumberOfValues() == 0)
+    {
+      return false;
+    }
     unsigned char* src = array->GetPointer(0);
     unsigned char* dst = this->SoftwareFrame->data[0];
     auto luma_end = src + strides[0] * frame->GetStorageHeight();
