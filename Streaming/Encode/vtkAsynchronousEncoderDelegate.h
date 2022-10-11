@@ -82,6 +82,7 @@ protected:
    *           ::Flush/::Terminate also empty it.
    */
   std::queue<VTKVideoEncoderInputType> FrameSustainer;
+  float SustainedGB = 0;
 
   ///{@
   // a vtk render window whose OpenGL context is managed by the worker thread.
