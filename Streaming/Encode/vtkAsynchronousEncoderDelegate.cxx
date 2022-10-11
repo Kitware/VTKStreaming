@@ -93,13 +93,18 @@ void vtkAsynchronousEncoderDelegate::Relinquish()
 {
   vtkLogScopeFunction(TRACE);
   ENSURE_MAIN_THREAD;
-  auto frame = this->FrameSustainer.front();
-  if (frame->GetReferenceCount() == 2)
+  auto& frame = this->FrameSustainer.front();
+  while (frame->GetReferenceCount() > 1)
   {
-    // the task queue did not yet release reference to the input.
-    return;
+    auto fut = this->TaskQueue.Push([]() {});
+    fut.wait();
   }
+  this->SustainedGB -= (float(frame->GetActualSize()) / (1024.f * 1024.f * 1024.f));
   this->FrameSustainer.pop();
+  vtkLogIfF(WARNING, this->SustainedGB > 0.5,
+    "Caution - sustained %lu frames ~ %.2f GB. "
+    "Please throttle framerate.",
+    this->FrameSustainer.size(), this->SustainedGB);
 }
 
 //------------------------------------------------------------------------------
@@ -109,15 +114,7 @@ void vtkAsynchronousEncoderDelegate::RelinquishAll()
   ENSURE_MAIN_THREAD;
   while (!this->FrameSustainer.empty())
   {
-    auto frame = this->FrameSustainer.front();
-    if (frame->GetReferenceCount() == 2)
-    {
-      // the task queue did not yet release reference to the input.
-      // flush the queue with empty task.
-      auto fut = this->TaskQueue.Push([]() {});
-      fut.wait();
-    }
-    this->FrameSustainer.pop();
+    this->Relinquish();
   }
 }
 
