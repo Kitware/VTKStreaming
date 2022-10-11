@@ -85,6 +85,7 @@ void vtkAsynchronousEncoderDelegate::Sustain(VTKVideoEncoderInputType input)
   vtkLogScopeFunction(TRACE);
   ENSURE_MAIN_THREAD;
   this->FrameSustainer.push(input);
+  this->SustainedGB += (float(input->GetActualSize()) / (1024.f * 1024.f * 1024.f));
 }
 
 //------------------------------------------------------------------------------
