@@ -643,6 +643,9 @@ bool vtkNvEncoderInternals::Receive(
     {
       packets.emplace_back(vtkSmartPointer<vtkCompressedVideoPacket>::New());
     }
+    packets[iPkt]->SetWidth(this->Width);
+    packets[iPkt]->SetHeight(this->Height);
+    packets[iPkt]->SetPresentationTS(this->NvEncRecvCounter);
     packets[iPkt]->SetSize(lockBitStreamData.bitstreamSizeInBytes);
     packets[iPkt]->CopyData(data, lockBitStreamData.bitstreamSizeInBytes);
     ++iPkt;

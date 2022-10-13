@@ -31,7 +31,6 @@ struct vtkWEBMMuxer::vtkWEBMContextInternals
 {
   mkvmuxer::Segment* segment;
   vtkMKVWriterImplementation* writer;
-  int64_t last_pts_ns = 0;
 };
 
 //------------------------------------------------------------------------------
@@ -122,7 +121,6 @@ void vtkWEBMMuxer::WriteFileHeader(const char* codecId)
   videoTrack->set_codec_id(codecId);
   videoTrack->set_display_width(this->Width);
   videoTrack->set_display_height(this->Height);
-
   this->IsHeaderWritten = true;
 }
 
@@ -150,18 +148,8 @@ void vtkWEBMMuxer::WriteWebmBlock(vtkCompressedVideoPacket* packet)
   }
 
   mkvmuxer::Segment* const segment = reinterpret_cast<mkvmuxer::Segment*>(this->Internals->segment);
-  const auto frameRateInv = static_cast<double>(1) / this->Framerate;
-  const mkvmuxer::int64 unit_frame_interval = ::NanoSecondTicks * frameRateInv;
-  mkvmuxer::int64 pts_ns = packet->GetPresentationTS() * unit_frame_interval;
-
-  vtkLog(TRACE, << "Input pts_ns " << pts_ns);
-  if (pts_ns <= this->Internals->last_pts_ns)
-  {
-    pts_ns = this->Internals->last_pts_ns + ::NanoSecondTicks * frameRateInv;
-  }
-  vtkLog(TRACE, << "Final pts_ns " << pts_ns);
-
-  this->Internals->last_pts_ns = pts_ns;
+  mkvmuxer::int64 timecode = packet->GetPresentationTS();
+  vtkLogF(INFO, "webm-block-timecode: %lld", timecode);
   if (this->ForceNewClusters)
   {
     segment->ForceNewClusterOnNextFrame();
@@ -169,7 +157,7 @@ void vtkWEBMMuxer::WriteWebmBlock(vtkCompressedVideoPacket* packet)
   unsigned char* buffer = nullptr;
   int size = packet->GetData(buffer);
   bool isKeyFrame = packet->GetIsKeyFrame();
-  segment->AddFrame(buffer, size, ::VideoTrackNumber, pts_ns, isKeyFrame);
+  segment->AddFrame(buffer, size, ::VideoTrackNumber, timecode, isKeyFrame);
 }
 
 //------------------------------------------------------------------------------

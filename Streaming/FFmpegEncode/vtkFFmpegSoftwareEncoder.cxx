@@ -279,8 +279,10 @@ VTKVideoEncoderResultType vtkFFmpegSoftwareEncoder::EncodeInternal(VTKVideoEncod
 VTKVideoEncoderResultType vtkFFmpegSoftwareEncoder::EncodeDisplayInternal()
 {
   vtkLogScopeFunction(TRACE);
-  auto& internals = (*this->Internals);
   VTKVideoEncoderResultType result;
+  auto& internals = (*this->Internals);
+  const int64_t pts = (internals.SendCounter++ % this->TimeBaseEnd) + 1;
+  internals.SoftwareFrame->pts = pts ? pts : this->TimeBaseEnd;
 
   internals.GLFrame->Capture(this->GraphicsContext);
 

@@ -437,8 +437,11 @@ VTKVideoEncoderResultType vtkFFmpegHardwareEncoder::EncodeInternal(VTKVideoEncod
 VTKVideoEncoderResultType vtkFFmpegHardwareEncoder::EncodeDisplayInternal()
 {
   vtkLogScopeFunction(TRACE);
-  auto& internals = (*this->Internals);
   VTKVideoEncoderResultType result;
+  auto& internals = (*this->Internals);
+  const int64_t pts = (internals.SendCounter++ % this->TimeBaseEnd) + 1;
+  internals.SoftwareFrame->pts = pts ? pts : this->TimeBaseEnd;
+  internals.HardwareFrame->pts = internals.SoftwareFrame->pts;
 
   auto estSize =
     vtkRawVideoFrame::GetEstimatedSize(this->Width, this->Height, this->InputPixelFormat);
