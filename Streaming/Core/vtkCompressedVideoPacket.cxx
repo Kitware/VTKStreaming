@@ -29,6 +29,7 @@ void vtkCompressedVideoPacket::PrintSelf(ostream& os, vtkIndent indent)
 {
   this->Superclass::PrintSelf(os, indent);
   os << "MimeType: " << this->MimeType << "\n";
+  os << "CodecLongName: " << this->CodecLongName << "\n";
   os << "Size: " << this->Buffer->GetNumberOfValues() << "\n";
   os << "IsKeyFrame: " << this->IsKeyFrame << "\n";
   os << "PresentationTS: " << this->PresentationTS << "\n";
@@ -47,6 +48,19 @@ void vtkCompressedVideoPacket::SetMimeType(const char* value)
 std::string vtkCompressedVideoPacket::GetMimeType() const
 {
   return this->MimeType;
+}
+
+//------------------------------------------------------------------------------
+void vtkCompressedVideoPacket::SetCodecLongName(const char* value)
+{
+  this->CodecLongName = value != nullptr ? value : "";
+  this->Modified();
+}
+
+//------------------------------------------------------------------------------
+std::string vtkCompressedVideoPacket::GetCodecLongName() const
+{
+  return this->CodecLongName;
 }
 
 //------------------------------------------------------------------------------
