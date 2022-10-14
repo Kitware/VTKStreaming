@@ -47,11 +47,14 @@ public:
 
   ///@{
   /**
-   * Specifies the mime type of the binary blob in this packet.
+   * Specifies the mime type, codec type of the binary blob in this packet.
    * Ex: "video/webm; codecs="vp09.00.10.08"", "image/bmp"
+   * Ex: CodecLongName = "vp09.00.10.08"
    */
   void SetMimeType(const char* value);
   std::string GetMimeType() const;
+  void SetCodecLongName(const char* value);
+  std::string GetCodecLongName() const;
   ///@}
 
   ///@{
@@ -132,6 +135,7 @@ protected:
   int Height = 0;
   long long PresentationTS = 0;
   std::string MimeType;
+  std::string CodecLongName;
   vtkNew<vtkUnsignedCharArray> Buffer;
 
 private:
