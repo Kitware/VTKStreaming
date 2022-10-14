@@ -449,6 +449,7 @@ void vtkFFmpegEncoderInternals::Tweak()
   {
     av_opt_set(ctx->priv_data, "rc_mode", "2", 0);        // cbr
     av_opt_set(ctx->priv_data, "idr_interval", "240", 0); // cbr
+    av_opt_set(ctx->priv_data, "async_depth", "1", 0);
   }
   else if (codec->id == AV_CODEC_ID_AV1 && std::string(codec->name) == "libaom-av1")
   {
