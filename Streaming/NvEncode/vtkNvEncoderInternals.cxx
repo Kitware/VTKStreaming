@@ -578,7 +578,7 @@ NVENCSTATUS vtkNvEncoderInternals::Send(bool keyFrame /*=false*/)
   }
   else
   {
-    picParams.encodePicFlags = 0;
+    picParams.encodePicFlags = NV_ENC_PIC_FLAG_OUTPUT_SPSPPS;
   }
   bool success = true;
   NVENCSTATUS errorCode;
