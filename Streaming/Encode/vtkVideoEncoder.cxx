@@ -456,13 +456,13 @@ VTKVideoProcessingStatusType vtkVideoEncoder::UpdateEncoderContext(int width, in
       vtkLog(ERROR, "Failed to initialize encoding context.");
       return VTKVideoProcessingStatusType::VTKVPStatus_UnknownError;
     }
-  }
-  success = this->SetupEncoderFrame(width, height);
-  this->LastSetupMTime = success ? this->GetMTime() : -1;
-  if (!success)
-  {
-    vtkLog(ERROR, << "Failed to setup an encoder frame");
-    return VTKVideoProcessingStatusType::VTKVPStatus_UnknownError;
+    success = this->SetupEncoderFrame(width, height);
+    this->LastSetupMTime = success ? this->GetMTime() : -1;
+    if (!success)
+    {
+      vtkLog(ERROR, << "Failed to setup an encoder frame");
+      return VTKVideoProcessingStatusType::VTKVPStatus_UnknownError;
+    }
   }
   return VTKVideoProcessingStatusType::VTKVPStatus_Success;
 }
