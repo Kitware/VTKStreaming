@@ -26,7 +26,6 @@ enum class VTKVideoCodecType
   VTKVC_AV1,
   VTKVC_H264,
   VTKVC_H265,
-  VTKVC_JPEG,
   VTKVC_MaxNumberOfSupportedCodecs
 };
 
