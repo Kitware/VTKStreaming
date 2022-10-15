@@ -50,7 +50,8 @@ public:
 
   ///@{
   /**
-   * Set to true if this is a key frame. For information puposes.
+   * Set to true if this frame is meant to be a key frame in the video
+   * encoding algorithm.
    */
   vtkGetMacro(IsKeyFrame, bool);
   vtkSetMacro(IsKeyFrame, bool);
