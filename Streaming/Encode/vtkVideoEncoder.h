@@ -393,7 +393,7 @@ protected:
    * resource.
    */
   virtual bool SetupEncoderFrame(int width, int height) = 0;
-  virtual bool NeedsNewEncoderFrame(int width, int height);
+  bool NeedsNewEncoderFrame(int width, int height);
   virtual void TearDownEncoderFrame() = 0;
   ///@}
 

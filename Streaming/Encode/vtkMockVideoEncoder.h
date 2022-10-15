@@ -53,7 +53,6 @@ protected:
   void FlushInternal() override;
 
   bool SetupEncoderFrame(int, int) override;
-  bool NeedsNewEncoderFrame(int, int) override;
   void TearDownEncoderFrame() override;
 
   VTKVideoProcessingStatusType PushInternal(VTKVideoEncoderInputType frame) override;
