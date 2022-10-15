@@ -30,7 +30,7 @@ class vtkOpenGLVideoFrameCapture
 {
 public:
   void ReleaseGraphicsResources(vtkOpenGLRenderWindow* window);
-  void Capture(vtkTextureObject* destTexture, VTKPixelFormatType destPixFmt,
+  void Capture(vtkTextureObject* rgba32Texture, VTKPixelFormatType destPixFmt,
     vtkOpenGLRenderWindow* window, int destWidth, int destHeight, int lumaHeight, int chromaHeight,
     int* strides = nullptr, bool invert_y = false, bool ignore_alpha = true);
 

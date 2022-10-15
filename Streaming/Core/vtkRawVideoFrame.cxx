@@ -15,6 +15,7 @@
 
 #include "vtkRawVideoFrame.h"
 #include "vtkLogger.h"
+#include "vtkPixelFormatTypes.h"
 
 #include <fstream>
 #include <vector>
@@ -57,7 +58,7 @@ void vtkRawVideoFrame::PrintSelf(ostream& os, vtkIndent indent)
 //------------------------------------------------------------------------------
 void vtkRawVideoFrame::SetWidth(int value) noexcept
 {
-  vtkLogScopeFunction(TRACE);
+  vtkLogScopeF(TRACE, "%s, w=%d", __func__, value);
   this->DisplayWidth = value;
   this->StorageWidth = ALIGN_UP(value, 8);
   this->Modified();
@@ -78,7 +79,7 @@ int vtkRawVideoFrame::GetStorageWidth() const noexcept
 //------------------------------------------------------------------------------
 void vtkRawVideoFrame::SetHeight(int value) noexcept
 {
-  vtkLogScopeFunction(TRACE);
+  vtkLogScopeF(TRACE, "%s, h=%d", __func__, value);
   this->DisplayHeight = value;
   this->StorageHeight = ALIGN_UP(value, 8);
   this->Modified();
@@ -99,7 +100,7 @@ int vtkRawVideoFrame::GetStorageHeight() const noexcept
 //------------------------------------------------------------------------------
 void vtkRawVideoFrame::SetPixelFormat(VTKPixelFormatType value) noexcept
 {
-  vtkLogScopeFunction(TRACE);
+  vtkLogScopeF(TRACE, "%s, pix_fmt=%s", __func__, vtkPixelFormatTypeUtilities::ToString(value));
   this->PixelFormat = value;
   this->Modified();
 }
@@ -113,7 +114,7 @@ VTKPixelFormatType vtkRawVideoFrame::GetPixelFormat() const noexcept
 //------------------------------------------------------------------------------
 void vtkRawVideoFrame::SetSliceOrderType(vtkRawVideoFrame::SliceOrderType value) noexcept
 {
-  vtkLogScopeFunction(TRACE);
+  vtkLogScopeF(TRACE, "%s, slice_order=%d", __func__, value);
   this->SliceOrder = value;
   this->Modified();
 }

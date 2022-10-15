@@ -47,7 +47,7 @@ void vtkOpenGLVideoFrameCapture::ReleaseGraphicsResources(vtkOpenGLRenderWindow*
   this->DrawHelper.ReleaseGraphicsResources(window);
 }
 
-void vtkOpenGLVideoFrameCapture::Capture(vtkTextureObject* destTexture,
+void vtkOpenGLVideoFrameCapture::Capture(vtkTextureObject* rgba32Texture,
   VTKPixelFormatType destPixFmt, vtkOpenGLRenderWindow* window, int destWidth, int destHeight,
   int lumaHeight, int chromaHeight, int* strides /*= nullptr*/, bool invert_y /*= false*/,
   bool ignore_alpha /*= true*/)
@@ -105,6 +105,7 @@ void vtkOpenGLVideoFrameCapture::Capture(vtkTextureObject* destTexture,
         break;
     }
     program = shaderCache->ReadyShaderProgram(VSSource.c_str(), FSSource.c_str(), GSSource.c_str());
+    vtkOpenGLCheckErrors("Error readying shader program ");
   }
 
   if (program != nullptr)
@@ -140,11 +141,14 @@ void vtkOpenGLVideoFrameCapture::Capture(vtkTextureObject* destTexture,
 
     // bind and activate the texture before rendering that quad.
     vtkOpenGLState::ScopedglActiveTexture textureSave(state);
-    destTexture->Activate();
+    rgba32Texture->Activate();
     program->SetUniform1iv("resolution", 2, window->GetSize());
-    program->SetUniformi("destTexture", destTexture->GetTextureUnit());
+    program->SetUniformi("rgba32Texture", rgba32Texture->GetTextureUnit());
     switch (destPixFmt)
     {
+      case VTKPixelFormatType::VTKPF_RGBA32:
+        program->SetUniformi("ignoreAlpha", ignore_alpha);
+        break;
       case VTKPixelFormatType::VTKPF_NV12:
         program->SetUniformi("lumaHeight", lumaHeight);
         program->SetUniformi("chromaHeight", chromaHeight);
@@ -159,6 +163,6 @@ void vtkOpenGLVideoFrameCapture::Capture(vtkTextureObject* destTexture,
     }
     vtkOpenGLRenderUtilities::RenderTriangles(
       verts, 4, iboData, 6, nullptr, program, this->DrawHelper.VAO);
-    destTexture->Deactivate();
+    rgba32Texture->Deactivate();
   }
 }
