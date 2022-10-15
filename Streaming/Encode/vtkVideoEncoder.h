@@ -155,11 +155,11 @@ public:
 
   ///@{
   /**
-   * Set/Get width and height of the pictures.
+   * Set/Get width and height of encoding context.
    */
-  vtkSetMacro(Width, int);
+  void SetWidth(int width);
   vtkGetMacro(Width, int);
-  vtkSetMacro(Height, int);
+  void SetHeight(int height);
   vtkGetMacro(Height, int);
   ///@}
 
