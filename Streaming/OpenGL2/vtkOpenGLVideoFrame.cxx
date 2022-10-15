@@ -104,6 +104,8 @@ void vtkOpenGLVideoFrame::ReleaseGraphicsResources()
     return;
   }
 
+  this->FrameGrabber->ReleaseGraphicsResources(myWindow);
+  this->FrameRenderer->ReleaseGraphicsResources(myWindow);
   vtkLogScopeF(
     TRACE, "%s->%s, myWindow=%s", vtkLogIdentifier(this), __func__, vtkLogIdentifier(myWindow));
   internals.VtkTexture->ReleaseGraphicsResources(myWindow);

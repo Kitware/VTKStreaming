@@ -421,7 +421,8 @@ VTKVideoEncoderResultType vtkFFmpegHardwareEncoder::EncodeDisplayInternal()
 
   auto estSize =
     vtkRawVideoFrame::GetEstimatedSize(this->Width, this->Height, this->InputPixelFormat);
-  if (estSize != internals.GLFrame->GetActualSize())
+  if (estSize != internals.GLFrame->GetActualSize() ||
+    internals.GLFrame->GetPixelFormat() != this->InputPixelFormat)
   {
     internals.GLFrame->ReleaseGraphicsResources();
     auto gfxContext = vtkOpenGLRenderWindow::SafeDownCast(this->GraphicsContext);
@@ -430,7 +431,6 @@ VTKVideoEncoderResultType vtkFFmpegHardwareEncoder::EncodeDisplayInternal()
     internals.GLFrame->SetHeight(this->Height);
     internals.GLFrame->SetPixelFormat(this->InputPixelFormat);
     internals.GLFrame->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::TopDown);
-    internals.GLFrame->ComputeDefaultStrides();
     internals.GLFrame->AllocateDataStore();
   }
   internals.GLFrame->Capture(this->GraphicsContext);
@@ -534,21 +534,6 @@ bool vtkFFmpegHardwareEncoder::SetupEncoderFrame(int width, int height)
 
   // Setup a hardware frame.
   success &= internals.InitializeHWFrame();
-
-  auto estSize =
-    vtkRawVideoFrame::GetEstimatedSize(this->Width, this->Height, this->InputPixelFormat);
-  if (estSize != internals.GLFrame->GetActualSize())
-  {
-    internals.GLFrame->ReleaseGraphicsResources();
-    auto gfxContext = vtkOpenGLRenderWindow::SafeDownCast(this->GraphicsContext);
-    internals.GLFrame->SetContext(gfxContext);
-    internals.GLFrame->SetWidth(this->Width);
-    internals.GLFrame->SetHeight(this->Height);
-    internals.GLFrame->SetPixelFormat(this->InputPixelFormat);
-    internals.GLFrame->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::TopDown);
-    internals.GLFrame->ComputeDefaultStrides();
-    internals.GLFrame->AllocateDataStore();
-  }
 
   return success;
 }

@@ -150,21 +150,6 @@ bool vtkFFmpegSoftwareEncoder::SetupEncoderFrame(int width, int height)
   internals.EncodeCtx->pix_fmt = internals.InputPixFmt;
   internals.Tweak();
 
-  auto estSize =
-    vtkRawVideoFrame::GetEstimatedSize(this->Width, this->Height, this->InputPixelFormat);
-  if (estSize != internals.GLFrame->GetActualSize())
-  {
-    internals.GLFrame->ReleaseGraphicsResources();
-    auto gfxContext = vtkOpenGLRenderWindow::SafeDownCast(this->GraphicsContext);
-    internals.GLFrame->SetContext(gfxContext);
-    internals.GLFrame->SetWidth(this->Width);
-    internals.GLFrame->SetHeight(this->Height);
-    internals.GLFrame->SetPixelFormat(this->InputPixelFormat);
-    internals.GLFrame->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::TopDown);
-    internals.GLFrame->ComputeDefaultStrides();
-    internals.GLFrame->AllocateDataStore();
-  }
-
   if (!internals.InitializeCodec())
   {
     vtkLog(ERROR, << "Could not open codec for encoding.");
@@ -284,6 +269,20 @@ VTKVideoEncoderResultType vtkFFmpegSoftwareEncoder::EncodeDisplayInternal()
   const int64_t pts = (internals.SendCounter++ % this->TimeBaseEnd) + 1;
   internals.SoftwareFrame->pts = pts ? pts : this->TimeBaseEnd;
 
+  auto estSize =
+    vtkRawVideoFrame::GetEstimatedSize(this->Width, this->Height, this->InputPixelFormat);
+  if (estSize != internals.GLFrame->GetActualSize() ||
+    internals.GLFrame->GetPixelFormat() != this->InputPixelFormat)
+  {
+    internals.GLFrame->ReleaseGraphicsResources();
+    auto gfxContext = vtkOpenGLRenderWindow::SafeDownCast(this->GraphicsContext);
+    internals.GLFrame->SetContext(gfxContext);
+    internals.GLFrame->SetWidth(this->Width);
+    internals.GLFrame->SetHeight(this->Height);
+    internals.GLFrame->SetPixelFormat(this->InputPixelFormat);
+    internals.GLFrame->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::TopDown);
+    internals.GLFrame->AllocateDataStore();
+  }
   internals.GLFrame->Capture(this->GraphicsContext);
 
   if (!internals.PreprocessInput(internals.GLFrame))
