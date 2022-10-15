@@ -1,7 +1,7 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    vtkOpenGLRGBA32CaptureDelegate.h
+  Module:    vtkOpenGLVideoFrameCapture.h
 
   Copyright (c) 2022 Kitware, Inc
   All rights reserved.
@@ -13,26 +13,28 @@
 
 =========================================================================*/
 /**
- * @class   vtkOpenGLRGBA32CaptureDelegate
+ * @class   vtkOpenGLVideoFrameCapture
  * @brief   class that can capture a vtk opengl render window's display into an
- *          inverted or upright and(or) alpha-skipped RGBA32 texture.
+ *          inverted or upright RGB24 texture.
  *
  * @sa vtkOpenGLVideoFrame
  */
 
 #include "vtkOpenGLHelper.h"
+#include "vtkPixelFormatTypes.h"
 
 class vtkOpenGLRenderWindow;
 class vtkTextureObject;
 
-class vtkOpenGLRGBA32CaptureDelegate
+class vtkOpenGLVideoFrameCapture
 {
 public:
   void ReleaseGraphicsResources(vtkOpenGLRenderWindow* window);
-  void Capture(vtkTextureObject* rgba32Texture, vtkOpenGLRenderWindow* window, int destWidth,
-    int destHeight, bool invert_y = false, bool ignore_alpha = true);
+  void Capture(vtkTextureObject* destTexture, VTKPixelFormatType destPixFmt,
+    vtkOpenGLRenderWindow* window, int destWidth, int destHeight, int lumaHeight, int chromaHeight,
+    int* strides = nullptr, bool invert_y = false, bool ignore_alpha = true);
 
 private:
   vtkOpenGLHelper DrawHelper;
 };
-// VTK-HeaderTest-Exclude: vtkOpenGLRGBA32CaptureDelegate.h
+// VTK-HeaderTest-Exclude: vtkOpenGLVideoFrameCapture.h

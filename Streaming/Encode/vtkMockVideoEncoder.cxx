@@ -68,12 +68,6 @@ bool vtkMockVideoEncoder::SetupEncoderFrame(int, int)
 }
 
 //------------------------------------------------------------------------------
-bool vtkMockVideoEncoder::NeedsNewEncoderFrame(int, int)
-{
-  return false;
-}
-
-//------------------------------------------------------------------------------
 void vtkMockVideoEncoder::TearDownEncoderFrame() {}
 
 //------------------------------------------------------------------------------

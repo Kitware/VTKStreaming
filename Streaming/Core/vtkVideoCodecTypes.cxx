@@ -27,8 +27,6 @@ const char* vtkVideoCodecTypeUtilities::ToString(VTKVideoCodecType codec)
       return "h.264";
     case VTKVideoCodecType::VTKVC_H265:
       return "h.265";
-    case VTKVideoCodecType::VTKVC_JPEG:
-      return "jpeg";
     default:
       return "unsupported codec";
   }

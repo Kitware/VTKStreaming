@@ -8,7 +8,6 @@ When multiple encoder classes support a codec, the preferred encoders are highli
 |AV1|vtkFFmpegSoftwareEncoder|
 |H.264|vtkFFmpegSoftwareEncoder, vtkFFmpegHardwareEncoder, **vtkNvEncoderGL**|
 |H.265|vtkFFmpegSoftwareEncoder, vtkFFmpegHardwareEncoder, **vtkNvEncoderGL**|
-|JPEG|vtkJPEGVideoEncoder|
 
 # Asynchronous encoding
 When an encoder operates asynchronously, input is pushed onto a task queue for later encoding. A worker
@@ -27,6 +26,4 @@ Please use `vtkVideoEncoder::EncodeDisplay()` for efficient zero-copy encoding.
 |`vtkFFmpegSoftwareEncoder`|`false`|yes|yes|yes|no|
 |`vtkFFmpegHardwareEncoder`|`true`|yes|yes|yes|no|
 |`vtkFFmpegHardwareEncoder`|`false`|yes|yes|yes|no|
-|`vtkJPEGVideoEncoder`|`true`|yes|yes|yes|no|
-|`vtkJPEGVideoEncoder`|`false`|yes|yes|yes|no|
 |`vtkNvEncoderGL`|`N/A`|yes|yes|yes|yes|

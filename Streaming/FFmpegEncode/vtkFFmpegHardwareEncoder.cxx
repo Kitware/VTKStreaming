@@ -195,10 +195,6 @@ bool vtkFFmpegHardwareEncoder::InitializeInternal()
           vtkLog(ERROR, << "AV1 is not supported by VAAPI hardware encoder");
           success = false;
           break;
-        case VTKVideoCodecType::VTKVC_JPEG:
-          vtkLog(ERROR, << "JPEG is not supported by VAAPI hardware encoder");
-          success = false;
-          break;
         case VTKVideoCodecType::VTKVC_VP9:
         default:
           internals.CodecName = "vp9_vaapi";
@@ -219,10 +215,6 @@ bool vtkFFmpegHardwareEncoder::InitializeInternal()
           break;
         case VTKVideoCodecType::VTKVC_AV1:
           vtkLog(ERROR, << "AV1 is not supported by QSV hardware encoder");
-          success = false;
-          break;
-        case VTKVideoCodecType::VTKVC_JPEG:
-          vtkLog(ERROR, << "JPEG is not supported by QSV hardware encoder");
           success = false;
           break;
         case VTKVideoCodecType::VTKVC_VP9:
@@ -247,10 +239,6 @@ bool vtkFFmpegHardwareEncoder::InitializeInternal()
           vtkLog(ERROR, << "AV1 is not supported by AMF hardware encoder");
           success = false;
           break;
-        case VTKVideoCodecType::VTKVC_JPEG:
-          vtkLog(ERROR, << "JPEG is not supported by AMF hardware encoder");
-          success = false;
-          break;
         case VTKVideoCodecType::VTKVC_VP9:
         default:
           vtkLog(ERROR, << "VP9 is not supported by AMF hardware encoder");
@@ -271,10 +259,6 @@ bool vtkFFmpegHardwareEncoder::InitializeInternal()
           break;
         case VTKVideoCodecType::VTKVC_AV1:
           vtkLog(ERROR, << "AV1 is not supported by NVENC hardware encoder");
-          success = false;
-          break;
-        case VTKVideoCodecType::VTKVC_JPEG:
-          vtkLog(ERROR, << "JPEG is not supported by NVENC hardware encoder");
           success = false;
           break;
         case VTKVideoCodecType::VTKVC_VP9:
@@ -301,10 +285,6 @@ bool vtkFFmpegHardwareEncoder::InitializeInternal()
           vtkLog(ERROR, << "AV1 is not supported by VideoToolbox hardware encoder");
           success = false;
           break;
-        case VTKVideoCodecType::VTKVC_JPEG:
-          vtkLog(ERROR, << "JPEG is not supported by VideoToolbox hardware encoder");
-          success = false;
-          break;
         case VTKVideoCodecType::VTKVC_VP9:
         default:
           vtkLog(ERROR, << "VP9 is not supported by VideoToolbox hardware encoder");
@@ -325,10 +305,6 @@ bool vtkFFmpegHardwareEncoder::InitializeInternal()
           break;
         case VTKVideoCodecType::VTKVC_AV1:
           vtkLog(ERROR, << "AV1 is not supported by MediaFoundation encoder");
-          success = false;
-          break;
-        case VTKVideoCodecType::VTKVC_JPEG:
-          vtkLog(ERROR, << "JPEG is not supported by MediaFoundation encoder");
           success = false;
           break;
         case VTKVideoCodecType::VTKVC_VP9:

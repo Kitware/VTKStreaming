@@ -1,7 +1,7 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    vtkVideoCodecTypes.h
+  Module:    vtkRGB24RenderFS.glsl
 
   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
   All rights reserved.
@@ -13,26 +13,24 @@
 
 =========================================================================*/
 
-#ifndef vtkVideoCodecTypes_h
-#define vtkVideoCodecTypes_h
+/**
+ * Description: Shader program that renders RGB24 texture.
+ */
 
-#include "vtkStreamingCoreModule.h"
+//VTK::System::Dec
+//VTK::Output::Dec
 
-// For new codecs, please insert above MaxNumberOfSupportedCodecs
+uniform sampler2D rgb24Texture;
+// resolution of the RGB24 texture
+uniform int resolution[2];
 
-enum class VTKVideoCodecType
+//VTK::RGB24::Decl
+
+void main()
 {
-  VTKVC_VP9,
-  VTKVC_AV1,
-  VTKVC_H264,
-  VTKVC_H265,
-  VTKVC_MaxNumberOfSupportedCodecs
-};
+  //VTK::FLIPY::Impl
 
-struct VTKSTREAMINGCORE_EXPORT vtkVideoCodecTypeUtilities
-{
-  static const char* ToString(VTKVideoCodecType codec);
+  ivec2 pixelCoord = ivec2(gl_FragCoord.x - 0.5, yCoord);
+  vec3 rgb = texelFetch(rgb24Texture, pixelCoord, 0).xyz;
+  gl_FragData[0] = vec4(rgb.xyz,1.0f);
 };
-
-#endif // vtkVideoCodecTypes_h
-// VTK-HeaderTest-Exclude: vtkVideoCodecTypes.h

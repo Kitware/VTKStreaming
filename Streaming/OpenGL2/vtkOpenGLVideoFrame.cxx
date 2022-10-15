@@ -18,18 +18,12 @@
 #include "vtkLogger.h"
 #include "vtkObjectFactory.h"
 #include "vtkOpenGLError.h"
-#include "vtkOpenGLIYUVCaptureDelegate.h"
-#include "vtkOpenGLIYUVRenderDelegate.h"
-#include "vtkOpenGLNV12CaptureDelegate.h"
-#include "vtkOpenGLNV12RenderDelegate.h"
-#include "vtkOpenGLRGB24CaptureDelegate.h"
-#include "vtkOpenGLRGB24RenderDelegate.h"
-#include "vtkOpenGLRGBA32CaptureDelegate.h"
-#include "vtkOpenGLRGBA32RenderDelegate.h"
 #include "vtkOpenGLRenderUtilities.h"
 #include "vtkOpenGLRenderWindow.h"
 #include "vtkOpenGLState.h"
+#include "vtkOpenGLVideoFrameCapture.h"
 #include "vtkOpenGLVideoFrameInternals.h"
+#include "vtkOpenGLVideoFrameRenderer.h"
 #include "vtkPixelFormatTypes.h"
 #include "vtkSmartPointer.h"
 #include "vtk_glew.h"
@@ -50,17 +44,8 @@ vtkStandardNewMacro(vtkOpenGLVideoFrame);
 
 //------------------------------------------------------------------------------
 vtkOpenGLVideoFrame::vtkOpenGLVideoFrame()
-  : IYUVGrabber(std::unique_ptr<vtkOpenGLIYUVCaptureDelegate>(new vtkOpenGLIYUVCaptureDelegate()))
-  , NV12Grabber(std::unique_ptr<vtkOpenGLNV12CaptureDelegate>(new vtkOpenGLNV12CaptureDelegate()))
-  , RGBA32Grabber(
-      std::unique_ptr<vtkOpenGLRGBA32CaptureDelegate>(new vtkOpenGLRGBA32CaptureDelegate()))
-  , RGB24Grabber(
-      std::unique_ptr<vtkOpenGLRGB24CaptureDelegate>(new vtkOpenGLRGB24CaptureDelegate()))
-  , IYUVRenderer(std::unique_ptr<vtkOpenGLIYUVRenderDelegate>(new vtkOpenGLIYUVRenderDelegate()))
-  , NV12Renderer(std::unique_ptr<vtkOpenGLNV12RenderDelegate>(new vtkOpenGLNV12RenderDelegate()))
-  , RGB24Renderer(std::unique_ptr<vtkOpenGLRGB24RenderDelegate>(new vtkOpenGLRGB24RenderDelegate()))
-  , RGBA32Renderer(
-      std::unique_ptr<vtkOpenGLRGBA32RenderDelegate>(new vtkOpenGLRGBA32RenderDelegate()))
+  : FrameGrabber(std::unique_ptr<vtkOpenGLVideoFrameCapture>(new vtkOpenGLVideoFrameCapture()))
+  , FrameRenderer(std::unique_ptr<vtkOpenGLVideoFrameRenderer>(new vtkOpenGLVideoFrameRenderer()))
   , Internals(std::unique_ptr<vtkOpenGLVideoFrameInternals>(new vtkOpenGLVideoFrameInternals()))
 {
 }
@@ -141,96 +126,25 @@ void vtkOpenGLVideoFrame::Capture(vtkRenderWindow* window)
     vtkRawVideoFrame::GetChromaHeight(this->DisplayHeight, this->PixelFormat);
   const int lumaHeight = this->StorageHeight;
 
-  switch (this->PixelFormat)
-  {
-    case VTKPixelFormatType::VTKPF_RGB24:
-    {
-      internals.VtkFrameBuffer->SaveCurrentBindingsAndBuffers();
-      internals.VtkFrameBuffer->AddColorAttachment(
-        0, internals.VtkTexture, 0, internals.VtkTexture->GetTarget(), 0);
-      vtkOpenGLCheckErrorMacro("Failed to add output texture to read framebuffer. ");
+  internals.VtkFrameBuffer->SaveCurrentBindingsAndBuffers();
+  internals.VtkFrameBuffer->AddColorAttachment(
+    0, internals.VtkTexture, 0, internals.VtkTexture->GetTarget(), 0);
+  vtkOpenGLCheckErrorMacro("Failed to add output texture to read framebuffer. ");
 
-      internals.VtkFrameBuffer->CheckFrameBufferStatus(GL_FRAMEBUFFER);
-      internals.VtkFrameBuffer->Bind(GL_DRAW_FRAMEBUFFER);
-      internals.VtkFrameBuffer->ActivateDrawBuffers(1);
-      vtkOpenGLCheckErrorMacro("Failed to bind draw framebuffer. ");
+  internals.VtkFrameBuffer->CheckFrameBufferStatus(GL_FRAMEBUFFER);
+  internals.VtkFrameBuffer->Bind(GL_DRAW_FRAMEBUFFER);
+  internals.VtkFrameBuffer->ActivateDrawBuffers(1);
+  vtkOpenGLCheckErrorMacro("Failed to bind draw framebuffer. ");
 
-      auto rgba32Texture = oglRenWin->GetDisplayFramebuffer()->GetColorAttachmentAsTextureObject(0);
-      // video frames do not care about alpha-channel anyway, so skip it always.
-      this->RGB24Grabber->Capture(
-        rgba32Texture, oglRenWin, this->StorageWidth, this->StorageHeight, invert_y);
-      vtkOpenGLCheckErrors("ERROR capturing render window. ");
+  auto rgba32Texture = oglRenWin->GetDisplayFramebuffer()->GetColorAttachmentAsTextureObject(0);
+  // video frames do not care about alpha-channel anyway, so skip it always.
+  this->FrameGrabber->Capture(rgba32Texture, this->PixelFormat, oglRenWin, this->StorageWidth,
+    this->StorageHeight, lumaHeight, chromaHeight, this->Strides, invert_y,
+    /*ignore_alpha=*/true);
+  vtkOpenGLCheckErrors("ERROR capturing render window. ");
 
-      internals.VtkFrameBuffer->RemoveColorAttachments(0);
-      internals.VtkFrameBuffer->RestorePreviousBindingsAndBuffers();
-      break;
-    }
-    case VTKPixelFormatType::VTKPF_RGBA32:
-    {
-      internals.VtkFrameBuffer->SaveCurrentBindingsAndBuffers();
-      internals.VtkFrameBuffer->AddColorAttachment(
-        0, internals.VtkTexture, 0, internals.VtkTexture->GetTarget(), 0);
-      vtkOpenGLCheckErrorMacro("Failed to add output texture to read framebuffer. ");
-
-      internals.VtkFrameBuffer->CheckFrameBufferStatus(GL_FRAMEBUFFER);
-      internals.VtkFrameBuffer->Bind(GL_DRAW_FRAMEBUFFER);
-      internals.VtkFrameBuffer->ActivateDrawBuffers(1);
-      vtkOpenGLCheckErrorMacro("Failed to bind draw framebuffer. ");
-
-      auto rgba32Texture = oglRenWin->GetDisplayFramebuffer()->GetColorAttachmentAsTextureObject(0);
-      // video frames do not care about alpha-channel anyway, so skip it always.
-      this->RGBA32Grabber->Capture(rgba32Texture, oglRenWin, this->StorageWidth,
-        this->StorageHeight, /*ignore_alpha=*/true, invert_y);
-      vtkOpenGLCheckErrors("ERROR capturing render window. ");
-
-      internals.VtkFrameBuffer->RemoveColorAttachments(0);
-      internals.VtkFrameBuffer->RestorePreviousBindingsAndBuffers();
-      break;
-    }
-    case VTKPixelFormatType::VTKPF_IYUV:
-    {
-      internals.VtkFrameBuffer->SaveCurrentBindingsAndBuffers();
-      internals.VtkFrameBuffer->AddColorAttachment(
-        0, internals.VtkTexture, 0, internals.VtkTexture->GetTarget(), 0);
-      vtkOpenGLCheckErrorMacro("Failed to add output texture to read framebuffer. ");
-
-      internals.VtkFrameBuffer->CheckFrameBufferStatus(GL_FRAMEBUFFER);
-      internals.VtkFrameBuffer->Bind(GL_DRAW_FRAMEBUFFER);
-      internals.VtkFrameBuffer->ActivateDrawBuffers(1);
-      vtkOpenGLCheckErrorMacro("Failed to bind draw framebuffer. ");
-
-      auto rgba32Texture = oglRenWin->GetDisplayFramebuffer()->GetColorAttachmentAsTextureObject(0);
-      this->IYUVGrabber->Capture(
-        rgba32Texture, oglRenWin, this->Strides, lumaHeight, chromaHeight, invert_y);
-      vtkOpenGLCheckErrors("ERROR capturing render window. ");
-
-      internals.VtkFrameBuffer->RemoveColorAttachments(0);
-      internals.VtkFrameBuffer->RestorePreviousBindingsAndBuffers();
-      break;
-    }
-    case VTKPixelFormatType::VTKPF_NV12:
-    {
-      internals.VtkFrameBuffer->SaveCurrentBindingsAndBuffers();
-      internals.VtkFrameBuffer->AddColorAttachment(
-        0, internals.VtkTexture, 0, internals.VtkTexture->GetTarget(), 0);
-      vtkOpenGLCheckErrorMacro("Failed to add output texture to read framebuffer. ");
-
-      internals.VtkFrameBuffer->CheckFrameBufferStatus(GL_FRAMEBUFFER);
-      internals.VtkFrameBuffer->Bind(GL_DRAW_FRAMEBUFFER);
-      internals.VtkFrameBuffer->ActivateDrawBuffers(1);
-      vtkOpenGLCheckErrorMacro("Failed to bind draw framebuffer. ");
-
-      auto rgba32Texture = oglRenWin->GetDisplayFramebuffer()->GetColorAttachmentAsTextureObject(0);
-      this->NV12Grabber->Capture(
-        rgba32Texture, oglRenWin, this->Strides, lumaHeight, chromaHeight, invert_y);
-      vtkOpenGLCheckErrors("ERROR capturing render window. ");
-
-      internals.VtkFrameBuffer->RemoveColorAttachments(0);
-      internals.VtkFrameBuffer->RestorePreviousBindingsAndBuffers();
-      break;
-    }
-  }
-
+  internals.VtkFrameBuffer->RemoveColorAttachments(0);
+  internals.VtkFrameBuffer->RestorePreviousBindingsAndBuffers();
   this->Modified();
 }
 
@@ -609,21 +523,7 @@ void vtkOpenGLVideoFrame::Render(vtkRenderWindow* window)
     vtkRawVideoFrame::GetChromaHeight(this->DisplayHeight, this->PixelFormat);
   const auto lumaHeight = this->StorageHeight;
   auto& tex = internals.VtkTexture;
-
-  switch (this->PixelFormat)
-  {
-    case VTKPixelFormatType::VTKPF_RGBA32:
-      this->RGBA32Renderer->Render(tex, oglRenWin, invert_y);
-      break;
-    case VTKPixelFormatType::VTKPF_RGB24:
-      this->RGB24Renderer->Render(tex, oglRenWin, invert_y);
-      break;
-    case VTKPixelFormatType::VTKPF_NV12:
-      this->NV12Renderer->Render(tex, oglRenWin, this->Strides, lumaHeight, chromaHeight, invert_y);
-      break;
-    case VTKPixelFormatType::VTKPF_IYUV:
-      this->IYUVRenderer->Render(tex, oglRenWin, this->Strides, lumaHeight, chromaHeight, invert_y);
-      break;
-  }
+  this->FrameRenderer->Render(
+    tex, this->PixelFormat, oglRenWin, this->Strides, lumaHeight, chromaHeight, invert_y);
   vtkOpenGLCheckErrors("ERROR rendering texture. ");
 }
