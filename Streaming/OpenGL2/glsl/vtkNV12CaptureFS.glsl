@@ -140,17 +140,17 @@ vec3 getDownSampledRGB(ivec2 start, ivec2 end)
 
 void main()
 {
-  ivec2 id_RGBA = ivec2(gl_FragCoord.x - 0.5, gl_FragCoord.y - 0.5);
+  ivec2 id_NV12 = ivec2(gl_FragCoord.x - 0.5, gl_FragCoord.y - 0.5);
 
-  if (isPaddingIndex(id_RGBA))
+  if (isPaddingIndex(id_NV12))
   {
     gl_FragData[0] = vec4(0.5, 0, 0, 0);
   }
-  else if (isLumaIndex(id_RGBA))
+  else if (isLumaIndex(id_NV12))
   {
-    ivec2 id_NV12 = id_RGBA;
+    ivec2 id_RGBA = id_NV12;
     //VTK::LumaFlipY::Impl
-    vec3 rgb = getRGB(id_NV12);
+    vec3 rgb = getRGB(id_RGBA);
     float r = rgb.x;
     float g = rgb.y;
     float b = rgb.z;
@@ -158,32 +158,32 @@ void main()
     luma /= 255.0f;
     gl_FragData[0] = vec4(luma, 0.0, 0.0, 0.0);
   }
-  else if (isChromaBlueIndex(id_RGBA))
+  else if (isChromaBlueIndex(id_NV12))
   {
     // down sample r,g,b from 2x2 block.
-    ivec2 id_NV12_start = id_RGBA;
-    id_NV12_start.y = (id_RGBA.y - lumaHeight) << 1;
+    ivec2 id_RGBA_start = id_NV12;
+    id_RGBA_start.y = (id_NV12.y - lumaHeight) << 1;
     //VTK::CrFlipY::Impl
 
-    ivec2 id_NV12_end = id_NV12_start + ivec2(1, 1);
+    ivec2 id_RGBA_end = id_RGBA_start + ivec2(1, 1);
 
-    vec3 rgb = getDownSampledRGB(id_NV12_start, id_NV12_end);
+    vec3 rgb = getDownSampledRGB(id_RGBA_start, id_RGBA_end);
     vec3 cb_multiplier = vec3(-0.2126, -0.7152, 0.9278) * 224.0f / (219.0f * 1.8556);
     float cb = (dot(rgb, cb_multiplier) + 128.f) / 255.0f;
 
     gl_FragData[0] = vec4(cb, 0.0, 0.0, 0.0);
   }
-  else if (isChromaRedIndex(id_RGBA))
+  else if (isChromaRedIndex(id_NV12))
   {
     // down sample r,g,b from 2x2 block.
-    ivec2 id_NV12_start = id_RGBA;
-    id_NV12_start.x = id_RGBA.x - 1;
-    id_NV12_start.y = (id_RGBA.y - lumaHeight) << 1;
+    ivec2 id_RGBA_start = id_NV12;
+    id_RGBA_start.x = id_NV12.x - 1;
+    id_RGBA_start.y = (id_NV12.y - lumaHeight) << 1;
     //VTK::CbFlipY::Impl
 
-    ivec2 id_NV12_end = id_NV12_start + ivec2(1, 1);
+    ivec2 id_RGBA_end = id_RGBA_start + ivec2(1, 1);
 
-    vec3 rgb = getDownSampledRGB(id_NV12_start, id_NV12_end);
+    vec3 rgb = getDownSampledRGB(id_RGBA_start, id_RGBA_end);
     vec3 cr_multiplier = vec3(0.7874, -0.7152, -0.0722) * 224.0f / (219.0f * 1.5748);
     float cr = (dot(rgb, cr_multiplier) + 128.0f) / 255.0f;
 

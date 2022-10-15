@@ -15,7 +15,7 @@
 /**
  * @class   vtkOpenGLVideoFrameCapture
  * @brief   class that can capture a vtk opengl render window's display into an
- *          inverted or upright RGB24 texture.
+ *          inverted or upright RGB24/RGBA32/IYUV/NV12 texture.
  *
  * @sa vtkOpenGLVideoFrame
  */
