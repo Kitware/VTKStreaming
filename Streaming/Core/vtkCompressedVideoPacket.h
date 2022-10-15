@@ -14,15 +14,12 @@
 =========================================================================*/
 /**
  * @class   vtkCompressedVideoPacket
- * @brief   class that encapsulates compressed video packets produced by a video encoder
+ * @brief   class that encapsulates chunk of encoded video produced by a video encoder
  *
- * vtkCompressedVideoPacket associates a compressed video packet bitstream with
+ * vtkCompressedVideoPacket associates a chunk of encoded video with
  * key parameters such as width, height, presentation time stamp.
- * It also has a flag to indicate whether the compressed packet corresponds
+ * It also has a flag to indicate whether a chunk of encoded video corresponds
  * to a key frame or not.
- *
- * Calling code can let an instance of this class manage memory
- * for the compressed packet by using the `CopyData` overload instead of SetArray.
  *
  * @sa vtkAbstractVideoencoder, vtkVideoDecoder
  */
@@ -101,7 +98,7 @@ public:
 
   ///@{
   /**
-   * Return the contents of the compressed video packet.
+   * Return the contents of a chunk of encoded video.
    */
   int GetData(unsigned char*& buffer) const;
   vtkUnsignedCharArray* GetData() const { return this->Buffer; };
@@ -109,7 +106,7 @@ public:
 
   ///@{
   /**
-   * Copy the array that represents the compressed video packet.
+   * Copy the array that represents a chunk of encoded video.
    * Allocates sufficient number of bytes if necessary.
    */
   virtual void CopyData(unsigned char* buffer, int size);
@@ -119,7 +116,7 @@ public:
   ///@{
   /**
    * Makes a copy of all members except the data.
-   * Use the more expressive AllocateForCopy/SetArray/CopyData/GetData functions to manage the
+   * Use the more expressive AllocateForCopy/CopyData/GetData functions to manage the
    * underlying buffer.
    */
   void CopyMetadata(vtkCompressedVideoPacket* other);

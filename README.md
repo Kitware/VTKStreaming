@@ -1,6 +1,8 @@
 # VTKStreaming
 
-This experimental module provides classes to encode and stream frames from a VTK OpenGL render window. A number of codecs are supported. Please see [support](support.md) document.
+This experimental module provides classes to encode and stream frames
+from a VTK OpenGL render window. A number of codecs are supported.
+Please see [support](support.md) document.
 
 # Build
 
