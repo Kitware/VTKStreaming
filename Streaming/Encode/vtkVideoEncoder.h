@@ -35,15 +35,6 @@
  * low-latency live encoding with software/hardware acclerated encoders.
  * Async mode is not supported.
  *
- * You are free to delete or modify the frame contents after calling `Push`,
- * only when using asynchronous delegate.
- *
- * In async mode, the encoder can use an asynchronous delegate to
- * queue frames into work units which are eventually encoded.
- *
- * With asynchronous delegates, the 'real' encoding happens
- * during vtkVideoEncoder::GetResult().
- *
  * Here is an overview of the 3 important methods.
  *
  * With asynchronous delegate -:
@@ -95,12 +86,85 @@ public:
   vtkTypeMacro(vtkVideoEncoder, vtkObject);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
-  enum class BRCType
-  {
-    CBR, // MaxBitRate = MinBitRate = BitRate
-    VBR, // Bitrate may fluctuate within set minimum and maximum.
-    CQP  // no bitrate control. Set QuantizationParameter
-  };
+  ///@{
+  /**
+   * Public interface for the encoder. Concrete sub-classes are supposed to implement the
+   * respective *Internal() methods to initialize and shutdown an encoding context.
+   */
+  bool Initialize();
+  void Shutdown();
+  bool HasDelegate();
+  ///@}
+
+  ///@{
+  /**
+   * Draining the encoder is different from a flush operation in two ways.
+   * - Flush puts some encoder implementations in an uninitialized state whereas drain does not.
+   * - Drain asks the encoder for any remaining packets and gives them to you. Flush doesn't care to
+   * do that.
+   */
+  void Flush();
+  VTKVideoEncoderResultType Drain();
+  ///@}
+
+  ///@{
+  /**
+   * Public interface for the encoder. Concrete sub-classes are supposed to
+   * implement the PushInternal(), GetResultInternal() and EncodeInternal() methods.
+   *
+   * vtkVideoEncoder::Push(vtkRawVideoFrame* frame) is the entry point
+   * to start encoding.
+   *
+   * Call vtkVideoEncoder::GetResult() to access the encoded video packets.
+   *
+   */
+  VTKVideoProcessingStatusType Push(vtkRawVideoFrame* frame);
+  VTKVideoEncoderResultType Encode(VTKVideoEncoderInputType frame);
+  VTKVideoEncoderResultType GetResult();
+  bool HasResult(); // always returns false when not using an asynchronous delegate.
+  ///@}
+
+  ///@{
+  /**
+   * Capture the display from current graphics context and encode the image.
+   * Some synchronous hardware encoders can do zero-copy encoding.
+   * Hardware encoders are usually fast enough to be non-blocking.
+   */
+  VTKVideoEncoderResultType EncodeDisplay();
+  ///@}
+
+  /**
+   * In asynchronous encoding, it may happen that a large number of frames are waiting in the task
+   * queue. This method lets us ignore further encode requests when flushing the task queue.
+   * vtkVideoEncoder::Push resets the cancel flag.
+   */
+  void CancelPendingEncodeRequests();
+
+  ///@{
+  /**
+   * Convenient functions implemented by concrete subclasses.
+   */
+  virtual bool IsHardwareAccelerated() const noexcept = 0;
+  virtual bool SupportsAsyncMode() const noexcept = 0;
+  virtual bool SupportsZeroCopy() const noexcept = 0;
+  virtual vtkIdType GetLastEncodeTimeNS() const noexcept = 0;
+  virtual vtkIdType GetLastScaleTimeNS() const noexcept = 0;
+  virtual bool SupportsCodec(VTKVideoCodecType codec) const noexcept = 0;
+  ///@}
+
+  ///@{
+  /**
+   * The encoder can force a KeyFrame i.e, an I-Frame irrelevant of
+   * the GOP size.
+   *
+   * DevNote: All these should not update MTime. Otherwise, an encoder will reinitialize its
+   * context.
+   */
+  void SetForceIFrame(bool val);
+  bool GetForceIFrame();
+  void ForceIFrameOn();
+  void ForceIFrameOff();
+  ///@}
 
   ///@{
   /**
@@ -123,6 +187,13 @@ public:
   void AsyncModeOn();
   void AsyncModeOff();
   ///@}
+
+  enum class BRCType
+  {
+    CBR, // MaxBitRate = MinBitRate = BitRate
+    VBR, // Bitrate may fluctuate within set minimum and maximum.
+    CQP  // no bitrate control. Set QuantizationParameter
+  };
 
   ///@{
   /**
@@ -265,86 +336,6 @@ public:
    */
   vtkSetMacro(NumberOfEncoderThreads, unsigned int);
   vtkGetMacro(NumberOfEncoderThreads, unsigned int);
-  ///@}
-
-  ///@{
-  /**
-   * The encoder can force a KeyFrame i.e, an I-Frame irrelevant of
-   * the GOP size.
-   *
-   * DevNote: All these should not update MTime. Otherwise, an encoder will reinitialize its
-   * context.
-   */
-  void SetForceIFrame(bool val);
-  bool GetForceIFrame();
-  void ForceIFrameOn();
-  void ForceIFrameOff();
-  ///@}
-
-  ///@{
-  /**
-   * Public interface for the encoder. Concrete sub-classes are supposed to implement the
-   * respective *Internal() methods to initialize and shutdown an encoding context.
-   */
-  bool Initialize();
-  void Shutdown();
-  bool HasDelegate();
-  ///@}
-
-  ///@{
-  /**
-   * Draining the encoder is different from a flush operation in two ways.
-   * - Flush puts some encoder implementations in an uninitialized state whereas drain does not.
-   * - Drain asks the encoder for any remaining packets and gives them to you. Flush doesn't care to
-   * do that.
-   */
-  void Flush();
-  VTKVideoEncoderResultType Drain();
-  ///@}
-
-  ///@{
-  /**
-   * Public interface for the encoder. Concrete sub-classes are supposed to
-   * implement the PushInternal(), GetResultInternal() and EncodeInternal() methods.
-   *
-   * vtkVideoEncoder::Push(vtkRawVideoFrame* frame) is the entry point
-   * to start encoding.
-   *
-   * Call vtkVideoEncoder::GetResult() to access the encoded video packets.
-   *
-   */
-  VTKVideoProcessingStatusType Push(vtkRawVideoFrame* frame);
-  VTKVideoEncoderResultType Encode(VTKVideoEncoderInputType frame);
-  VTKVideoEncoderResultType GetResult();
-  bool HasResult(); // always returns false when not using an asynchronous delegate.
-  ///@}
-
-  ///@{
-  /**
-   * Capture the display from current graphics context and encode the image.
-   * Some synchronous hardware encoders can do zero-copy encoding.
-   * Hardware encoders are usually fast enough to be non-blocking.
-   */
-  VTKVideoEncoderResultType EncodeDisplay();
-  ///@}
-
-  /**
-   * In asynchronous encoding, it may happen that a large number of frames are waiting in the task
-   * queue. This method lets us ignore further encode requests when flushing the task queue.
-   * vtkVideoEncoder::Push resets the cancel flag.
-   */
-  void CancelPendingEncodeRequests();
-
-  ///@{
-  /**
-   * Convenient functions implemented by concrete subclasses.
-   */
-  virtual bool IsHardwareAccelerated() const noexcept = 0;
-  virtual bool SupportsAsyncMode() const noexcept = 0;
-  virtual bool SupportsZeroCopy() const noexcept = 0;
-  virtual vtkIdType GetLastEncodeTimeNS() const noexcept = 0;
-  virtual vtkIdType GetLastScaleTimeNS() const noexcept = 0;
-  virtual bool SupportsCodec(VTKVideoCodecType codec) const noexcept = 0;
   ///@}
 
 protected:
