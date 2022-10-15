@@ -3,14 +3,8 @@ set(classes
 )
 
 set(priv_classes
-  vtkOpenGLIYUVCaptureDelegate
-  vtkOpenGLNV12CaptureDelegate
-  vtkOpenGLIYUVRenderDelegate
-  vtkOpenGLNV12RenderDelegate
-  vtkOpenGLRGB24RenderDelegate
-  vtkOpenGLRGB24CaptureDelegate
-  vtkOpenGLRGBA32RenderDelegate
-  vtkOpenGLRGBA32CaptureDelegate
+  vtkOpenGLVideoFrameRenderer
+  vtkOpenGLVideoFrameCapture
 )
 
 set(priv_headers
@@ -23,7 +17,9 @@ set(shader_files
   glsl/vtkRGB24CaptureFS.glsl
   glsl/vtkRGBA32CaptureFS.glsl
   glsl/vtkIYUVRenderFS.glsl
-  glsl/vtkNV12RenderFS.glsl)
+  glsl/vtkNV12RenderFS.glsl
+  glsl/vtkRGB24RenderFS.glsl
+  glsl/vtkRGBA32RenderFS.glsl)
 
 unset(shader_h_files)
 foreach(file IN LISTS shader_files)

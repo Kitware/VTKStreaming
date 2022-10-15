@@ -42,14 +42,8 @@ class vtkTextureObject;
 class vtkOpenGLRenderWindow;
 class vtkOpenGLFramebufferObject;
 
-class vtkOpenGLIYUVCaptureDelegate;
-class vtkOpenGLNV12CaptureDelegate;
-class vtkOpenGLRGBA32CaptureDelegate;
-class vtkOpenGLRGB24CaptureDelegate;
-class vtkOpenGLIYUVRenderDelegate;
-class vtkOpenGLNV12RenderDelegate;
-class vtkOpenGLRGB24RenderDelegate;
-class vtkOpenGLRGBA32RenderDelegate;
+class vtkOpenGLVideoFrameCapture;
+class vtkOpenGLVideoFrameRenderer;
 class vtkOpenGLVideoFrameInternals;
 
 class VTKSTREAMINGOPENGL2_EXPORT vtkOpenGLVideoFrame : public vtkRawVideoFrame
@@ -108,15 +102,8 @@ private:
   vtkOpenGLVideoFrame(const vtkOpenGLVideoFrame&) = delete;
   void operator=(const vtkOpenGLVideoFrame&) = delete;
 
-  std::unique_ptr<vtkOpenGLIYUVCaptureDelegate> IYUVGrabber;
-  std::unique_ptr<vtkOpenGLNV12CaptureDelegate> NV12Grabber;
-  std::unique_ptr<vtkOpenGLRGB24CaptureDelegate> RGB24Grabber;
-  std::unique_ptr<vtkOpenGLRGBA32CaptureDelegate> RGBA32Grabber;
-
-  std::unique_ptr<vtkOpenGLIYUVRenderDelegate> IYUVRenderer;
-  std::unique_ptr<vtkOpenGLNV12RenderDelegate> NV12Renderer;
-  std::unique_ptr<vtkOpenGLRGB24RenderDelegate> RGB24Renderer;
-  std::unique_ptr<vtkOpenGLRGBA32RenderDelegate> RGBA32Renderer;
+  std::unique_ptr<vtkOpenGLVideoFrameCapture> FrameGrabber;
+  std::unique_ptr<vtkOpenGLVideoFrameRenderer> FrameRenderer;
   std::unique_ptr<vtkOpenGLVideoFrameInternals> Internals;
 };
 
