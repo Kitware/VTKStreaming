@@ -84,11 +84,11 @@ void vtkOpenGLVideoFrameCapture::Capture(vtkTextureObject* destTexture,
         if (invert_y)
         {
           vtkShaderProgram::Substitute(
-            FSSource, "//VTK::LumaFlipY::Impl", "id_NV12.y = resolution[1] - 1 - id_NV12.y;\n");
+            FSSource, "//VTK::LumaFlipY::Impl", "id_RGBA.y = resolution[1] - 1 - id_RGBA.y;\n");
           vtkShaderProgram::Substitute(FSSource, "//VTK::CrFlipY::Impl",
-            "id_NV12_start.y = resolution[1] - id_NV12_start.y - 2;\n");
+            "id_RGBA_start.y = resolution[1] - id_RGBA_start.y - 2;\n");
           vtkShaderProgram::Substitute(FSSource, "//VTK::CbFlipY::Impl",
-            "id_NV12_start.y = resolution[1] - id_NV12_start.y - 2;\n");
+            "id_RGBA_start.y = resolution[1] - id_RGBA_start.y - 2;\n");
         }
         break;
       case VTKPixelFormatType::VTKPF_IYUV:
