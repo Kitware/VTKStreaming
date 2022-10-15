@@ -417,15 +417,14 @@ protected:
   virtual VTKVideoEncoderResultType GetResultInternal() = 0;
   virtual VTKVideoEncoderResultType EncodeInternal(VTKVideoEncoderInputType frame) = 0;
   virtual VTKVideoEncoderResultType DrainInternal() = 0;
-  ///@}
-
   virtual VTKVideoEncoderResultType EncodeDisplayInternal() = 0;
-
-  VTKVideoProcessingStatusType UpdateEncoderContext(int width, int height);
+  ///@}
 
 private:
   vtkVideoEncoder(const vtkVideoEncoder&) = delete;
   void operator=(const vtkVideoEncoder&) = delete;
+
+  VTKVideoProcessingStatusType UpdateEncoderContext(int width, int height);
 };
 
 #endif // vtkVideoEncoder_h
