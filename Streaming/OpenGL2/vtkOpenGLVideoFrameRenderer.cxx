@@ -1,9 +1,9 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    vtkOpenGLNV12CaptureDelegate.cxx
+  Module:    vtkOpenGLVideoFrameRenderer.h
 
-  Copyright (c) 2022 Kitware, Inc
+  Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
   All rights reserved.
   See Copyright.txt or http://www.kitware.com/Copyright.htm for details.
 
@@ -13,14 +13,19 @@
 
 =========================================================================*/
 
-#include "vtkOpenGLNV12CaptureDelegate.h"
-#include "vtkNV12CaptureFS.h"
+#include "vtkOpenGLVideoFrameRenderer.h"
+#include "vtkIYUVRenderFS.h"
+#include "vtkLogger.h"
+#include "vtkNV12RenderFS.h"
 #include "vtkObject.h"
 #include "vtkOpenGLError.h"
 #include "vtkOpenGLRenderUtilities.h"
 #include "vtkOpenGLRenderWindow.h"
 #include "vtkOpenGLShaderCache.h"
 #include "vtkOpenGLState.h"
+#include "vtkPixelFormatTypes.h"
+#include "vtkRGB24RenderFS.h"
+#include "vtkRGBA32RenderFS.h"
 #include "vtkShaderProgram.h"
 #include "vtkTextureObject.h"
 
@@ -38,42 +43,68 @@ const char* VertexShader =
   )***";
 }
 
-void vtkOpenGLNV12CaptureDelegate::ReleaseGraphicsResources(vtkOpenGLRenderWindow* window)
+void vtkOpenGLVideoFrameRenderer::ReleaseGraphicsResources(vtkOpenGLRenderWindow* window)
 {
   this->DrawHelper.ReleaseGraphicsResources(window);
 }
 
-void vtkOpenGLNV12CaptureDelegate::Capture(vtkTextureObject* rgba32Texture,
+void vtkOpenGLVideoFrameRenderer::Render(vtkTextureObject* srcTexture, VTKPixelFormatType srcPixFmt,
   vtkOpenGLRenderWindow* window, int strides[3], int lumaHeight, int chromaHeight,
-  bool invert_y /*=false*/)
+  bool invert_y /* = false*/)
 {
+  vtkLogScopeF(TRACE, "%s textureContext=%s, window=%s, Texture=%d", __func__,
+    vtkLogIdentifier(srcTexture->GetContext()), vtkLogIdentifier(window), srcTexture->GetHandle());
+
   vtkShaderProgram* program = this->DrawHelper.Program;
   vtkOpenGLShaderCache* shaderCache = window->GetShaderCache();
 
   if (program == nullptr)
   {
+    // create shader programs.
     std::string VSSource = ::VertexShader;
-    std::string FSSource = vtkNV12CaptureFS;
+    std::string FSSource;
     std::string GSSource;
-
+    switch (srcPixFmt)
+    {
+      case VTKPixelFormatType::VTKPF_RGBA32:
+        FSSource = vtkRGBA32RenderFS;
+        break;
+      case VTKPixelFormatType::VTKPF_RGB24:
+        FSSource = vtkRGB24RenderFS;
+        break;
+      case VTKPixelFormatType::VTKPF_NV12:
+        FSSource = vtkNV12RenderFS;
+        break;
+      case VTKPixelFormatType::VTKPF_IYUV:
+        FSSource = vtkIYUVRenderFS;
+        break;
+    }
     if (invert_y)
     {
       vtkShaderProgram::Substitute(
-        FSSource, "//VTK::LumaFlipY::Impl", "id_NV12.y = resolution[1] - 1 - id_NV12.y;\n");
-      vtkShaderProgram::Substitute(FSSource, "//VTK::CrFlipY::Impl",
-        "id_NV12_start.y = resolution[1] - id_NV12_start.y - 2;\n");
-      vtkShaderProgram::Substitute(FSSource, "//VTK::CbFlipY::Impl",
-        "id_NV12_start.y = resolution[1] - id_NV12_start.y - 2;\n");
+        FSSource, "//VTK::FLIPY::Impl", "float yCoord = resolution[1] - gl_FragCoord.y - 0.5;\n");
+    }
+    else
+    {
+      vtkShaderProgram::Substitute(
+        FSSource, "//VTK::FLIPY::Impl", "float yCoord = gl_FragCoord.y - 0.5;\n");
     }
     program = shaderCache->ReadyShaderProgram(VSSource.c_str(), FSSource.c_str(), GSSource.c_str());
   }
 
   if (program != nullptr)
   {
-    const int width = strides[0];
-    const int height = lumaHeight + chromaHeight;
+    const int width = window->GetActualSize()[0];
+    const int height = window->GetActualSize()[1];
     float verts[] = { -1.0f, -1.0f, 0.0f, 1.0f, -1.0f, 0.0f, -1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f };
     GLuint iboData[] = { 0, 1, 2, 2, 1, 3 };
+    bool startedWindowRender = false;
+
+    if (!window->CheckInRenderStatus())
+    {
+      window->Start();
+      startedWindowRender = true;
+    }
 
     shaderCache->ReadyShaderProgram(program);
     vtkOpenGLCheckErrors("Error readying shader program ");
@@ -93,13 +124,32 @@ void vtkOpenGLNV12CaptureDelegate::Capture(vtkTextureObject* rgba32Texture,
 
     // bind and activate the texture before rendering that quad.
     vtkOpenGLState::ScopedglActiveTexture textureSave(state);
-    rgba32Texture->Activate();
+    srcTexture->Activate();
     program->SetUniform1iv("resolution", 2, window->GetSize());
-    program->SetUniformi("rgba32Texture", rgba32Texture->GetTextureUnit());
-    program->SetUniformi("lumaHeight", lumaHeight);
-    program->SetUniformi("chromaHeight", chromaHeight);
+    switch (srcPixFmt)
+    {
+      case VTKPixelFormatType::VTKPF_NV12:
+        program->SetUniformi("nv12Texture", srcTexture->GetTextureUnit());
+        program->SetUniformi("lumaHeight", lumaHeight);
+        break;
+      case VTKPixelFormatType::VTKPF_IYUV:
+        program->SetUniformi("iyuvTexture", srcTexture->GetTextureUnit());
+        program->SetUniform1iv("strides", 3, strides);
+        program->SetUniformi("chromaHeight", chromaHeight);
+        program->SetUniformi("lumaHeight", lumaHeight);
+        break;
+      case VTKPixelFormatType::VTKPF_RGB24:
+      case VTKPixelFormatType::VTKPF_RGBA32:
+        break;
+    }
     vtkOpenGLRenderUtilities::RenderTriangles(
       verts, 4, iboData, 6, nullptr, program, this->DrawHelper.VAO);
-    rgba32Texture->Deactivate();
+    srcTexture->Deactivate();
+
+    if (startedWindowRender)
+    {
+      window->End();
+      window->Frame();
+    }
   }
 }

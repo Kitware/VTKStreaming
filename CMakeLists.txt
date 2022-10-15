@@ -56,7 +56,7 @@ vtk_module_scan(
   PROVIDES_KITS          VTKSTREAMING_KITS
   REQUIRES_MODULES       vtkstreaming_required_modules
   UNRECOGNIZED_MODULES 	 vtkstreaming_unrecognized_modules
-  ENABLE_TESTS          "${VTKSTREAMING_ENABLE_TESTING}"
+  ENABLE_TESTS          "${BUILD_TESTING}"
   WANT_BY_DEFAULT        ON
 )
 vtk_module_build(

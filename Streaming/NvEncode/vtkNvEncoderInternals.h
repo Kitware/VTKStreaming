@@ -50,7 +50,7 @@ public:
    * Populate the parameters based on type of codec, preset and tuning information.
    * You can use this convenient function to generate a basic set of parameters that can
    * be used in ::InitializeEncodeCtx().
-   * If needed, you can alos override the parameters with app-specific settings before
+   * If needed, you can also override the parameters with app-specific settings before
    * ::InitializeEncodeCtx()
    */
   bool CreateDefaultEncoderInitializeParams(NV_ENC_INITIALIZE_PARAMS* params, GUID codec,
