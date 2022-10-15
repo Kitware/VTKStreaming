@@ -14,7 +14,7 @@
 =========================================================================*/
 /**
  * @class   vtkOpenGLVideoFrame
- * @brief   class that represents a raw video frame with data backed by OpenGL textures.
+ * @brief   class that represents a raw video frame backed by an OpenGL texture.
  *
  * @warning: The Copy methods are safe only when either the
  * source and destination frames' contexts are setup with

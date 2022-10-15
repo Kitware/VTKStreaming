@@ -26,14 +26,16 @@
  *
  * 2. When your use case involves streaming a display, usually from `vtkRenderWindow`,
  *    you can achieve zero-copy with certain hardware accelerated video encoders this way.
- *    Supply the `vtkRenderWindow` instance with
- * vtkVideoEncoder::SetGraphicsContext(vtkRenderWindow*). Then, call
- * vtkVideoEncoder::EncodeDisplay(vtkRenderWindow*) whenever you're ready. The return value will
- * have the compressed packet corresponding to `vtkRenderWindow` display frame buffer. This
- * interesting use case is for low-latency hardware acclerated encoders. Async mode is not
- * supported.
  *
- * You are free to delete or modify the frame contents after calling `Push`
+ * Supply the `vtkRenderWindow` instance with
+ * vtkVideoEncoder::SetGraphicsContext(vtkRenderWindow*). Then, call
+ * vtkVideoEncoder::EncodeDisplay(vtkRenderWindow*) whenever you're ready.
+ * The return value will have chunks of encoded video corresponding to
+ * `vtkRenderWindow` display frame buffer. This interesting use case is for
+ * low-latency live encoding with software/hardware acclerated encoders.
+ * Async mode is not supported.
+ *
+ * You are free to delete or modify the frame contents after calling `Push`,
  * only when using asynchronous delegate.
  *
  * In async mode, the encoder can use an asynchronous delegate to

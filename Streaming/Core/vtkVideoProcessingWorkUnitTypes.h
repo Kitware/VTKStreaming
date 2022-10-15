@@ -16,10 +16,10 @@
  * @class   vtkVideoProcessingWorkUnitTypes
  * @brief   this class defines work unit types for convenience.
  *
- * A video encoder accepts vtkRawVideoFrame as input. The output
+ * A video encoder accepts vtkRawVideoFrame. The output
  * is the status code along with one or more vtkCompressedVideoPacket instances.
  *
- * A video decoder accepts vtkCompressedVideoPacket as input. The output
+ * A video decoder accepts vtkCompressedVideoPacket. The output
  * is the status code along with one or more vtkRawVideoFrame instances.
  */
 
