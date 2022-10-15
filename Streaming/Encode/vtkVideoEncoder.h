@@ -288,8 +288,18 @@ public:
    */
   bool Initialize();
   void Shutdown();
-  void Flush();
   bool HasDelegate();
+  ///@}
+
+  ///@{
+  /**
+   * Draining the encoder is different from a flush operation in two ways.
+   * - Flush puts some encoder implementations in an uninitialized state whereas drain does not.
+   * - Drain asks the encoder for any remaining packets and gives them to you. Flush doesn't care to
+   * do that.
+   */
+  void Flush();
+  VTKVideoEncoderResultType Drain();
   ///@}
 
   ///@{
@@ -302,16 +312,11 @@ public:
    *
    * Call vtkVideoEncoder::GetResult() to access the encoded video packets.
    *
-   * Draining the encoder is different from a flush operation in two ways.
-   * - Flush puts some encoder implementations in an uninitialized state whereas drain does not.
-   * - Drain asks the encoder for any remaining packets and gives them to you. Flush doesn't care to
-   * do that.
    */
   VTKVideoProcessingStatusType Push(vtkRawVideoFrame* frame);
   VTKVideoEncoderResultType Encode(VTKVideoEncoderInputType frame);
-  bool HasResult(); // always returns false when not using an asynchronous delegate.
   VTKVideoEncoderResultType GetResult();
-  VTKVideoEncoderResultType Drain();
+  bool HasResult(); // always returns false when not using an asynchronous delegate.
   ///@}
 
   ///@{
