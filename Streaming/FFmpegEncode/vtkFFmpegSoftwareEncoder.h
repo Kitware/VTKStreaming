@@ -14,7 +14,7 @@
 =========================================================================*/
 /**
  * @class   vtkFFmpegSoftwareEncoder
- * @brief   this class implements software decoder with FFMPEG.
+ * @brief   this class implements software decoder with FFmpeg.
  *
  * @sa vtkVideoEncoder, vtkCompressedVideoPacket
  */

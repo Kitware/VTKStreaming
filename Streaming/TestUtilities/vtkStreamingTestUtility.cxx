@@ -20,8 +20,6 @@
 #include <cstdlib>
 #include <string>
 
-// Problem: vtkLogger eats up verbosity and it doesn't respect command line verbosity.
-// Solution: We use -V token to specify verbosity from the CLI.
 void vtkStreamingTestUtility::SetLoggerVerbosityFromCli(int argc, char** argv)
 {
   for (int i = 0; i < argc; ++i)

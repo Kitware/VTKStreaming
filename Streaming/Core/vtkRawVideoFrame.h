@@ -14,8 +14,8 @@
 =========================================================================*/
 /**
  * @class   vtkRawVideoFrame
- * @brief   abstract class for a raw video frame that leaves out storage implementation
- *          for the subclasses.
+ * @brief   abstract class for a raw video frame that leaves out implementation
+ *          of storage for the subclasses.
  *
  * vtkRawVideoFrame associates an un-compressed video frame with
  * key parameters such as width, height, luminance-chroma pitches, offsets,

@@ -16,8 +16,6 @@
  * @class   vtkVideoDecoder
  * @brief   this class defines an abstract interface for a video decoder.
  *
- * Similar to vtkVideoEncoder, the vtkVideoDecoder supports non-blocking decode.
- *
  * You can push compressed video packets with the vtkVideoDecoder::Push method.
  * Call vtkVideoDecoder::GetResult to obtain the uncompressed video frame.
  * Call vtkVideoDecoder::Shutdown() before the decoder is destroyed.

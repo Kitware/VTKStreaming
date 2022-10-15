@@ -97,6 +97,7 @@ bool vtkFFmpegSoftwareDecoder::InitializeInternal()
     vtkLog(ERROR, "Could not open codec");
     return false;
   }
+  internals.DecodeCtx->thread_count = 8;
 
   internals.Packet = av_packet_alloc();
   if (!internals.Packet)

@@ -17,8 +17,8 @@
  * @brief   class for muxing VP8, VP9 compressed packets into WEBM container.
  *
  * vtkWEBMMuxer is used to save VP8, VP9 encoded video packets to memory using
- * webm multimedia container format. The webm format is a trimmed down mkv that supports
- * only VP9 and VP8 bitstreams.
+ * webm multimedia container format. The webm format is a trimmed down mkv that
+ * supports VP9 and VP8 bitstreams.
  *
  * You can write headers, trailers and webm blocks. This class is capable of writing
  * into a dynamic buffer rather than a file.
@@ -178,4 +178,3 @@ private:
 };
 
 #endif // vtkWEBMMuxer_h
-// VTK-HeaderTest-Exclude: vtkWEBMMuxer.h
