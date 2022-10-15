@@ -14,7 +14,7 @@
 =========================================================================*/
 /**
  * @class   vtkOpenGLVideoFrameRenderer
- * @brief   class that can render IYUV textures from a vtkOpenGLVideoFrame.
+ * @brief   class that renders IYUV/NV12/RGBA32/RGB24 textures coming from a vtkOpenGLVideoFrame.
  *
  * @sa vtkOpenGLVideoFrame
  */
