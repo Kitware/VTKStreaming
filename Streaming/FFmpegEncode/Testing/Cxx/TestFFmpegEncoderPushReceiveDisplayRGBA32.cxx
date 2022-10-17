@@ -3,7 +3,7 @@
   Program:   Visualization Toolkit
   Module:    TestFFmpegEncoderPushReceiveDisplayRGBA32.cxx
 
-  Copyright (c) 2022 Kitware, Inc.
+  Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
   All rights reserved.
   See Copyright.txt or http://www.kitware.com/Copyright.htm for details.
 
@@ -12,7 +12,7 @@
      PURPOSE.  See the above copyright notice for more information.
 
 =========================================================================*/
-// This test exercises zero-copy display encoding with NvEnc h.264 OpenGL based encoder
+// This test exercises display encoding with FFmpeg h.264 OpenGL based encoder
 // with display captured in RGBA32 pixel format.
 
 #include "vtkActor.h"
@@ -22,8 +22,8 @@
 #include "vtkFFmpegSoftwareEncoder.h"
 #include "vtkLogger.h"
 #include "vtkNamedColors.h"
-#include "vtkOpenGLError.h"
 #include "vtkOpenGLRenderWindow.h"
+#include "vtkOpenGLVideoFrame.h"
 #include "vtkPixelFormatTypes.h"
 #include "vtkPolyDataMapper.h"
 #include "vtkProperty.h"
@@ -37,7 +37,6 @@
 #include <array>
 #include <fstream>
 #include <iomanip>
-#include <ios>
 #include <string>
 
 #ifndef WRITE_BITSTREAM
@@ -48,7 +47,13 @@ int TestFFmpegEncoderPushReceiveDisplayRGBA32(int argc, char* argv[])
 {
   vtkStreamingTestUtility::SetLoggerVerbosityFromCli(argc, argv);
   bool success = true;
-  int width = 647, height = 953;
+  int width = 641, height = 953;
+  int frameId = 0;
+  std::vector<uint8_t> bitstream;
+
+#if WRITE_BITSTREAM
+  std::ofstream file("cyl_rgba32.h264", std::ios::out | std::ios::binary);
+#endif
 
   vtkNew<vtkRenderWindowInteractor> iren;
   vtkNew<vtkRenderWindow> win;
@@ -78,30 +83,63 @@ int TestFFmpegEncoderPushReceiveDisplayRGBA32(int argc, char* argv[])
   iren->Initialize();
   iren->Render();
 
+  auto writeBitstream =
+#if WRITE_BITSTREAM
+    [&file, &bitstream, &frameId, &success]
+#else
+    [&bitstream, &frameId, &success]
+#endif
+    (VTKVideoEncoderResultType result) {
+      bitstream.clear();
+      for (const auto& packet : result.second)
+      {
+        auto data = reinterpret_cast<char*>(packet->GetData()->GetPointer(0));
+        auto size = packet->GetSize();
+        vtkLogF(INFO, "Recvd %d bytes", size);
+        for (int i = 0; i < size; ++i)
+        {
+          bitstream.push_back(data[i]);
+        }
+#if WRITE_BITSTREAM
+        file.write((char*)bitstream.data(), bitstream.size());
+#endif
+        if (frameId > 0)
+        {
+          assert(bitstream.size() > 10);
+          success &= bitstream.size() > 10;
+        }
+        ++frameId;
+      }
+    };
+
   vtkNew<vtkFFmpegSoftwareEncoder> enc;
+  enc->SetOutputHandler(writeBitstream);
   enc->SetGraphicsContext(renWin);
   enc->SetCodec(VTKVideoCodecType::VTKVC_H264);
   enc->SetWidth(width);
   enc->SetHeight(height);
-  enc->AsyncModeOff();
   enc->SetInputPixelFormat(VTKPixelFormatType::VTKPF_RGBA32);
+
+  vtkNew<vtkOpenGLVideoFrame> picture;
+  picture->SetContext(renWin);
+  picture->SetWidth(width);
+  picture->SetHeight(height);
+  picture->SetPixelFormat(VTKPixelFormatType::VTKPF_RGBA32);
+  picture->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::TopDown);
+  picture->AllocateDataStore();
 
   vtkNew<vtkCallbackCommand> exitCallback;
   exitCallback->SetClientData(enc);
   exitCallback->SetCallback([](vtkObject* iren_ptr, unsigned long, void* enc_ptr, void*) {
     // drain needs an opengl context so it can release the resources.
     auto encoder = reinterpret_cast<vtkVideoEncoder*>(enc_ptr);
-    auto result = encoder->Drain();
-    (void)result;
+    encoder->Drain();
     auto iren = reinterpret_cast<vtkRenderWindowInteractor*>(iren_ptr);
     encoder->Shutdown();
     iren->TerminateApp();
   });
   iren->AddObserver(vtkCommand::ExitEvent, exitCallback);
-#if WRITE_BITSTREAM
-  std::ofstream file("cyl_rgba.h264", std::ios::out | std::ios::binary);
-#endif
-  int frameId = 0;
+
   while (true)
   {
     double azimuth = (frameId % 36) * 10;
@@ -116,29 +154,9 @@ int TestFFmpegEncoderPushReceiveDisplayRGBA32(int argc, char* argv[])
     {
       break;
     }
-    vtkOpenGLCheckErrors("error uploading data to gl texture");
-
-    auto result = enc->EncodeDisplay();
-
-    vtkLog(TRACE, << vtkVideoProcessingStatusTypeUtilities::ToString(result.first));
-    success &= !(result.second.empty() || result.second[0] == nullptr);
-    if (!success)
-    {
-      break;
-    }
-    auto data = result.second[0]->GetData()->GetPointer(0);
-    auto size = result.second[0]->GetSize();
-    vtkLogF(INFO, "Recv %d bytes", size);
-    for (std::size_t i = 0; i < size; ++i)
-    {
-      bitstream.push_back(data[i]);
-    }
-#if WRITE_BITSTREAM
-    file.write((char*)bitstream.data(), bitstream.size());
-#endif
-    success &= bitstream.size() > 10;
-    ++frameId;
+    picture->Capture(renWin);
+    enc->Encode(picture);
+    vtkLogF(INFO, "Sent %d bytes", picture->GetActualSize());
   }
-
   return success ? 0 : 1;
 }

@@ -25,6 +25,7 @@
 #include "vtkRenderer.h"
 #include "vtkStreamingTestUtility.h"
 #include "vtkVideoProcessingStatusTypes.h"
+#include "vtkVideoProcessingWorkUnitTypes.h"
 
 int TestNvEncoderGLMapResource(int argc, char* argv[])
 {
@@ -56,14 +57,15 @@ int TestNvEncoderGLMapResource(int argc, char* argv[])
   frame->Capture(renWin);
 
   vtkNew<vtkNvEncoderGL> enc;
+  enc->SetOutputHandler([&success](VTKVideoEncoderResultType result) {
+    success = (result.first == VTKVideoProcessingStatusType::VTKVPStatus_Success);
+  });
   enc->SetCodec(VTKVideoCodecType::VTKVC_H264);
   enc->SetGraphicsContext(renWin);
   enc->SetWidth(w);
   enc->SetHeight(h);
-  enc->AsyncModeOn();
   enc->SetInputPixelFormat(VTKPixelFormatType::VTKPF_RGBA32);
-
-  success &= (enc->Push(frame) == VTKVideoProcessingStatusType::VTKVPStatus_Success);
+  enc->Encode(frame);
   enc->Flush();
   enc->Shutdown();
 

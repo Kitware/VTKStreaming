@@ -26,6 +26,7 @@
 
 #include "vtkStreamingFFmpegEncodeModule.h" // for export macro
 #include "vtkVideoCodecTypes.h"             // for enum
+#include "vtkVideoProcessingWorkUnitTypes.h"
 
 #include <memory> // for ivar
 
@@ -43,8 +44,6 @@ public:
    * Implement public convenient methods.
    */
   bool IsHardwareAccelerated() const noexcept override { return false; }
-  bool SupportsAsyncMode() const noexcept override { return true; }
-  bool SupportsZeroCopy() const noexcept override { return false; }
   vtkIdType GetLastEncodeTimeNS() const noexcept override;
   vtkIdType GetLastScaleTimeNS() const noexcept override;
   bool SupportsCodec(VTKVideoCodecType codec) const noexcept override;
@@ -54,13 +53,14 @@ protected:
   vtkFFmpegSoftwareEncoder();
   ~vtkFFmpegSoftwareEncoder() override;
 
+  std::string GetISOCodecParameterString() const noexcept override;
+
   ///@{
   /**
    * Implement parent class encoder context management and status translation.
    */
   bool InitializeInternal() override;
   void ShutdownInternal() override;
-  void FlushInternal() override;
   ///@}
 
   ///@{
@@ -69,13 +69,9 @@ protected:
    */
   bool SetupEncoderFrame(int width, int height) override;
   void TearDownEncoderFrame() override;
-  VTKVideoEncoderResultType DrainInternal() override;
-  VTKVideoProcessingStatusType PushInternal(VTKVideoEncoderInputType frame) override;
-  VTKVideoEncoderResultType GetResultInternal() override;
-  VTKVideoEncoderResultType EncodeInternal(VTKVideoEncoderInputType frame) override;
+  VTKVideoEncoderResultType EncodeInternal(vtkSmartPointer<vtkRawVideoFrame> frame) override;
+  VTKVideoEncoderResultType SendEOS() override;
   ///@}
-
-  VTKVideoEncoderResultType EncodeDisplayInternal() override;
 
 private:
   vtkFFmpegSoftwareEncoder(const vtkFFmpegSoftwareEncoder&) = delete;

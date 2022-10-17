@@ -14,52 +14,15 @@
 =========================================================================*/
 /**
  * @class   vtkVideoEncoder
- * @brief   this class defines an abstract interface for a video encoder.
+ * @brief   defines an abstract interface for video encoding
  *
- * There are two ways to achieve video encoding with this class.
+ * A video frame can be encoded with video codecs by following this process.
  *
- * 1. You can push `vtkRawVideoFrame` objects for encoding with the
- *    vtkVideoEncoder::Push(vtkRawVideoFrame*) method.
- *    Since the method may be non-blocking, you need to call
- *    vtkVideoEncoder::GetResult() to obtain the compressed video packet.
- *    Async mode is supported.
+ * 1. Setup your callback function with `SetOutputHandler`
+ *    This function will be invoked from another thread.
+ *    You should keep that in mind.
  *
- * 2. When your use case involves streaming a display, usually from `vtkRenderWindow`,
- *    you can achieve zero-copy with certain hardware accelerated video encoders this way.
- *
- * Supply the `vtkRenderWindow` instance with
- * vtkVideoEncoder::SetGraphicsContext(vtkRenderWindow*). Then, call
- * vtkVideoEncoder::EncodeDisplay(vtkRenderWindow*) whenever you're ready.
- * The return value will have chunks of encoded video corresponding to
- * `vtkRenderWindow` display frame buffer. This interesting use case is for
- * low-latency live encoding with software/hardware acclerated encoders.
- * Async mode is not supported.
- *
- * Here is an overview of the 3 important methods.
- *
- * With asynchronous delegate -:
- * 1. vtkVideoEncoder::Push() -
- *     does not block caller's thread. May start encoding when thread resources become available.
- * 2. vtkVideoEncoder::GetResult() -
- *     only attempts to get a result. May start encoding in worker thread if not already started.
- * 3. vtkVideoEncoder::HasResult() -
- *     returns true if any results are already available.
- *
- * You can avoid delegates if you prefer tighter control over the API. Ex -: implement your own task
- * queue management. Turn off async delegate with AsyncModeOff()
- * When the delegate is bypassed -:
- * 1. vtkVideoEncoder::Push() -
- *     blocks the caller's thread and encoding begins right away.
- * 2. vtkVideoEncoder::GetResult() -
- *     finishes the encoding and returns the result.
- * 3. vtkVideoEncoder::HasResult() -
- *     always returns false.
- *
- * With an asynchronous delegate, if you prefer to be notified
- * when a result is available, please listen to vtkCommand::ProgressEvent.
- * This class emits an event when packets are available.
- *
- * Call vtkVideoEncoder::Shutdown() before the encoder is destroyed.
+ * 2. Invoke `vtkVideoEncoder::Encode(vtkRawVideoFrame*).
  *
  * @sa vtkRawVideoFrame, vtkCompressedVideoPacket
  */
@@ -85,6 +48,7 @@ class VTKSTREAMINGENCODE_EXPORT vtkVideoEncoder : public vtkObject
 public:
   vtkTypeMacro(vtkVideoEncoder, vtkObject);
   void PrintSelf(ostream& os, vtkIndent indent) override;
+  void SetOutputHandler(std::function<void(VTKVideoEncoderResultType)> outputHandler);
 
   ///@{
   /**
@@ -93,60 +57,31 @@ public:
    */
   bool Initialize();
   void Shutdown();
-  bool HasDelegate();
   ///@}
 
   ///@{
   /**
-   * Draining the encoder is different from a flush operation in two ways.
-   * - Flush puts some encoder implementations in an uninitialized state whereas drain does not.
-   * - Drain asks the encoder for any remaining packets and gives them to you. Flush doesn't care to
-   * do that.
+   * Flush asks the encoder for any remaining packets
+   * Drain is similar to flush but does not send an EOS to end the stream.
    */
   void Flush();
-  VTKVideoEncoderResultType Drain();
+  void Drain();
   ///@}
 
   ///@{
   /**
    * Public interface for the encoder. Concrete sub-classes are supposed to
-   * implement the PushInternal(), GetResultInternal() and EncodeInternal() methods.
-   *
-   * vtkVideoEncoder::Push(vtkRawVideoFrame* frame) is the entry point
-   * to start encoding.
-   *
-   * Call vtkVideoEncoder::GetResult() to access the encoded video packets.
+   * implement EncodeInternal(vtkSmartPointer<vtkRawVideoFrame>), EncodeInternal().
    *
    */
-  VTKVideoProcessingStatusType Push(vtkRawVideoFrame* frame);
-  VTKVideoEncoderResultType Encode(VTKVideoEncoderInputType frame);
-  VTKVideoEncoderResultType GetResult();
-  bool HasResult(); // always returns false when not using an asynchronous delegate.
+  void Encode(vtkSmartPointer<vtkRawVideoFrame> frame);
   ///@}
-
-  ///@{
-  /**
-   * Capture the display from current graphics context and encode the image.
-   * Some synchronous hardware encoders can do zero-copy encoding.
-   * Hardware encoders are usually fast enough to be non-blocking.
-   */
-  VTKVideoEncoderResultType EncodeDisplay();
-  ///@}
-
-  /**
-   * In asynchronous encoding, it may happen that a large number of frames are waiting in the task
-   * queue. This method lets us ignore further encode requests when flushing the task queue.
-   * vtkVideoEncoder::Push resets the cancel flag.
-   */
-  void CancelPendingEncodeRequests();
 
   ///@{
   /**
    * Convenient functions implemented by concrete subclasses.
    */
   virtual bool IsHardwareAccelerated() const noexcept = 0;
-  virtual bool SupportsAsyncMode() const noexcept = 0;
-  virtual bool SupportsZeroCopy() const noexcept = 0;
   virtual vtkIdType GetLastEncodeTimeNS() const noexcept = 0;
   virtual vtkIdType GetLastScaleTimeNS() const noexcept = 0;
   virtual bool SupportsCodec(VTKVideoCodecType codec) const noexcept = 0;
@@ -175,17 +110,6 @@ public:
    */
   void SetGraphicsContext(vtkRenderWindow* context);
   vtkRenderWindow* GetGraphicsContext() const;
-  vtkRenderWindow* GetDelegateGraphicsContext() const;
-  ///@}
-
-  ///@{
-  /**
-   * Set/Get async mode
-   */
-  void SetAsyncMode(bool val);
-  bool GetAsyncMode();
-  void AsyncModeOn();
-  void AsyncModeOff();
   ///@}
 
   enum class BRCType
@@ -368,11 +292,21 @@ protected:
   vtkAsynchronousEncoderDelegate* Delegate = nullptr;
   // 7. Our graphics context.
   vtkWeakPointer<vtkRenderWindow> GraphicsContext;
-  bool DirectDisplayEncodeMode = false;
-
+  // 8. handler
+  std::function<void(VTKVideoEncoderResultType)> OutputHandler = nullptr;
+  // 9. state
   bool Initialized = false;
-  bool IgnoreEncodeRequest = false;
   vtkMTimeType LastSetupMTime = 0;
+
+  /**
+   * Returns true if given width and height do not match the encoding context's width and height.
+   */
+  bool NeedsNewEncoderFrame(int width, int height);
+
+  /**
+   * Returns true if given width and height do not match the encoding context's width and height.
+   */
+  virtual std::string GetISOCodecParameterString() const noexcept = 0;
 
   ///@{
   /**
@@ -380,7 +314,6 @@ protected:
    */
   virtual bool InitializeInternal() = 0;
   virtual void ShutdownInternal() = 0;
-  virtual void FlushInternal() = 0;
   ///@}
 
   ///@{
@@ -389,26 +322,15 @@ protected:
    * resource.
    */
   virtual bool SetupEncoderFrame(int width, int height) = 0;
-  bool NeedsNewEncoderFrame(int width, int height);
   virtual void TearDownEncoderFrame() = 0;
   ///@}
 
   ///@{
   /**
-   * Concrete subclasses will send a video frame for encoding and retrieve a compressed
-   * video packet from the encoder.
-   *
-   * PushInternal and GetResultInternal are invoked when we bypass the delegate.
-   *
-   * Warning: EncodeInternal is invoked inside a worker thread. If your encoder context is not
-   * thread-safe, please call that non-thread-safe functionaility outside this method.
-   *
+   * Concrete subclasses send a frame for encoding and return the output.
    */
-  virtual VTKVideoProcessingStatusType PushInternal(VTKVideoEncoderInputType frame) = 0;
-  virtual VTKVideoEncoderResultType GetResultInternal() = 0;
-  virtual VTKVideoEncoderResultType EncodeInternal(VTKVideoEncoderInputType frame) = 0;
-  virtual VTKVideoEncoderResultType DrainInternal() = 0;
-  virtual VTKVideoEncoderResultType EncodeDisplayInternal() = 0;
+  virtual VTKVideoEncoderResultType EncodeInternal(vtkSmartPointer<vtkRawVideoFrame> frame) = 0;
+  virtual VTKVideoEncoderResultType SendEOS() = 0;
   ///@}
 
 private:
@@ -416,6 +338,8 @@ private:
   void operator=(const vtkVideoEncoder&) = delete;
 
   VTKVideoProcessingStatusType UpdateEncoderContext(int width, int height);
+  vtkSmartPointer<vtkRawVideoFrame> PrepareThreadLocalResources(
+    vtkSmartPointer<vtkRawVideoFrame> from);
 };
 
 #endif // vtkVideoEncoder_h

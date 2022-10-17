@@ -23,6 +23,7 @@
 #include "vtkNamedColors.h"
 #include "vtkNvEncoderGL.h"
 #include "vtkOpenGLRenderWindow.h"
+#include "vtkOpenGLVideoFrame.h"
 #include "vtkPixelFormatTypes.h"
 #include "vtkPolyDataMapper.h"
 #include "vtkProperty.h"
@@ -47,6 +48,12 @@ int TestNvEncoderGLPushReceiveDisplayIYUV(int argc, char* argv[])
   vtkStreamingTestUtility::SetLoggerVerbosityFromCli(argc, argv);
   bool success = true;
   int width = 641, height = 953;
+  int frameId = 0;
+  std::vector<uint8_t> bitstream;
+
+#if WRITE_BITSTREAM
+  std::ofstream file("cyl_iyuv.h264", std::ios::out | std::ios::binary);
+#endif
 
   vtkNew<vtkRenderWindowInteractor> iren;
   vtkNew<vtkRenderWindow> win;
@@ -76,46 +83,63 @@ int TestNvEncoderGLPushReceiveDisplayIYUV(int argc, char* argv[])
   iren->Initialize();
   iren->Render();
 
+  auto writeBitstream =
+#if WRITE_BITSTREAM
+    [&file, &bitstream, &frameId, &success]
+#else
+    [&bitstream, &frameId, &success]
+#endif
+    (VTKVideoEncoderResultType result) {
+      bitstream.clear();
+      for (const auto& packet : result.second)
+      {
+        auto data = reinterpret_cast<char*>(packet->GetData()->GetPointer(0));
+        auto size = packet->GetSize();
+        vtkLogF(INFO, "Recvd %d bytes", size);
+        for (int i = 0; i < size; ++i)
+        {
+          bitstream.push_back(data[i]);
+        }
+#if WRITE_BITSTREAM
+        file.write((char*)bitstream.data(), bitstream.size());
+#endif
+        if (frameId > 0)
+        {
+          assert(bitstream.size() > 10);
+          success &= bitstream.size() > 10;
+        }
+        ++frameId;
+      }
+    };
+
   vtkNew<vtkNvEncoderGL> enc;
+  enc->SetOutputHandler(writeBitstream);
   enc->SetGraphicsContext(renWin);
   enc->SetCodec(VTKVideoCodecType::VTKVC_H264);
   enc->SetWidth(width);
   enc->SetHeight(height);
-  enc->AsyncModeOff();
   enc->SetInputPixelFormat(VTKPixelFormatType::VTKPF_IYUV);
+
+  vtkNew<vtkOpenGLVideoFrame> picture;
+  picture->SetContext(renWin);
+  picture->SetWidth(width);
+  picture->SetHeight(height);
+  picture->SetPixelFormat(VTKPixelFormatType::VTKPF_IYUV);
+  picture->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::TopDown);
+  picture->AllocateDataStore();
 
   vtkNew<vtkCallbackCommand> exitCallback;
   exitCallback->SetClientData(enc);
   exitCallback->SetCallback([](vtkObject* iren_ptr, unsigned long, void* enc_ptr, void*) {
     // drain needs an opengl context so it can release the resources.
     auto encoder = reinterpret_cast<vtkVideoEncoder*>(enc_ptr);
-    auto result = encoder->Drain();
-    std::vector<uint8_t> bitstream;
-    for (const auto& packet : result.second)
-    {
-      auto data = reinterpret_cast<char*>(packet->GetData()->GetPointer(0));
-      auto size = packet->GetSize();
-      vtkLogF(INFO, "Recvd %d bytes", size);
-      for (int i = 0; i < size; ++i)
-      {
-        bitstream.push_back(data[i]);
-      }
-#if WRITE_BITSTREAM
-      std::ofstream file("cyl_rgba.h264", std::ios::app | std::ios::binary);
-      file.write((char*)bitstream.data(), bitstream.size());
-#endif
-    }
-    (void)result;
+    encoder->Drain();
     auto iren = reinterpret_cast<vtkRenderWindowInteractor*>(iren_ptr);
     encoder->Shutdown();
     iren->TerminateApp();
   });
   iren->AddObserver(vtkCommand::ExitEvent, exitCallback);
 
-  int frameId = 0;
-#if WRITE_BITSTREAM
-  std::ofstream file("cyl_iyuv.h264", std::ios::out | std::ios::binary);
-#endif
   while (true)
   {
     double azimuth = (frameId % 36) * 10;
@@ -130,29 +154,9 @@ int TestNvEncoderGLPushReceiveDisplayIYUV(int argc, char* argv[])
     {
       break;
     }
-
-    auto result = enc->EncodeDisplay();
-    if (result.first == VTKVideoProcessingStatusType::VTKVPStatus_TrySendAgain)
-    {
-      continue;
-    }
-    vtkLogF(
-      TRACE, "EncodeDisplay - %s", vtkVideoProcessingStatusTypeUtilities::ToString(result.first));
-    for (const auto& packet : result.second)
-    {
-      auto data = reinterpret_cast<char*>(packet->GetData()->GetPointer(0));
-      auto size = packet->GetSize();
-      vtkLogF(INFO, "Recvd %d bytes", size);
-      for (int i = 0; i < size; ++i)
-      {
-        bitstream.push_back(data[i]);
-      }
-#if WRITE_BITSTREAM
-      file.write((char*)bitstream.data(), bitstream.size());
-#endif
-    }
-    success &= bitstream.size() > 200;
-    ++frameId;
+    picture->Capture(renWin);
+    enc->Encode(picture);
+    vtkLogF(INFO, "Sent %d bytes", picture->GetActualSize());
   }
   return success ? 0 : 1;
 }
