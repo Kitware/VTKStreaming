@@ -29,6 +29,7 @@
 #include "vtkStreamingTestUtility.h"
 #include "vtkTestUtilities.h"
 #include "vtkVideoProcessingStatusTypes.h"
+#include "vtkVideoProcessingWorkUnitTypes.h"
 
 #include <cstdint>
 #include <fstream>
@@ -43,6 +44,8 @@ int TestNvEncoderGLPushReceiveIYUV(int argc, char* argv[])
   vtkStreamingTestUtility::SetLoggerVerbosityFromCli(argc, argv);
   bool success = true;
   const int width = 320, height = 240;
+  int frameId = 0;
+  std::vector<uint8_t> bitstream;
 
   char* filename = vtkTestUtilities::ExpandDataFileName(argc, argv, "cars_320x240.iyuv");
   vtkLogF(INFO, "Read %s", filename);
@@ -53,9 +56,10 @@ int TestNvEncoderGLPushReceiveIYUV(int argc, char* argv[])
     return 1;
   }
   delete[] filename;
-  filename = vtkTestUtilities::ExpandDataFileName(argc, argv, "cars_320x240.h264");
-  std::string baselineFile = filename;
-  delete[] filename;
+
+#if WRITE_BITSTREAM
+  std::ofstream file("cars_320x240_iyuv.h264", std::ios::out | std::ios::binary);
+#endif
 
   vtkNew<vtkRenderWindow> win;
   vtkNew<vtkRenderer> ren;
@@ -64,39 +68,14 @@ int TestNvEncoderGLPushReceiveIYUV(int argc, char* argv[])
   renWin->Initialize();
   renWin->Render();
 
-  vtkNew<vtkNvEncoderGL> enc;
-  enc->SetGraphicsContext(renWin);
-  enc->SetWidth(width);
-  enc->SetHeight(height);
-  enc->SetCodec(VTKVideoCodecType::VTKVC_H264);
-  enc->AsyncModeOff();
-  enc->SetInputPixelFormat(VTKPixelFormatType::VTKPF_IYUV);
-
-  vtkNew<vtkOpenGLVideoFrame> iyuvPicture;
-  iyuvPicture->SetContext(renWin);
-  iyuvPicture->SetWidth(width);
-  iyuvPicture->SetHeight(height);
-  iyuvPicture->SetPixelFormat(VTKPixelFormatType::VTKPF_IYUV);
-  iyuvPicture->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::TopDown);
-  iyuvPicture->ComputeDefaultStrides();
-  iyuvPicture->AllocateDataStore();
-
-  auto estSize = vtkRawVideoFrame::GetEstimatedSize(width, height, VTKPixelFormatType::VTKPF_IYUV);
-  int frameId = 0;
+  auto writeBitstream =
 #if WRITE_BITSTREAM
-  std::ofstream file("cars_320x240_iyuv.h264", std::ios::out | std::ios::binary);
+    [&file, &bitstream, &frameId, &success]
+#else
+    [&bitstream, &frameId, &success]
 #endif
-  while (true)
-  {
-    std::unique_ptr<uint8_t[]> pixels(new uint8_t[estSize]);
-    std::streamsize numRead = fpIn.read(reinterpret_cast<char*>(pixels.get()), estSize).gcount();
-    std::vector<uint8_t> bitstream;
-
-    if (numRead != estSize)
-    {
-      // drain out remaining packets
-      auto result = enc->Drain();
-      std::vector<uint8_t> bitstream;
+    (VTKVideoEncoderResultType result) {
+      bitstream.clear();
       for (const auto& packet : result.second)
       {
         auto data = reinterpret_cast<char*>(packet->GetData()->GetPointer(0));
@@ -109,8 +88,43 @@ int TestNvEncoderGLPushReceiveIYUV(int argc, char* argv[])
 #if WRITE_BITSTREAM
         file.write((char*)bitstream.data(), bitstream.size());
 #endif
+        if (frameId > 0)
+        {
+          assert(bitstream.size() > 10);
+          success &= bitstream.size() > 10;
+        }
+        ++frameId;
       }
-      enc->Shutdown();
+    };
+
+  vtkNew<vtkNvEncoderGL> enc;
+  enc->SetOutputHandler(writeBitstream);
+  enc->SetGraphicsContext(renWin);
+  enc->SetWidth(width);
+  enc->SetHeight(height);
+  enc->SetCodec(VTKVideoCodecType::VTKVC_H264);
+  enc->SetInputPixelFormat(VTKPixelFormatType::VTKPF_IYUV);
+
+  vtkNew<vtkOpenGLVideoFrame> iyuvPicture;
+  iyuvPicture->SetContext(renWin);
+  iyuvPicture->SetWidth(width);
+  iyuvPicture->SetHeight(height);
+  iyuvPicture->SetPixelFormat(VTKPixelFormatType::VTKPF_IYUV);
+  iyuvPicture->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::TopDown);
+  iyuvPicture->ComputeDefaultStrides();
+  iyuvPicture->AllocateDataStore();
+
+  auto estSize = vtkRawVideoFrame::GetEstimatedSize(width, height, VTKPixelFormatType::VTKPF_IYUV);
+  while (true)
+  {
+    std::unique_ptr<uint8_t[]> pixels(new uint8_t[estSize]);
+    std::streamsize numRead = fpIn.read(reinterpret_cast<char*>(pixels.get()), estSize).gcount();
+    std::vector<uint8_t> bitstream;
+
+    if (numRead != estSize)
+    {
+      // drain out remaining packets
+      enc->Drain();
       break;
     }
     iyuvPicture->CopyPlanarData(pixels.get(), width, height, 0);
@@ -119,32 +133,8 @@ int TestNvEncoderGLPushReceiveIYUV(int argc, char* argv[])
       pixels.get() + (width * height * 5 / 4), (width >> 1), (height + 1) >> 1, 2);
     iyuvPicture->Render(renWin);
 
-    auto status = enc->Push(iyuvPicture);
+    enc->Encode(iyuvPicture);
     vtkLogF(INFO, "Sent %d bytes", iyuvPicture->GetActualSize());
-    if (status == VTKVideoProcessingStatusType::VTKVPStatus_TrySendAgain)
-    {
-      continue;
-    }
-    auto result = enc->GetResult();
-    for (const auto& packet : result.second)
-    {
-      auto data = reinterpret_cast<char*>(packet->GetData()->GetPointer(0));
-      auto size = packet->GetSize();
-      vtkLogF(INFO, "Recvd %d bytes", size);
-      for (int i = 0; i < size; ++i)
-      {
-        bitstream.push_back(data[i]);
-      }
-    }
-#if WRITE_BITSTREAM
-    file.write((char*)bitstream.data(), bitstream.size());
-#endif
-    if (frameId > 0)
-    {
-      assert(bitstream.size() > 10);
-      success &= bitstream.size() > 10;
-    }
-    ++frameId;
   }
   return success ? 0 : 1;
 }

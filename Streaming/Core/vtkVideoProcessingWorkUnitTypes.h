@@ -35,15 +35,12 @@
 #include <utility>
 #include <vector>
 
-using VTKVideoEncoderInputType = vtkSmartPointer<vtkRawVideoFrame>;
 using VTKVideoEncoderResultType =
   std::pair<VTKVideoProcessingStatusType, std::vector<vtkSmartPointer<vtkCompressedVideoPacket>>>;
-using VTKVideoEncodeWorkerType = std::function<VTKVideoEncoderResultType(VTKVideoEncoderInputType)>;
 
 using VTKVideoDecoderInputType = vtkSmartPointer<vtkCompressedVideoPacket>;
 using VTKVideoDecoderResultType =
   std::pair<VTKVideoProcessingStatusType, std::vector<vtkSmartPointer<vtkRawVideoFrame>>>;
-using VTKVideoDecodeWorkerType = std::function<VTKVideoDecoderResultType(VTKVideoDecoderInputType)>;
 
 #endif // vtkVideoProcessingWorkUnitTypes_h
 // VTK-HeaderTest-Exclude: vtkVideoProcessingWorkUnitTypes.h

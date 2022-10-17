@@ -17,7 +17,6 @@
 #define vtkFFmpegEncoderInternals_h
 
 #include "vtkCompressedVideoPacket.h"
-#include "vtkOpenGLVideoFrame.h"
 #include "vtkRawVideoFrame.h"
 #include "vtkSmartPointer.h"
 #include "vtkVideoProcessingStatusTypes.h"
@@ -53,8 +52,6 @@ public:
 
   const AVCodec* Codec = nullptr;
   struct SwsContext* SwScaleCtx = nullptr;
-
-  vtkNew<vtkOpenGLVideoFrame> GLFrame;
 
   uint64_t SendCounter = 0;
 

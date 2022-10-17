@@ -14,17 +14,10 @@
 =========================================================================*/
 
 #include "vtkFFmpegSoftwareEncoder.h"
-#include "vtkCompressedVideoPacket.h"
 #include "vtkFFmpegEncoderInternals.h"
-
 #include "vtkLogger.h"
 #include "vtkObjectFactory.h"
 #include "vtkOpenGLRenderWindow.h"
-#include "vtkPixelFormatTypes.h"
-#include "vtkRawVideoFrame.h"
-#include "vtkSmartPointer.h"
-#include "vtkVideoProcessingStatusTypes.h"
-#include "vtkVideoProcessingWorkUnitTypes.h"
 
 #include <chrono>
 #include <cstddef>
@@ -75,6 +68,12 @@ void vtkFFmpegSoftwareEncoder::PrintSelf(ostream& os, vtkIndent indent)
 }
 
 //------------------------------------------------------------------------------
+std::string vtkFFmpegSoftwareEncoder::GetISOCodecParameterString() const noexcept
+{
+  return "unknown";
+}
+
+//------------------------------------------------------------------------------
 bool vtkFFmpegSoftwareEncoder::InitializeInternal()
 {
   vtkLogScopeFunction(TRACE);
@@ -119,15 +118,8 @@ void vtkFFmpegSoftwareEncoder::ShutdownInternal()
 {
   vtkLogScopeFunction(TRACE);
   auto& internals = *(this->Internals);
+  // internals.Flush();
   internals.Shutdown();
-}
-
-//------------------------------------------------------------------------------
-void vtkFFmpegSoftwareEncoder::FlushInternal()
-{
-  vtkLogScopeFunction(TRACE);
-  auto& internals = *(this->Internals);
-  internals.Flush();
 }
 
 //------------------------------------------------------------------------------
@@ -166,7 +158,7 @@ void vtkFFmpegSoftwareEncoder::TearDownEncoderFrame()
 }
 
 //------------------------------------------------------------------------------
-VTKVideoEncoderResultType vtkFFmpegSoftwareEncoder::DrainInternal()
+VTKVideoEncoderResultType vtkFFmpegSoftwareEncoder::SendEOS()
 {
   vtkLogScopeFunction(TRACE);
   auto& internals = *(this->Internals);
@@ -175,15 +167,21 @@ VTKVideoEncoderResultType vtkFFmpegSoftwareEncoder::DrainInternal()
   while (ret >= 0)
   {
     ret = avcodec_receive_packet(internals.EncodeCtx, internals.Packet);
+    result.second.emplace_back(vtk::TakeSmartPointer(internals.PackageCompressedPacket()));
     switch (ret)
     {
       case AVERROR(EAGAIN):
+        result.first = VTKVideoProcessingStatusType::VTKVPStatus_TrySendAgain;
+        break;
       case AVERROR(EINVAL):
-      default:
+        result.first = VTKVideoProcessingStatusType::VTKVPStatus_InvalidValue;
         break;
       case AVERROR_EOF:
         vtkLog(TRACE, "Draining complete");
+        result.first = VTKVideoProcessingStatusType::VTKVPStatus_Success;
         ret = -1;
+        break;
+      default:
         break;
     }
   }
@@ -191,50 +189,8 @@ VTKVideoEncoderResultType vtkFFmpegSoftwareEncoder::DrainInternal()
 }
 
 //------------------------------------------------------------------------------
-VTKVideoProcessingStatusType vtkFFmpegSoftwareEncoder::PushInternal(VTKVideoEncoderInputType frame)
-{
-  vtkLogScopeFunction(TRACE);
-  auto& internals = *(this->Internals);
-  const int64_t pts = (internals.SendCounter++ % this->TimeBaseEnd) + 1;
-  internals.SoftwareFrame->pts = pts;
-
-  if (!internals.PreprocessInput(frame))
-  {
-    vtkLog(ERROR, << "Failed to convert rgba32 to encoder input frame pixel format.");
-    return VTKVideoProcessingStatusType::VTKVPStatus_InvalidValue;
-  }
-
-  if (!internals.PrepareForEncoding())
-  {
-    return VTKVideoProcessingStatusType::VTKVPStatus_InvalidValue;
-  }
-
-  int statusCode = internals.Send(this->ForceIFrame);
-  return vtkFFmpegEncoderInternals::ParseFFMPEGStatus(statusCode, /*during_send=*/true);
-}
-
-//------------------------------------------------------------------------------
-VTKVideoEncoderResultType vtkFFmpegSoftwareEncoder::GetResultInternal()
-{
-  vtkLogScopeFunction(TRACE);
-  VTKVideoEncoderResultType result;
-  auto& internals = *(this->Internals);
-  int statusCode = internals.Receive();
-  if (statusCode < 0)
-  {
-    result.first = vtkFFmpegEncoderInternals::ParseFFMPEGStatus(statusCode, /*during_send=*/false);
-    result.second = {};
-  }
-  else
-  {
-    result.first = vtkFFmpegEncoderInternals::ParseFFMPEGStatus(statusCode, /*during_send=*/false);
-    result.second.push_back(vtk::TakeSmartPointer(internals.PackageCompressedPacket()));
-  }
-  return result;
-}
-
-//------------------------------------------------------------------------------
-VTKVideoEncoderResultType vtkFFmpegSoftwareEncoder::EncodeInternal(VTKVideoEncoderInputType frame)
+VTKVideoEncoderResultType vtkFFmpegSoftwareEncoder::EncodeInternal(
+  vtkSmartPointer<vtkRawVideoFrame> frame)
 {
   vtkLogScopeFunction(TRACE);
   VTKVideoEncoderResultType result;
@@ -243,49 +199,6 @@ VTKVideoEncoderResultType vtkFFmpegSoftwareEncoder::EncodeInternal(VTKVideoEncod
   internals.SoftwareFrame->pts = pts ? pts : this->TimeBaseEnd;
 
   if (!internals.PreprocessInput(frame))
-  {
-    vtkLog(ERROR, << "Failed to convert rgba32 to encoder input frame pixel format.");
-    result.first = VTKVideoProcessingStatusType::VTKVPStatus_InvalidValue;
-    result.second = {};
-    return result;
-  }
-
-  if (!internals.PrepareForEncoding())
-  {
-    result.first = VTKVideoProcessingStatusType::VTKVPStatus_InvalidValue;
-    result.second = {};
-    return result;
-  }
-
-  return internals.Encode(this->ForceIFrame);
-}
-
-//------------------------------------------------------------------------------
-VTKVideoEncoderResultType vtkFFmpegSoftwareEncoder::EncodeDisplayInternal()
-{
-  vtkLogScopeFunction(TRACE);
-  VTKVideoEncoderResultType result;
-  auto& internals = (*this->Internals);
-  const int64_t pts = (internals.SendCounter++ % this->TimeBaseEnd) + 1;
-  internals.SoftwareFrame->pts = pts ? pts : this->TimeBaseEnd;
-
-  auto estSize =
-    vtkRawVideoFrame::GetEstimatedSize(this->Width, this->Height, this->InputPixelFormat);
-  if (estSize != internals.GLFrame->GetActualSize() ||
-    internals.GLFrame->GetPixelFormat() != this->InputPixelFormat)
-  {
-    internals.GLFrame->ReleaseGraphicsResources();
-    auto gfxContext = vtkOpenGLRenderWindow::SafeDownCast(this->GraphicsContext);
-    internals.GLFrame->SetContext(gfxContext);
-    internals.GLFrame->SetWidth(this->Width);
-    internals.GLFrame->SetHeight(this->Height);
-    internals.GLFrame->SetPixelFormat(this->InputPixelFormat);
-    internals.GLFrame->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::TopDown);
-    internals.GLFrame->AllocateDataStore();
-  }
-  internals.GLFrame->Capture(this->GraphicsContext);
-
-  if (!internals.PreprocessInput(internals.GLFrame))
   {
     vtkLog(ERROR, << "Failed to convert rgba32 to encoder input frame pixel format.");
     result.first = VTKVideoProcessingStatusType::VTKVPStatus_InvalidValue;

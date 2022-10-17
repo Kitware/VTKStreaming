@@ -44,8 +44,6 @@ public:
   vtkGetMacro(Tune, int);
 
   bool IsHardwareAccelerated() const noexcept override { return true; }
-  bool SupportsAsyncMode() const noexcept override { return false; }
-  bool SupportsZeroCopy() const noexcept override { return true; }
   vtkIdType GetLastEncodeTimeNS() const noexcept override;
   vtkIdType GetLastScaleTimeNS() const noexcept override;
   bool SupportsCodec(VTKVideoCodecType codec) const noexcept override;
@@ -60,19 +58,16 @@ protected:
 
   vtkGenericOpenGLResourceFreeCallback* ResourceCallback = nullptr;
 
+  std::string GetISOCodecParameterString() const noexcept override;
+
   bool InitializeInternal() override;
   void ShutdownInternal() override;
-  void FlushInternal() override;
 
   bool SetupEncoderFrame(int, int) override;
   void TearDownEncoderFrame() override;
 
-  VTKVideoProcessingStatusType PushInternal(VTKVideoEncoderInputType frame) override;
-  VTKVideoEncoderResultType GetResultInternal() override;
-  VTKVideoEncoderResultType EncodeInternal(VTKVideoEncoderInputType frame) override;
-  VTKVideoEncoderResultType DrainInternal() override;
-
-  VTKVideoEncoderResultType EncodeDisplayInternal() override;
+  VTKVideoEncoderResultType EncodeInternal(vtkSmartPointer<vtkRawVideoFrame> frame) override;
+  VTKVideoEncoderResultType SendEOS() override;
 
   bool AllocateInputBuffers();
   void ReleaseInputBuffers();

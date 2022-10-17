@@ -27,12 +27,7 @@
 #include "vtkOpenGLResourceFreeCallback.h"
 #include "vtkOpenGLState.h"
 #include "vtkOpenGLVideoFrame.h"
-#include "vtkRawVideoFrame.h"
-#include "vtkSmartPointer.h"
 #include "vtkTextureObject.h"
-#include "vtkType.h"
-#include "vtkVideoCodecTypes.h"
-#include "vtkVideoProcessingStatusTypes.h"
 #include "vtk_glew.h"
 
 #include <memory>
@@ -113,6 +108,12 @@ bool vtkNvEncoderGL::SupportsCodec(VTKVideoCodecType codec) const noexcept
     default:
       return false;
   }
+}
+
+//------------------------------------------------------------------------------
+std::string vtkNvEncoderGL::GetISOCodecParameterString() const noexcept
+{
+  return "avc1";
 }
 
 //------------------------------------------------------------------------------
@@ -215,17 +216,8 @@ bool vtkNvEncoderGL::InitializeInternal()
 //------------------------------------------------------------------------------
 void vtkNvEncoderGL::ShutdownInternal()
 {
-  if (this->GraphicsContext != nullptr)
-  {
-    this->ReleaseGLResources(this->GraphicsContext);
-    this->Internals->Shutdown();
-  }
-}
-
-//------------------------------------------------------------------------------
-void vtkNvEncoderGL::FlushInternal()
-{
-  this->Internals->Flush();
+  this->ResourceCallback->Release();
+  this->Internals->Shutdown();
 }
 
 //------------------------------------------------------------------------------
@@ -242,7 +234,7 @@ void vtkNvEncoderGL::TearDownEncoderFrame()
 }
 
 //------------------------------------------------------------------------------
-VTKVideoProcessingStatusType vtkNvEncoderGL::PushInternal(VTKVideoEncoderInputType frame)
+VTKVideoEncoderResultType vtkNvEncoderGL::EncodeInternal(vtkSmartPointer<vtkRawVideoFrame> frame)
 {
   vtkLogScopeFunction(TRACE);
   auto& internals = (*this->Internals);
@@ -250,31 +242,6 @@ VTKVideoProcessingStatusType vtkNvEncoderGL::PushInternal(VTKVideoEncoderInputTy
 
   input->DeepCopy(frame);
   glFlush();
-
-  return vtkNvEncoderInternals::ParseNvEncodeAPIStatus(internals.Send(this->ForceIFrame));
-}
-
-//------------------------------------------------------------------------------
-VTKVideoEncoderResultType vtkNvEncoderGL::GetResultInternal()
-{
-  vtkLogScopeFunction(TRACE);
-  auto& internals = (*this->Internals);
-  std::vector<vtkSmartPointer<vtkCompressedVideoPacket>> packets;
-  bool success = internals.Receive(packets, true);
-  return VTKVideoEncoderResultType(
-    { success ? VTKVideoProcessingStatusType::VTKVPStatus_Success
-              : VTKVideoProcessingStatusType::VTKVPStatus_UnknownError,
-      packets });
-}
-
-//------------------------------------------------------------------------------
-VTKVideoEncoderResultType vtkNvEncoderGL::EncodeInternal(VTKVideoEncoderInputType frame)
-{
-  vtkLogScopeFunction(TRACE);
-  auto& internals = (*this->Internals);
-  auto input = this->Internals->GetNextInputFrame();
-
-  input->DeepCopy(frame);
 
   auto status = internals.Send(this->ForceIFrame);
   if (status != NV_ENC_SUCCESS)
@@ -295,44 +262,15 @@ VTKVideoEncoderResultType vtkNvEncoderGL::EncodeInternal(VTKVideoEncoderInputTyp
 }
 
 //------------------------------------------------------------------------------
-VTKVideoEncoderResultType vtkNvEncoderGL::EncodeDisplayInternal()
-{
-  vtkLogScopeFunction(TRACE);
-  auto& internals = (*this->Internals);
-  auto input = this->Internals->GetNextInputFrame();
-
-  input->Capture(this->GraphicsContext);
-  glFlush();
-
-  auto status = internals.Send(this->ForceIFrame);
-  if (status != NV_ENC_SUCCESS)
-  {
-    return { vtkNvEncoderInternals::ParseNvEncodeAPIStatus(status), {} };
-  }
-  std::vector<vtkSmartPointer<vtkCompressedVideoPacket>> packets;
-  bool success = internals.Receive(packets, true);
-
-  if (success)
-  {
-    return { VTKVideoProcessingStatusType::VTKVPStatus_Success, packets };
-  }
-  else
-  {
-    return { VTKVideoProcessingStatusType::VTKVPStatus_UnknownError, packets };
-  }
-}
-
-//------------------------------------------------------------------------------
-VTKVideoEncoderResultType vtkNvEncoderGL::DrainInternal()
+VTKVideoEncoderResultType vtkNvEncoderGL::SendEOS()
 {
   vtkLogScopeFunction(TRACE);
   auto& internals = (*this->Internals);
   internals.SendEOS();
-  std::vector<vtkSmartPointer<vtkCompressedVideoPacket>> packets;
-  auto status = internals.Receive(packets, false);
-  return { status ? VTKVideoProcessingStatusType::VTKVPStatus_Success
-                  : VTKVideoProcessingStatusType::VTKVPStatus_UnknownError,
-    packets };
+  VTKVideoEncoderResultType result;
+  internals.Receive(result.second);
+  result.first = VTKVideoProcessingStatusType::VTKVPStatus_Success;
+  return result;
 }
 
 //------------------------------------------------------------------------------
@@ -358,6 +296,7 @@ bool vtkNvEncoderGL::AllocateInputBuffers()
   std::vector<void*> inputResources;
   std::vector<vtkSmartPointer<vtkRawVideoFrame>> inputFrames;
   auto glContext = vtkOpenGLRenderWindow::SafeDownCast(this->GraphicsContext);
+  this->ResourceCallback->RegisterGraphicsResources(glContext);
   for (std::size_t i = 0; i < internals.GetEncoderBufferCount(); ++i)
   {
     auto frame = vtk::TakeSmartPointer(vtkOpenGLVideoFrame::New());
