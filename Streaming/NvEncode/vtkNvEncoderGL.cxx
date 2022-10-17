@@ -111,12 +111,6 @@ bool vtkNvEncoderGL::SupportsCodec(VTKVideoCodecType codec) const noexcept
 }
 
 //------------------------------------------------------------------------------
-std::string vtkNvEncoderGL::GetISOCodecParameterString() const noexcept
-{
-  return "avc1";
-}
-
-//------------------------------------------------------------------------------
 bool vtkNvEncoderGL::InitializeInternal()
 {
   // 1. Load CUDA driver API from scratch if needed.

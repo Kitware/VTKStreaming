@@ -68,12 +68,6 @@ void vtkFFmpegSoftwareEncoder::PrintSelf(ostream& os, vtkIndent indent)
 }
 
 //------------------------------------------------------------------------------
-std::string vtkFFmpegSoftwareEncoder::GetISOCodecParameterString() const noexcept
-{
-  return "unknown";
-}
-
-//------------------------------------------------------------------------------
 bool vtkFFmpegSoftwareEncoder::InitializeInternal()
 {
   vtkLogScopeFunction(TRACE);

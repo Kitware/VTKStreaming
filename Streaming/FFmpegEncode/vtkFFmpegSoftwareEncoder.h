@@ -53,8 +53,6 @@ protected:
   vtkFFmpegSoftwareEncoder();
   ~vtkFFmpegSoftwareEncoder() override;
 
-  std::string GetISOCodecParameterString() const noexcept override;
-
   ///@{
   /**
    * Implement parent class encoder context management and status translation.
