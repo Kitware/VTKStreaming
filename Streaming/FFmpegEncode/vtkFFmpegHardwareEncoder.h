@@ -123,8 +123,6 @@ protected:
   };
   DesktopGPUVendor PreferredGPU = DesktopGPUVendor::None;
 
-  std::string GetISOCodecParameterString() const noexcept override;
-
   ///@{
   /**
    * Implement parent class encoder context management and status translation.

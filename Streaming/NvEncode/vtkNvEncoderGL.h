@@ -58,8 +58,6 @@ protected:
 
   vtkGenericOpenGLResourceFreeCallback* ResourceCallback = nullptr;
 
-  std::string GetISOCodecParameterString() const noexcept override;
-
   bool InitializeInternal() override;
   void ShutdownInternal() override;
 

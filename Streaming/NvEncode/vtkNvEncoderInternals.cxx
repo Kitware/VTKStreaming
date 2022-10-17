@@ -574,7 +574,9 @@ NVENCSTATUS vtkNvEncoderInternals::Send(bool keyFrame /*=false*/)
   picParams.completionEvent = nullptr;
   if (keyFrame)
   {
-    picParams.encodePicFlags = NV_ENC_PIC_FLAG_FORCEIDR;
+    picParams.encodePicFlags = (this->NvEncInitializeParams.enablePTD == 1)
+      ? NV_ENC_PIC_FLAG_FORCEIDR
+      : NV_ENC_PIC_FLAG_FORCEINTRA;
   }
   else
   {
