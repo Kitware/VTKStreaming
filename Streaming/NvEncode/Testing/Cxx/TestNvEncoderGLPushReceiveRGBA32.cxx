@@ -37,7 +37,13 @@ int TestNvEncoderGLPushReceiveRGBA32(int argc, char* argv[])
 {
   vtkStreamingTestUtility::SetLoggerVerbosityFromCli(argc, argv);
   bool success = true;
-  const int width = 333, height = 429;
+  const int width = 641, height = 953;
+  int shift = 0, frameId = 0;
+  std::vector<uint8_t> bitstream;
+
+#if WRITE_BITSTREAM
+  std::ofstream file("moving_bars_rgba.h264", std::ios::out | std::ios::binary);
+#endif
 
   vtkNew<vtkRenderWindow> win;
   vtkNew<vtkRenderer> ren;
@@ -46,38 +52,14 @@ int TestNvEncoderGLPushReceiveRGBA32(int argc, char* argv[])
   renWin->Initialize();
   renWin->Render();
 
-  vtkNew<vtkNvEncoderGL> enc;
-  enc->SetGraphicsContext(renWin);
-  enc->SetWidth(width);
-  enc->SetHeight(height);
-  enc->SetCodec(VTKVideoCodecType::VTKVC_H264);
-  enc->AsyncModeOff();
-  enc->SetInputPixelFormat(VTKPixelFormatType::VTKPF_RGBA32);
-
-  vtkNew<vtkOpenGLVideoFrame> rgba32Picture;
-  rgba32Picture->SetContext(renWin);
-  rgba32Picture->SetWidth(width);
-  rgba32Picture->SetHeight(height);
-  rgba32Picture->SetPixelFormat(VTKPixelFormatType::VTKPF_RGBA32);
-  rgba32Picture->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::TopDown);
-  rgba32Picture->ComputeDefaultStrides();
-  rgba32Picture->Print(std::cout);
-
-  int shift = 0, frameId = 0;
+  auto writeBitstream =
 #if WRITE_BITSTREAM
-  std::ofstream file("moving_bars_rgba.h264", std::ios::out | std::ios::binary);
+    [&file, &bitstream, &frameId, &success]
+#else
+    [&bitstream, &frameId, &success]
 #endif
-  while (true)
-  {
-    auto pixels = vtk::TakeSmartPointer(
-      vtkStreamingTestUtility::GenerateRGBA32ColorBars(width, height, shift++));
-    std::vector<uint8_t> bitstream;
-
-    if (shift >= 64)
-    {
-      // drain out remaining packets
-      auto result = enc->Drain();
-      std::vector<uint8_t> bitstream;
+    (VTKVideoEncoderResultType result) {
+      bitstream.clear();
       for (const auto& packet : result.second)
       {
         auto data = reinterpret_cast<char*>(packet->GetData()->GetPointer(0));
@@ -90,39 +72,48 @@ int TestNvEncoderGLPushReceiveRGBA32(int argc, char* argv[])
 #if WRITE_BITSTREAM
         file.write((char*)bitstream.data(), bitstream.size());
 #endif
+        if (frameId > 0)
+        {
+          assert(bitstream.size() > 10);
+          success &= bitstream.size() > 10;
+        }
+        ++frameId;
       }
-      enc->Shutdown();
+    };
+
+  vtkNew<vtkNvEncoderGL> enc;
+  enc->SetOutputHandler(writeBitstream);
+  enc->SetGraphicsContext(renWin);
+  enc->SetWidth(width);
+  enc->SetHeight(height);
+  enc->SetCodec(VTKVideoCodecType::VTKVC_H264);
+  enc->SetInputPixelFormat(VTKPixelFormatType::VTKPF_RGBA32);
+
+  vtkNew<vtkOpenGLVideoFrame> rgba32Picture;
+  rgba32Picture->SetContext(renWin);
+  rgba32Picture->SetWidth(width);
+  rgba32Picture->SetHeight(height);
+  rgba32Picture->SetPixelFormat(VTKPixelFormatType::VTKPF_RGBA32);
+  rgba32Picture->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::TopDown);
+  rgba32Picture->ComputeDefaultStrides();
+  rgba32Picture->AllocateDataStore();
+
+  while (true)
+  {
+    auto pixels = vtk::TakeSmartPointer(
+      vtkStreamingTestUtility::GenerateRGBA32ColorBars(width, height, shift++));
+
+    if (shift >= 64)
+    {
+      // drain out remaining packets
+      enc->Drain();
       break;
     }
     rgba32Picture->CopyData(pixels, width * 4, height);
     rgba32Picture->Render(renWin);
 
-    auto status = enc->Push(rgba32Picture);
+    enc->Encode(rgba32Picture);
     vtkLogF(INFO, "Sent %d bytes", rgba32Picture->GetActualSize());
-    if (status == VTKVideoProcessingStatusType::VTKVPStatus_TrySendAgain)
-    {
-      continue;
-    }
-    auto result = enc->GetResult();
-    vtkLogF(TRACE, "GetResult - %s", vtkVideoProcessingStatusTypeUtilities::ToString(result.first));
-    for (const auto& packet : result.second)
-    {
-      auto data = reinterpret_cast<char*>(packet->GetData()->GetPointer(0));
-      auto size = packet->GetSize();
-      for (int i = 0; i < size; ++i)
-      {
-        bitstream.push_back(data[i]);
-      }
-    }
-#if WRITE_BITSTREAM
-    file.write((char*)bitstream.data(), bitstream.size());
-#endif
-    if (frameId > 0)
-    {
-      assert(bitstream.size() > 10);
-      success &= bitstream.size() > 10;
-    }
-    ++frameId;
   }
   return success ? 0 : 1;
 }

@@ -37,7 +37,7 @@ vtkStandardNewMacro(vtkOpenGLVideoFrame);
   {                                                                                                \
     if (this->Internals->Tid != std::this_thread::get_id())                                        \
     {                                                                                              \
-      vtkLog(ERROR, "Attempted to execute thread-unsafe code from worker thread.");                \
+      vtkLog(ERROR, "Attempted to execute thread-unsafe code.");                                   \
       abort();                                                                                     \
     }                                                                                              \
   } while (0)
@@ -504,7 +504,6 @@ void vtkOpenGLVideoFrame::DeepCopy(vtkRawVideoFrame* from)
   glBindTexture(internals.VtkTexture->GetTarget(), 0);
   internals.VtkFrameBuffer->RemoveColorAttachments(0);
   internals.VtkFrameBuffer->RestorePreviousBindingsAndBuffers();
-  internals.sync = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 }
 
 //------------------------------------------------------------------------------

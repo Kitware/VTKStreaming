@@ -9,12 +9,7 @@ KIT
 DEPENDS
   VTKStreaming::Core
   VTK::RenderingCore
-PRIVATE_DEPENDS
   VTK::ParallelCore
+PRIVATE_DEPENDS
   VTK::RenderingOpenGL2
   VTKStreaming::OpenGL2
-TEST_DEPENDS
-  VTK::TestingCore
-  VTK::RenderingOpenGL2
-  VTKStreaming::OpenGL2
-  VTKStreaming::TestUtilites

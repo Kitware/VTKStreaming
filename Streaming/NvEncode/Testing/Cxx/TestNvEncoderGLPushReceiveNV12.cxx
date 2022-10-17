@@ -29,6 +29,7 @@
 #include "vtkStreamingTestUtility.h"
 #include "vtkTestUtilities.h"
 #include "vtkVideoProcessingStatusTypes.h"
+#include "vtkVideoProcessingWorkUnitTypes.h"
 
 #include <cstdint>
 #include <fstream>
@@ -43,6 +44,8 @@ int TestNvEncoderGLPushReceiveNV12(int argc, char* argv[])
   vtkStreamingTestUtility::SetLoggerVerbosityFromCli(argc, argv);
   bool success = true;
   const int width = 320, height = 240;
+  int frameId = 0;
+  std::vector<uint8_t> bitstream;
 
   char* filename = vtkTestUtilities::ExpandDataFileName(argc, argv, "cars_320x240.nv12");
   vtkLogF(INFO, "Read %s", filename);
@@ -54,6 +57,10 @@ int TestNvEncoderGLPushReceiveNV12(int argc, char* argv[])
   }
   delete[] filename;
 
+#if WRITE_BITSTREAM
+  std::ofstream file("cars_320x240_nv12.h264", std::ios::out | std::ios::binary);
+#endif
+
   vtkNew<vtkRenderWindow> win;
   vtkNew<vtkRenderer> ren;
   auto renWin = vtkOpenGLRenderWindow::SafeDownCast(win);
@@ -61,12 +68,41 @@ int TestNvEncoderGLPushReceiveNV12(int argc, char* argv[])
   renWin->Initialize();
   renWin->Render();
 
+  auto writeBitstream =
+#if WRITE_BITSTREAM
+    [&file, &bitstream, &frameId, &success]
+#else
+    [&bitstream, &frameId, &success]
+#endif
+    (VTKVideoEncoderResultType result) {
+      bitstream.clear();
+      for (const auto& packet : result.second)
+      {
+        auto data = reinterpret_cast<char*>(packet->GetData()->GetPointer(0));
+        auto size = packet->GetSize();
+        vtkLogF(INFO, "Recvd %d bytes", size);
+        for (int i = 0; i < size; ++i)
+        {
+          bitstream.push_back(data[i]);
+        }
+#if WRITE_BITSTREAM
+        file.write((char*)bitstream.data(), bitstream.size());
+#endif
+        if (frameId > 0)
+        {
+          assert(bitstream.size() > 10);
+          success &= bitstream.size() > 10;
+        }
+        ++frameId;
+      }
+    };
+
   vtkNew<vtkNvEncoderGL> enc;
+  enc->SetOutputHandler(writeBitstream);
   enc->SetGraphicsContext(renWin);
   enc->SetWidth(width);
   enc->SetHeight(height);
   enc->SetCodec(VTKVideoCodecType::VTKVC_H264);
-  enc->AsyncModeOff();
   enc->SetInputPixelFormat(VTKPixelFormatType::VTKPF_NV12);
 
   vtkNew<vtkOpenGLVideoFrame> nv12Picture;
@@ -79,10 +115,6 @@ int TestNvEncoderGLPushReceiveNV12(int argc, char* argv[])
   nv12Picture->AllocateDataStore();
 
   auto estSize = vtkRawVideoFrame::GetEstimatedSize(width, height, VTKPixelFormatType::VTKPF_NV12);
-  int frameId = 0;
-#if WRITE_BITSTREAM
-  std::ofstream file("cars_320x240_nv12.h264", std::ios::out | std::ios::binary);
-#endif
   while (true)
   {
     std::unique_ptr<uint8_t[]> pixels(new uint8_t[estSize]);
@@ -92,53 +124,15 @@ int TestNvEncoderGLPushReceiveNV12(int argc, char* argv[])
     if (numRead != estSize)
     {
       // drain out remaining packets
-      auto result = enc->Drain();
-      for (const auto& packet : result.second)
-      {
-        auto data = packet->GetData()->GetPointer(0);
-        auto size = packet->GetSize();
-        vtkLogF(INFO, "Recvd %d bytes", size);
-        for (std::size_t i = 0; i < size; ++i)
-        {
-          bitstream.push_back(data[i]);
-        }
-#if WRITE_BITSTREAM
-        file.write((char*)bitstream.data(), bitstream.size());
-#endif
-      }
-      enc->Shutdown();
+      enc->Drain();
       break;
     }
     nv12Picture->CopyPlanarData(pixels.get(), width, height, 0);
     nv12Picture->CopyPlanarData(pixels.get() + width * height, width, (height + 1) >> 1, 1);
     nv12Picture->Render(renWin);
 
-    auto status = enc->Push(nv12Picture);
+    enc->Encode(nv12Picture);
     vtkLogF(INFO, "Sent %d bytes", nv12Picture->GetActualSize());
-    if (status == VTKVideoProcessingStatusType::VTKVPStatus_TrySendAgain)
-    {
-      continue;
-    }
-    auto result = enc->GetResult();
-    for (const auto& packet : result.second)
-    {
-      auto data = reinterpret_cast<char*>(packet->GetData()->GetPointer(0));
-      auto size = packet->GetSize();
-      vtkLogF(INFO, "Recvd %d bytes", size);
-      for (int i = 0; i < size; ++i)
-      {
-        bitstream.push_back(data[i]);
-      }
-    }
-#if WRITE_BITSTREAM
-    file.write((char*)bitstream.data(), bitstream.size());
-#endif
-    if (frameId > 0)
-    {
-      assert(bitstream.size() > 10);
-      success &= bitstream.size() > 10;
-    }
-    ++frameId;
   }
   return success ? 0 : 1;
 }

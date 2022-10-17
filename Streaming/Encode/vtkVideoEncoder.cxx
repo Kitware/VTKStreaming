@@ -15,40 +15,19 @@
 
 #include "vtkVideoEncoder.h"
 
-#include "vtkAsynchronousEncoderDelegate.h"
-#include "vtkCommand.h"
 #include "vtkLogger.h"
 #include "vtkObjectFactory.h"
-#include "vtkPixelFormatTypes.h"
-#include "vtkRawVideoFrame.h"
-#include "vtkRenderWindow.h"
-#include "vtkSmartPointer.h"
-#include "vtkVideoProcessingStatusTypes.h"
-#include "vtkVideoProcessingWorkUnitTypes.h"
 
 //------------------------------------------------------------------------------
 vtkVideoEncoder::vtkVideoEncoder() = default;
 
 //------------------------------------------------------------------------------
-vtkVideoEncoder::~vtkVideoEncoder()
-{
-  if (this->HasDelegate())
-  {
-    this->Delegate->Terminate();
-    this->Delegate->Delete();
-    this->Delegate = nullptr;
-  }
-}
+vtkVideoEncoder::~vtkVideoEncoder() = default;
 
 //------------------------------------------------------------------------------
 void vtkVideoEncoder::PrintSelf(ostream& os, vtkIndent indent)
 {
   this->Superclass::PrintSelf(os, indent);
-  os << "AsyncMode: " << (this->HasDelegate() ? "yes" : "no") << '\n';
-  if (this->HasDelegate())
-  {
-    this->Delegate->PrintSelf(os, indent.GetNextIndent());
-  }
   os << "Encoder Context: \n";
   os << "Codec: " << vtkVideoCodecTypeUtilities::ToString(this->Codec) << '\n';
   os << "Width: " << this->Width << '\n';
@@ -58,8 +37,6 @@ void vtkVideoEncoder::PrintSelf(ostream& os, vtkIndent indent)
   os << "KeyFramesOnly: " << this->KeyFramesOnly << '\n';
   os << "LowDelayMode: " << this->LowDelayMode << '\n';
   os << "NumberOfEncoderThreads: " << this->NumberOfEncoderThreads << '\n';
-  os << "SupportsAsyncMode: " << this->SupportsAsyncMode() << '\n';
-  os << "SupportsZeroCopy: " << this->SupportsZeroCopy() << '\n';
 
   os << "Sequence Parameters: \n";
   os << "GOP size: " << this->GroupOfPicturesSize << '\n';
@@ -95,6 +72,11 @@ void vtkVideoEncoder::PrintSelf(ostream& os, vtkIndent indent)
   this->GraphicsContext->PrintSelf(os, indent.GetNextIndent());
 }
 
+void vtkVideoEncoder::SetOutputHandler(std::function<void(VTKVideoEncoderResultType)> outputHandler)
+{
+  this->OutputHandler = outputHandler;
+}
+
 //------------------------------------------------------------------------------
 void vtkVideoEncoder::SetGraphicsContext(vtkRenderWindow* context)
 {
@@ -105,71 +87,6 @@ void vtkVideoEncoder::SetGraphicsContext(vtkRenderWindow* context)
 vtkRenderWindow* vtkVideoEncoder::GetGraphicsContext() const
 {
   return this->GraphicsContext;
-}
-
-//------------------------------------------------------------------------------
-vtkRenderWindow* vtkVideoEncoder::GetDelegateGraphicsContext() const
-{
-  return this->Delegate ? this->Delegate->GetWorkerGfxContext() : nullptr;
-}
-
-//------------------------------------------------------------------------------
-bool vtkVideoEncoder::HasDelegate()
-{
-  return this->Delegate != nullptr;
-}
-
-//------------------------------------------------------------------------------
-void vtkVideoEncoder::SetAsyncMode(bool val)
-{
-  vtkLogScopeF(TRACE, "%s val=%s", __func__, val ? "true" : "false");
-  if (!this->SupportsAsyncMode())
-  {
-    vtkLog(TRACE, << "Bypass the delegate.");
-    return;
-  }
-
-  if (val)
-  {
-    if (this->HasDelegate())
-    {
-      return;
-    }
-    else if (this->Initialized)
-    {
-      this->Shutdown();
-    }
-    this->Delegate = vtkAsynchronousEncoderDelegate::New();
-  }
-  else
-  {
-    vtkLog(TRACE, << "Bypass the delegate.");
-    if (this->HasDelegate())
-    {
-      this->Shutdown();
-      this->Delegate->Delete();
-      this->Delegate = nullptr;
-      return;
-    }
-  }
-}
-
-//------------------------------------------------------------------------------
-bool vtkVideoEncoder::GetAsyncMode()
-{
-  return this->HasDelegate();
-}
-
-//------------------------------------------------------------------------------
-void vtkVideoEncoder::AsyncModeOn()
-{
-  this->SetAsyncMode(true);
-}
-
-//------------------------------------------------------------------------------
-void vtkVideoEncoder::AsyncModeOff()
-{
-  this->SetAsyncMode(false);
 }
 
 //------------------------------------------------------------------------------
@@ -204,84 +121,6 @@ void vtkVideoEncoder::SetInputPixelFormat(int pixFmt)
   {
     this->SetInputPixelFormat(static_cast<VTKPixelFormatType>(pixFmt));
   }
-}
-
-//------------------------------------------------------------------------------
-bool vtkVideoEncoder::NeedsNewEncoderFrame(int width, int height)
-{
-  auto alignedW = vtkRawVideoFrame::AlignUp(width, 8);
-  auto alignedH = vtkRawVideoFrame::AlignUp(height, 8);
-  vtkLogScopeF(TRACE, "%s my=%dx%d | given=%dx%d | aligned=%dx%d", __func__, this->Width,
-    this->Height, width, height, alignedW, alignedH);
-  bool outdated = alignedW != this->Width || alignedH != this->Height;
-  this->Width = alignedW;
-  this->Height = alignedH;
-  return outdated;
-}
-
-//------------------------------------------------------------------------------
-bool vtkVideoEncoder::Initialize()
-{
-  vtkLogScopeFunction(TRACE);
-
-  if (this->Initialized)
-  {
-    vtkLog(WARNING,
-      "Encoder context already initialized. Please close existing contexts. Call Shutdown()");
-    return true;
-  }
-
-  this->Initialized = this->InitializeInternal();
-
-  if (this->HasDelegate())
-  {
-    this->Delegate->Terminate();
-    // set the worker function to delegate processing of frames with an async encoder delegate
-    using namespace std::placeholders; // for _1
-    VTKVideoEncodeWorkerType worker = std::bind(&vtkVideoEncoder::Encode, this, _1);
-
-    // from this point on, async delegate takes care of processing frames into compressed packets.
-    this->Delegate->InitializeWorker(worker, this->GraphicsContext);
-    return this->Initialized;
-  }
-  else
-  {
-    // Initialization complete.
-    return this->Initialized;
-  }
-}
-
-//------------------------------------------------------------------------------
-void vtkVideoEncoder::Shutdown()
-{
-  vtkLogScopeFunction(TRACE);
-  if (!this->Initialized)
-  {
-    return;
-  }
-  if (this->HasDelegate())
-  {
-    this->CancelPendingEncodeRequests();
-    this->Delegate->Terminate();
-  }
-  this->ShutdownInternal();
-  this->Initialized = false;
-}
-
-//------------------------------------------------------------------------------
-void vtkVideoEncoder::Flush()
-{
-  vtkLogScopeFunction(TRACE);
-  if (!this->Initialized)
-  {
-    return;
-  }
-  if (this->HasDelegate())
-  {
-    // Prevent race conditions - flush pending tasks before draining the encoder.
-    this->Delegate->Flush();
-  }
-  this->FlushInternal();
 }
 
 //------------------------------------------------------------------------------
@@ -323,30 +162,71 @@ void vtkVideoEncoder::ForceIFrameOff()
 }
 
 //------------------------------------------------------------------------------
-VTKVideoEncoderResultType vtkVideoEncoder::Drain()
+bool vtkVideoEncoder::NeedsNewEncoderFrame(int width, int height)
+{
+  auto alignedW = vtkRawVideoFrame::AlignUp(width, 8);
+  auto alignedH = vtkRawVideoFrame::AlignUp(height, 8);
+  vtkLogScopeF(TRACE, "%s my=%dx%d | given=%dx%d | aligned=%dx%d", __func__, this->Width,
+    this->Height, width, height, alignedW, alignedH);
+  bool outdated = alignedW != this->Width || alignedH != this->Height;
+  this->Width = alignedW;
+  this->Height = alignedH;
+  return outdated;
+}
+
+//------------------------------------------------------------------------------
+bool vtkVideoEncoder::Initialize()
+{
+  vtkLogScopeFunction(TRACE);
+
+  if (this->Initialized)
+  {
+    vtkLog(WARNING,
+      "Encoder context already initialized. Please close existing contexts. Call Shutdown()");
+    return true;
+  }
+  this->Initialized = this->InitializeInternal();
+  return this->Initialized;
+}
+
+//------------------------------------------------------------------------------
+void vtkVideoEncoder::Shutdown()
 {
   vtkLogScopeFunction(TRACE);
   if (!this->Initialized)
   {
-    return { VTKVideoProcessingStatusType::VTKVPStatus_Success, {} };
+    return;
   }
-  if (this->HasDelegate())
-  {
-    // Prevent race conditions - flush pending tasks before draining the encoder.
-    this->Delegate->Flush();
-  }
-  return this->DrainInternal();
+  this->Drain();
+  this->ShutdownInternal();
+  this->Initialized = false;
 }
 
 //------------------------------------------------------------------------------
-VTKVideoProcessingStatusType vtkVideoEncoder::Push(vtkRawVideoFrame* frame)
+void vtkVideoEncoder::Flush()
 {
   vtkLogScopeFunction(TRACE);
-
-  if (frame == nullptr)
+  if (!this->Initialized)
   {
-    return VTKVideoProcessingStatusType::VTKVPStatus_InvalidValue;
+    return;
   }
+}
+
+//------------------------------------------------------------------------------
+void vtkVideoEncoder::Drain()
+{
+  vtkLogScopeFunction(TRACE);
+  if (!this->Initialized)
+  {
+    return;
+  }
+  this->SendEOS();
+}
+
+//------------------------------------------------------------------------------
+void vtkVideoEncoder::Encode(vtkSmartPointer<vtkRawVideoFrame> frame)
+{
+  vtkLogScopeFunction(TRACE);
 
   const int& width = frame->GetWidth();
   const int& height = frame->GetHeight();
@@ -354,88 +234,9 @@ VTKVideoProcessingStatusType vtkVideoEncoder::Push(vtkRawVideoFrame* frame)
   auto ctxStatus = this->UpdateEncoderContext(width, height);
   if (ctxStatus != VTKVideoProcessingStatusType::VTKVPStatus_Success)
   {
-    return ctxStatus;
+    vtkLogF(ERROR, "Failed to update encoder context for %dx%d", width, height);
   }
-
-  this->IgnoreEncodeRequest = false;
-  if (this->HasDelegate())
-  {
-    this->Delegate->PushWorkUnit(frame);
-    return VTKVideoProcessingStatusType::VTKVPStatus_Success;
-  }
-  else
-  {
-    return this->PushInternal(frame);
-  }
-}
-
-//------------------------------------------------------------------------------
-VTKVideoEncoderResultType vtkVideoEncoder::Encode(VTKVideoEncoderInputType frame)
-{
-  vtkLogScopeFunction(TRACE);
-  if (this->IgnoreEncodeRequest)
-  {
-    vtkLog(TRACE, "Ignoring encode request.");
-    return { VTKVideoProcessingStatusType::VTKVPStatus_Success, {} };
-  }
-  auto result = this->EncodeInternal(frame);
-  this->InvokeEvent(vtkCommand::ProgressEvent);
-  return result;
-}
-
-//------------------------------------------------------------------------------
-bool vtkVideoEncoder::HasResult()
-{
-  vtkLogScopeFunction(TRACE);
-  return this->HasDelegate() ? this->Delegate->HasResult() : false;
-}
-
-//------------------------------------------------------------------------------
-VTKVideoEncoderResultType vtkVideoEncoder::GetResult()
-{
-  vtkLogScopeFunction(TRACE);
-  auto result = this->HasDelegate() ? this->Delegate->GetResult() : this->GetResultInternal();
-  return result;
-}
-
-//------------------------------------------------------------------------------
-void vtkVideoEncoder::CancelPendingEncodeRequests()
-{
-  this->IgnoreEncodeRequest = true;
-}
-
-//------------------------------------------------------------------------------
-VTKVideoEncoderResultType vtkVideoEncoder::EncodeDisplay()
-{
-  vtkLogScopeF(TRACE, "%s window=%s", __func__, vtkLogIdentifier(this->GraphicsContext));
-
-  if (this->GraphicsContext == nullptr)
-  {
-    vtkLog(WARNING,
-      "Please set graphics context with "
-      "vtkVideoEncoder::SetGraphicsContext(vtkRenderWindow*).");
-    return { VTKVideoProcessingStatusType::VTKVPStatus_InvalidValue, {} };
-  }
-  if (this->GetAsyncMode())
-  {
-    vtkLog(ERROR, "The encoder is in async mode. Please use Push/GetResult API.");
-    return { VTKVideoProcessingStatusType::VTKVPStatus_InvalidValue, {} };
-  }
-  else
-  {
-    const int& width = this->GraphicsContext->GetSize()[0];
-    const int& height = this->GraphicsContext->GetSize()[1];
-
-    auto ctxStatus = this->UpdateEncoderContext(width, height);
-    if (ctxStatus == VTKVideoProcessingStatusType::VTKVPStatus_Success)
-    {
-      return this->EncodeDisplayInternal();
-    }
-    else
-    {
-      return { ctxStatus, {} };
-    }
-  }
+  this->OutputHandler(this->EncodeInternal(frame));
 }
 
 //------------------------------------------------------------------------------
@@ -456,7 +257,7 @@ VTKVideoProcessingStatusType vtkVideoEncoder::UpdateEncoderContext(int width, in
       vtkLog(ERROR, "Failed to initialize encoding context.");
       return VTKVideoProcessingStatusType::VTKVPStatus_UnknownError;
     }
-    success = this->SetupEncoderFrame(width, height);
+    const bool success = this->SetupEncoderFrame(width, height);
     this->LastSetupMTime = success ? this->GetMTime() : -1;
     if (!success)
     {
