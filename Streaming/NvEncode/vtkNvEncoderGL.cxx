@@ -111,12 +111,6 @@ bool vtkNvEncoderGL::SupportsCodec(VTKVideoCodecType codec) const noexcept
 }
 
 //------------------------------------------------------------------------------
-std::string vtkNvEncoderGL::GetISOCodecParameterString() const noexcept
-{
-  return "avc1";
-}
-
-//------------------------------------------------------------------------------
 bool vtkNvEncoderGL::InitializeInternal()
 {
   // 1. Load CUDA driver API from scratch if needed.
@@ -250,6 +244,10 @@ VTKVideoEncoderResultType vtkNvEncoderGL::EncodeInternal(vtkSmartPointer<vtkRawV
   }
   std::vector<vtkSmartPointer<vtkCompressedVideoPacket>> packets;
   bool success = internals.Receive(packets);
+  for (const auto& pkt : packets)
+  {
+    pkt->SetIsKeyFrame(this->ForceIFrame);
+  }
 
   if (success)
   {

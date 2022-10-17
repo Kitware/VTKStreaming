@@ -152,12 +152,6 @@ void vtkFFmpegHardwareEncoder::PreferIntelEncoders()
 }
 
 //------------------------------------------------------------------------------
-std::string vtkFFmpegHardwareEncoder::GetISOCodecParameterString() const noexcept
-{
-  return "unknown";
-}
-
-//------------------------------------------------------------------------------
 bool vtkFFmpegHardwareEncoder::InitializeInternal()
 {
   vtkLogScopeFunction(TRACE);

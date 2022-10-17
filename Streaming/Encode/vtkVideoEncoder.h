@@ -303,11 +303,6 @@ protected:
    */
   bool NeedsNewEncoderFrame(int width, int height);
 
-  /**
-   * Returns true if given width and height do not match the encoding context's width and height.
-   */
-  virtual std::string GetISOCodecParameterString() const noexcept = 0;
-
   ///@{
   /**
    * Concrete subclasses must handle initialization, allocation and freeing of encoder resources.
