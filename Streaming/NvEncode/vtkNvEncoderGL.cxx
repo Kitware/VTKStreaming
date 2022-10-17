@@ -244,6 +244,10 @@ VTKVideoEncoderResultType vtkNvEncoderGL::EncodeInternal(vtkSmartPointer<vtkRawV
   }
   std::vector<vtkSmartPointer<vtkCompressedVideoPacket>> packets;
   bool success = internals.Receive(packets);
+  for (const auto& pkt : packets)
+  {
+    pkt->SetIsKeyFrame(this->ForceIFrame);
+  }
 
   if (success)
   {
