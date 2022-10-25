@@ -1,8 +1,0 @@
-vtk_add_test_cxx(vtkStreamingFFmpegEncodeCxxTests tests
-  TestFFmpegEncoderPushReceiveIYUV.cxx,NO_VALID
-  TestFFmpegEncoderPushReceiveRGBA32.cxx,NO_VALID
-  TestFFmpegEncoderPushReceiveDisplayRGBA32.cxx,NO_VALID
-  TestFFmpegEncoderPushReceiveDisplayIYUV.cxx,NO_VALID
-  )
-
-vtk_test_cxx_executable(vtkStreamingFFmpegEncodeCxxTests tests)
