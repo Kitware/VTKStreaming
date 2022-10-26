@@ -14,7 +14,6 @@
 =========================================================================*/
 
 #include "vtkVideoDecoder.h"
-#include "vtkCommand.h"
 #include "vtkLogger.h"
 #include "vtkObjectFactory.h"
 
@@ -36,6 +35,12 @@ void vtkVideoDecoder::PrintSelf(ostream& os, vtkIndent indent)
 void vtkVideoDecoder::SetGraphicsContext(vtkRenderWindow* context)
 {
   this->GraphicsContext = context;
+}
+
+//------------------------------------------------------------------------------
+void vtkVideoDecoder::SetOutputHandler(std::function<void(VTKVideoDecoderResultType)> outputHandler)
+{
+  this->OutputHandler = outputHandler;
 }
 
 //------------------------------------------------------------------------------
@@ -80,54 +85,62 @@ void vtkVideoDecoder::Flush()
   {
     return;
   }
-  this->FlushInternal();
 }
 
 //------------------------------------------------------------------------------
-VTKVideoProcessingStatusType vtkVideoDecoder::Push(vtkCompressedVideoPacket* packet)
+void vtkVideoDecoder::Drain()
 {
   vtkLogScopeFunction(TRACE);
-
   if (!this->Initialized)
   {
+    return;
+  }
+  this->SendEOS();
+}
+
+//------------------------------------------------------------------------------
+void vtkVideoDecoder::Decode(vtkSmartPointer<vtkCompressedVideoPacket> packet)
+{
+  vtkLogScopeFunction(TRACE);
+  if (!this->UpdateDecoderContext(packet->GetWidth(), packet->GetHeight()))
+  {
+    if (this->OutputHandler != nullptr)
+    {
+      this->OutputHandler({ VTKVideoProcessingStatusType::VTKVPStatus_UnknownError, {} });
+    }
+    else
+    {
+      this->InvokeEvent(vtkVideoDecoder::DecodedVideoFrameEvent, nullptr);
+    }
+  }
+  if (this->OutputHandler != nullptr)
+  {
+    this->OutputHandler(this->DecodeInternal(packet));
+  }
+  else
+  {
+    auto result = this->DecodeInternal(packet);
+    for (const auto& frame : result.second)
+    {
+      this->InvokeEvent(vtkVideoDecoder::DecodedVideoFrameEvent, frame.GetPointer());
+    }
+  }
+}
+
+//------------------------------------------------------------------------------
+bool vtkVideoDecoder::UpdateDecoderContext(int width, int height)
+{
+  vtkLogScopeFunction(TRACE);
+  if (width != this->Width || height != this->Height || !this->Initialized)
+  {
+    this->Shutdown();
+    this->Width = width;
+    this->Height = height;
     if (!this->Initialize())
     {
       vtkLog(ERROR, "Failed to initialize decoding context.");
-      return VTKVideoProcessingStatusType::VTKVPStatus_UnknownError;
+      return false;
     }
   }
-  return this->PushInternal(packet);
-}
-
-//------------------------------------------------------------------------------
-VTKVideoDecoderResultType vtkVideoDecoder::Decode(vtkCompressedVideoPacket* packet)
-{
-  vtkLogScopeFunction(TRACE);
-  auto result = this->DecodeInternal(packet);
-  this->InvokeEvent(vtkCommand::ProgressEvent);
-  return result;
-}
-
-//------------------------------------------------------------------------------
-VTKVideoDecoderResultType vtkVideoDecoder::Drain()
-{
-  if (!this->Initialized)
-  {
-    return { VTKVideoProcessingStatusType::VTKVPStatus_Success, {} };
-  }
-  return this->DrainInternal();
-}
-
-//------------------------------------------------------------------------------
-bool vtkVideoDecoder::HasResult()
-{
-  vtkLogScopeFunction(TRACE);
-  return false;
-}
-
-//------------------------------------------------------------------------------
-VTKVideoDecoderResultType vtkVideoDecoder::GetResult()
-{
-  auto result = this->GetResultInternal();
-  return result;
+  return true;
 }
