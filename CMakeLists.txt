@@ -21,8 +21,6 @@ find_package(VTK COMPONENTS
   RenderingOpenGL2
   TestingCore
 )
-# to use FindFFMPEG.cmake from VTK.
-set(CMAKE_MODULE_PATH "${VTK_PREFIX_PATH}/lib/cmake/vtk-${VTK_MAJOR_VERSION}.${VTK_MINOR_VERSION}")
 if (VTK_FOUND)
   message (STATUS "VTK (${VTK_VERSION}): ${VTK_PREFIX_PATH}")
 endif ()
@@ -44,8 +42,22 @@ if (NOT DEFINED VTKSTREAMING_CMAKE_DESTINATION)
     "${CMAKE_INSTALL_LIBDIR}/cmake/vtkstreaming")
 endif ()
 
-set(vtkstreaming_src_directories "${PROJECT_SOURCE_DIR}/Streaming" "${PROJECT_SOURCE_DIR}/ThirdParty")
+# use, i.e. don't skip the full RPATH for the build tree
+set(CMAKE_SKIP_BUILD_RPATH FALSE)
+ 
+# when building, don't use the install RPATH already
+# (but later on when installing)
+set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
+set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+ 
+# add the automatically determined parts of the RPATH
+# which point to directories outside the build tree to the install RPATH
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+if (APPLE)
+  set(CMAKE_MACOSX_RPATH ON)
+endif ()
 
+set(vtkstreaming_src_directories "${PROJECT_SOURCE_DIR}/Streaming" "${PROJECT_SOURCE_DIR}/ThirdParty")
 set(_vtk_module_log ALL)
 vtk_module_find_modules(VTKSTREAMING_MODULE_FILES ${vtkstreaming_src_directories})
 vtk_module_find_kits(VTKSTREAMING_KIT_FILES ${vtkstreaming_src_directories})
@@ -60,14 +72,14 @@ vtk_module_scan(
   WANT_BY_DEFAULT        ON
 )
 vtk_module_build(
-  MODULES	               ${VTKSTREAMING_MODULES}
+  MODULES	           ${VTKSTREAMING_MODULES}
   INSTALL_EXPORT           ${VTKSTREAMING_INSTALL_EXPORT}
   INSTALL_HEADERS          ON
   HEADERS_DESTINATION     "${CMAKE_INSTALL_INCLUDEDIR}/vtkstreaming"
   CMAKE_DESTINATION       "${VTKSTREAMING_CMAKE_DESTINATION}"
   VERSION                 "${PROJECT_VERSION}"
   SOVERSION               "${PROJECT_VERSION}"
-  USE_EXTERNAL            OFF
+  USE_EXTERNAL             OFF
   TEST_INPUT_DATA_DIRECTORY   "${CMAKE_CURRENT_SOURCE_DIR}/Data"
   TEST_OUTPUT_DATA_DIRECTORY  "${CMAKE_CURRENT_SOURCE_DIR}/Data"
 )
