@@ -1,0 +1,32 @@
+/*=========================================================================
+
+  Program:   Visualization Toolkit
+  Module:    vtkstreaming_libvpx.h
+
+  Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
+  All rights reserved.
+  See Copyright.txt or http://www.kitware.com/Copyright.htm for details.
+
+     This software is distributed WITHOUT ANY WARRANTY; without even
+     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+     PURPOSE.  See the above copyright notice for more information.
+
+=========================================================================*/
+#ifndef vtkstreaming_libvpx_h
+#define vtkstreaming_libvpx_h
+
+/* Use the libvpx library configured for VTK.  */
+#cmakedefine01 VTK_MODULE_USE_EXTERNAL_vtkstreaminglibvpx
+
+/* Macro to help include a header file from the libvpx configured for
+   VTK.
+   #include "vtkstreaming_libvpx.h"
+   #include VTKSTREAMINGLIBVPX_HEADER(vpx_codec.h)
+*/
+#if VTK_MODULE_USE_EXTERNAL_vtkstreaminglibvpx
+#define VTKSTREAMINGLIBVPX_HEADER(x)  <vpx/x>
+#else
+#define VTKSTREAMINGLIBVPX_HEADER(x)  <vtkstreaminglibvpx/vpx/x>
+#endif
+
+#endif
