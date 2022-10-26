@@ -273,13 +273,13 @@ VTKVideoProcessingStatusType vtkVideoEncoder::UpdateEncoderContext(int width, in
     // be oblivious to the change in dimensions. Some encoders are capable of dynamic resizing but
     // they're few.
     this->Shutdown();
+    this->LastSetupMTime = this->GetMTime();
     if (!this->Initialize())
     {
       vtkLog(ERROR, "Failed to initialize encoding context.");
       return VTKVideoProcessingStatusType::VTKVPStatus_UnknownError;
     }
     const bool success = this->SetupEncoderFrame(width, height);
-    this->LastSetupMTime = success ? this->GetMTime() : -1;
     if (!success)
     {
       vtkLog(ERROR, << "Failed to setup an encoder frame");
