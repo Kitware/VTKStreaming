@@ -72,6 +72,7 @@ void vtkVideoEncoder::PrintSelf(ostream& os, vtkIndent indent)
   this->GraphicsContext->PrintSelf(os, indent.GetNextIndent());
 }
 
+//------------------------------------------------------------------------------
 void vtkVideoEncoder::SetOutputHandler(std::function<void(VTKVideoEncoderResultType)> outputHandler)
 {
   this->OutputHandler = outputHandler;
@@ -235,8 +236,28 @@ void vtkVideoEncoder::Encode(vtkSmartPointer<vtkRawVideoFrame> frame)
   if (ctxStatus != VTKVideoProcessingStatusType::VTKVPStatus_Success)
   {
     vtkLogF(ERROR, "Failed to update encoder context for %dx%d", width, height);
+    if (this->OutputHandler != nullptr)
+    {
+      this->OutputHandler({ ctxStatus, {} });
+    }
+    else
+    {
+      this->InvokeEvent(vtkVideoEncoder::EncodedVideoChunkEvent, nullptr);
+    }
+    return;
   }
-  this->OutputHandler(this->EncodeInternal(frame));
+  if (this->OutputHandler != nullptr)
+  {
+    this->OutputHandler(this->EncodeInternal(frame));
+  }
+  else
+  {
+    auto result = this->EncodeInternal(frame);
+    for (const auto& chunk : result.second)
+    {
+      this->InvokeEvent(vtkVideoEncoder::EncodedVideoChunkEvent, chunk.GetPointer());
+    }
+  }
 }
 
 //------------------------------------------------------------------------------
