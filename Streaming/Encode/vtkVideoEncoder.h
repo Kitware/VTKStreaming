@@ -283,7 +283,7 @@ protected:
   // 2. Sequence parameters
   bool ForceIFrame = false;
   int TimeBaseStart = 1;
-  int TimeBaseEnd = 120;
+  int TimeBaseEnd = 30;
   int GroupOfPicturesSize = 10;
   int MaximumBFrames = -1;
   // 3. Picture parameters.
