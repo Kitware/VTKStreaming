@@ -30,6 +30,7 @@
 #include "vtkTextureObject.h"
 #include "vtk_glew.h"
 
+#include <chrono>
 #include <memory>
 #include <vector>
 
@@ -88,13 +89,13 @@ vtkNvEncoderGL::~vtkNvEncoderGL()
 //------------------------------------------------------------------------------
 vtkIdType vtkNvEncoderGL::GetLastEncodeTimeNS() const noexcept
 {
-  return 0;
+  return this->Internals->dtEncode.count();
 }
 
 //------------------------------------------------------------------------------
 vtkIdType vtkNvEncoderGL::GetLastScaleTimeNS() const noexcept
 {
-  return 0;
+  return this->Internals->dtUpload.count();
 }
 
 //------------------------------------------------------------------------------
@@ -233,10 +234,13 @@ VTKVideoEncoderResultType vtkNvEncoderGL::EncodeInternal(vtkSmartPointer<vtkRawV
   vtkLogScopeFunction(TRACE);
   auto& internals = (*this->Internals);
   auto input = this->Internals->GetNextInputFrame();
-
+  auto tu1 = std::chrono::high_resolution_clock::now();
   input->DeepCopy(frame);
   glFlush();
+  auto tu2 = std::chrono::high_resolution_clock::now();
+  internals.dtUpload = tu2 - tu1;
 
+  auto te1 = std::chrono::high_resolution_clock::now();
   auto status = internals.Send(this->ForceIFrame);
   if (status != NV_ENC_SUCCESS)
   {
@@ -248,6 +252,8 @@ VTKVideoEncoderResultType vtkNvEncoderGL::EncodeInternal(vtkSmartPointer<vtkRawV
   {
     pkt->SetIsKeyFrame(this->ForceIFrame);
   }
+  auto te2 = std::chrono::high_resolution_clock::now();
+  internals.dtEncode = te2 - te1;
 
   if (success)
   {
