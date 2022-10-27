@@ -21,7 +21,7 @@
 
 #include <memory> // for ivar
 
-class VTKSTREAMINGDECODE_EXPORT vtkVpxDecoder : public vtkVideoDecoder
+class VTKSTREAMINGVPXDECODE_EXPORT vtkVpxDecoder : public vtkVideoDecoder
 {
 public:
   vtkTypeMacro(vtkVpxDecoder, vtkVideoDecoder);
