@@ -1000,9 +1000,15 @@ bool vtkNvEncoderInternals::TweakFromEncoderObject(
     params->encodeConfig->rcParams.rateControlMode = NV_ENC_PARAMS_RC_CBR;
     params->encodeConfig->rcParams.averageBitRate = encoderObject->GetBitRate();
     params->encodeConfig->rcParams.enableInitialRCQP = 1;
-    params->encodeConfig->rcParams.initialRCQP.qpIntra = q;
-    params->encodeConfig->rcParams.initialRCQP.qpInterB = q;
-    params->encodeConfig->rcParams.initialRCQP.qpInterP = q;
+    params->encodeConfig->rcParams.enableMinQP = 1;
+    params->encodeConfig->rcParams.enableMaxQP = 1;
+    params->encodeConfig->rcParams.enableAQ = 1;
+    params->encodeConfig->rcParams.minQP.qpInterB = q;
+    params->encodeConfig->rcParams.minQP.qpInterP = q;
+    params->encodeConfig->rcParams.minQP.qpIntra = q;
+    params->encodeConfig->rcParams.maxQP.qpInterB = 63;
+    params->encodeConfig->rcParams.maxQP.qpInterP = 63;
+    params->encodeConfig->rcParams.maxQP.qpIntra = 63;
     vtkLogF(TRACE, "Applied CQP with qp=%d", q);
   }
   else if (encoderObject->GetBitRateControlMode() == vtkVideoEncoder::BRCType::VBR)
@@ -1011,15 +1017,24 @@ bool vtkNvEncoderInternals::TweakFromEncoderObject(
     params->encodeConfig->rcParams.averageBitRate = encoderObject->GetBitRate();
     params->encodeConfig->rcParams.maxBitRate = encoderObject->GetMaxBitRate();
     params->encodeConfig->rcParams.enableInitialRCQP = 1;
-    params->encodeConfig->rcParams.initialRCQP.qpIntra = q;
-    params->encodeConfig->rcParams.initialRCQP.qpInterB = q;
-    params->encodeConfig->rcParams.initialRCQP.qpInterP = q;
+    params->encodeConfig->rcParams.enableMinQP = 1;
+    params->encodeConfig->rcParams.enableMaxQP = 1;
+    params->encodeConfig->rcParams.enableAQ = 1;
+    params->encodeConfig->rcParams.minQP.qpInterB = q;
+    params->encodeConfig->rcParams.minQP.qpInterP = q;
+    params->encodeConfig->rcParams.minQP.qpIntra = q;
+    params->encodeConfig->rcParams.maxQP.qpInterB = 63;
+    params->encodeConfig->rcParams.maxQP.qpInterP = 63;
+    params->encodeConfig->rcParams.maxQP.qpIntra = 63;
     vtkLogF(TRACE, "Applied CQP with qp=%d", q);
   }
   else if (encoderObject->GetBitRateControlMode() == vtkVideoEncoder::BRCType::CQP)
   {
     params->encodeConfig->rcParams.rateControlMode = NV_ENC_PARAMS_RC_CONSTQP;
     vtkLogF(TRACE, "Applied CQP with qp=%d", q);
+    params->encodeConfig->rcParams.enableMinQP = 0;
+    params->encodeConfig->rcParams.enableMaxQP = 0;
+    params->encodeConfig->rcParams.enableAQ = 0;
     params->encodeConfig->rcParams.constQP = { q, q, q };
   }
 
