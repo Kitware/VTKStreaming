@@ -129,15 +129,15 @@ void vtkWEBMMuxer::WriteWebmBlock(vtkCompressedVideoPacket* packet)
 {
   vtkLogScopeFunction(TRACE);
 
-  if (this->Width != packet->GetWidth() || this->Height != packet->GetHeight())
+  if (this->Width != packet->GetDisplayWidth() || this->Height != packet->GetDisplayHeight())
   {
     if (this->WriteToMemory)
     {
       // close this stream.
       this->WriteFileTrailer();
       // set the new width, height.
-      this->SetWidth(packet->GetWidth());
-      this->SetHeight(packet->GetHeight());
+      this->SetWidth(packet->GetDisplayWidth());
+      this->SetHeight(packet->GetDisplayHeight());
       // start a new one.
       this->WriteFileHeader(this->CodecId.c_str());
     }

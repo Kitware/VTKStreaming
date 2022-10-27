@@ -84,40 +84,40 @@ int TestVideoFrameLumaChroma(int argc, char* argv[])
   }
 
   {
-    const char* name = " 3. RGBA, 4x5 estSize = 256";
+    const char* name = " 3. RGBA, 4x5 estSize = 80";
     vtkLogF(TRACE, "%s", name);
     success = true;
 
     const auto estSize = vtkRawVideoFrame::GetEstimatedSize(4, 5, VTKPixelFormatType::VTKPF_RGBA32);
-    success &= (estSize == 256);
+    success &= (estSize == 80);
 
     if (!success)
     {
-      vtkLogF(ERROR, "Failed | %s | estSize : %d != 256", name, estSize);
+      vtkLogF(ERROR, "Failed | %s | estSize : %d != 80", name, estSize);
       return 1;
     }
     else
     {
-      vtkLogF(INFO, "Success | %s | estSize : %d == 256", name, estSize);
+      vtkLogF(INFO, "Success | %s | estSize : %d == 80", name, estSize);
     }
   }
 
   {
-    const char* name = " 4. RGB, 4x5 estSize = 192";
+    const char* name = " 4. RGB, 4x5 estSize = 60";
     vtkLogF(TRACE, "%s", name);
     success = true;
 
     const auto estSize = vtkRawVideoFrame::GetEstimatedSize(4, 5, VTKPixelFormatType::VTKPF_RGB24);
-    success &= (estSize == 192);
+    success &= (estSize == 60);
 
     if (!success)
     {
-      vtkLogF(ERROR, "Failed | %s | estSize : %d != 192", name, estSize);
+      vtkLogF(ERROR, "Failed | %s | estSize : %d != 60", name, estSize);
       return 1;
     }
     else
     {
-      vtkLogF(INFO, "Success | %s | estSize : %d == 192", name, estSize);
+      vtkLogF(INFO, "Success | %s | estSize : %d == 60", name, estSize);
     }
   }
   return 0;

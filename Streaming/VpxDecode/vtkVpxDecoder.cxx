@@ -130,20 +130,20 @@ VTKVideoDecoderResultType vtkVpxDecoder::DecodeInternal(
     frame->SetHeight(img->d_h);
     frame->SetSliceOrderType(vtkRawVideoFrame::SliceOrderType::TopDown);
     frame->SetContext(vtkOpenGLRenderWindow::SafeDownCast(this->GraphicsContext));
-    frame->ComputeDefaultStrides();
-    frame->AllocateDataStore();
     const int chromaHeight = img->h >> 1;
     bool success = true;
     switch (img->fmt)
     {
       case VPX_IMG_FMT_I420:
         frame->SetPixelFormat(VTKPixelFormatType::VTKPF_IYUV);
+        frame->AllocateDataStore();
         frame->CopyPlanarData(img->planes[0], img->stride[0], img->h, 0);
         frame->CopyPlanarData(img->planes[1], img->stride[1], chromaHeight, 1);
         frame->CopyPlanarData(img->planes[2], img->stride[2], chromaHeight, 2);
         break;
       case VPX_IMG_FMT_NV12:
         frame->SetPixelFormat(VTKPixelFormatType::VTKPF_NV12);
+        frame->AllocateDataStore();
         frame->CopyPlanarData(img->planes[0], img->stride[0], img->h, 0);
         frame->CopyPlanarData(img->planes[1], img->stride[1], chromaHeight, 1);
         break;

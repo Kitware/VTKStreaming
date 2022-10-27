@@ -33,8 +33,10 @@ void vtkCompressedVideoPacket::PrintSelf(ostream& os, vtkIndent indent)
   os << "Size: " << this->Buffer->GetNumberOfValues() << "\n";
   os << "IsKeyFrame: " << this->IsKeyFrame << "\n";
   os << "PresentationTS: " << this->PresentationTS << "\n";
-  os << "Width: " << this->Width << "\n";
-  os << "Height: " << this->Height << "\n";
+  os << "DisplayWidth: " << this->DisplayWidth << "\n";
+  os << "DisplayHeight: " << this->DisplayHeight << "\n";
+  os << "CodedWidth: " << this->CodedWidth << "\n";
+  os << "CodedHeight: " << this->CodedHeight << "\n";
 }
 
 //------------------------------------------------------------------------------
@@ -109,11 +111,14 @@ void vtkCompressedVideoPacket::CopyMetadata(vtkCompressedVideoPacket* other)
   {
     return;
   }
+  this->MimeType = other->MimeType;
+  this->CodecLongName = other->CodecLongName;
   this->IsKeyFrame = other->IsKeyFrame;
   this->PresentationTS = other->PresentationTS;
-  this->Width = other->Width;
-  this->Height = other->Height;
-  this->MimeType = other->MimeType;
+  this->DisplayWidth = other->DisplayWidth;
+  this->DisplayHeight = other->DisplayHeight;
+  this->CodedWidth = other->CodedWidth;
+  this->CodedHeight = other->CodedHeight;
 }
 
 //------------------------------------------------------------------------------

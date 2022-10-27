@@ -165,13 +165,11 @@ void vtkVideoEncoder::ForceIFrameOff()
 //------------------------------------------------------------------------------
 bool vtkVideoEncoder::NeedsNewEncoderFrame(int width, int height)
 {
-  auto alignedW = vtkRawVideoFrame::AlignUp(width, 8);
-  auto alignedH = vtkRawVideoFrame::AlignUp(height, 8);
-  vtkLogScopeF(TRACE, "%s my=%dx%d | given=%dx%d | aligned=%dx%d", __func__, this->Width,
-    this->Height, width, height, alignedW, alignedH);
-  bool outdated = alignedW != this->Width || alignedH != this->Height;
-  this->Width = alignedW;
-  this->Height = alignedH;
+  vtkLogScopeF(
+    TRACE, "%s my=%dx%d | given=%dx%d", __func__, this->Width, this->Height, width, height);
+  bool outdated = width != this->Width || height != this->Height;
+  this->Width = width;
+  this->Height = height;
   return outdated;
 }
 
