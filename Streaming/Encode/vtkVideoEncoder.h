@@ -19,10 +19,11 @@
  * A video frame can be encoded with video codecs by following this process.
  *
  * 1. Setup your callback function with `SetOutputHandler`
- *    This function will be invoked from another thread.
- *    You should keep that in mind.
  *
  * 2. Invoke `vtkVideoEncoder::Encode(vtkRawVideoFrame*).
+ *
+ * If, by limitation of language design, you're unable to install a callback,
+ * please observe the vtkVideoEncoder::EncodedVideoChunkEvent for getting new chunks.
  *
  * @sa vtkRawVideoFrame, vtkCompressedVideoPacket
  */
@@ -32,6 +33,7 @@
 
 #include "vtkObject.h"
 
+#include "vtkCommand.h"                      // for enum
 #include "vtkPixelFormatTypes.h"             // for enum
 #include "vtkRenderWindow.h"                 // for ivar
 #include "vtkStreamingEncodeModule.h"        // for export macro
@@ -49,6 +51,14 @@ public:
   vtkTypeMacro(vtkVideoEncoder, vtkObject);
   void PrintSelf(ostream& os, vtkIndent indent) override;
   void SetOutputHandler(std::function<void(VTKVideoEncoderResultType)> outputHandler);
+
+  enum
+  {
+    /**
+     * Event fired when an encoded video chunk is available.
+     */
+    EncodedVideoChunkEvent = vtkCommand::UserEvent + 1
+  };
 
   ///@{
   /**
@@ -273,14 +283,14 @@ protected:
   // 2. Sequence parameters
   bool ForceIFrame = false;
   int TimeBaseStart = 1;
-  int TimeBaseEnd = 120;
+  int TimeBaseEnd = 30;
   int GroupOfPicturesSize = 10;
   int MaximumBFrames = -1;
   // 3. Picture parameters.
   int Width = 240;
   int Height = 240;
   VTKPixelFormatType InputPixelFormat = VTKPixelFormatType::VTKPF_NV12;
-  // 4. Bitrate control
+  // 4. Bitrate control (in bits per second)
   BRCType BitRateControlMode = BRCType::CBR;
   unsigned int QuantizationParameter = 33;
   unsigned int BitRate = 1000000; // 1Mbps

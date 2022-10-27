@@ -72,6 +72,7 @@ void vtkVideoEncoder::PrintSelf(ostream& os, vtkIndent indent)
   this->GraphicsContext->PrintSelf(os, indent.GetNextIndent());
 }
 
+//------------------------------------------------------------------------------
 void vtkVideoEncoder::SetOutputHandler(std::function<void(VTKVideoEncoderResultType)> outputHandler)
 {
   this->OutputHandler = outputHandler;
@@ -235,8 +236,28 @@ void vtkVideoEncoder::Encode(vtkSmartPointer<vtkRawVideoFrame> frame)
   if (ctxStatus != VTKVideoProcessingStatusType::VTKVPStatus_Success)
   {
     vtkLogF(ERROR, "Failed to update encoder context for %dx%d", width, height);
+    if (this->OutputHandler != nullptr)
+    {
+      this->OutputHandler({ ctxStatus, {} });
+    }
+    else
+    {
+      this->InvokeEvent(vtkVideoEncoder::EncodedVideoChunkEvent, nullptr);
+    }
+    return;
   }
-  this->OutputHandler(this->EncodeInternal(frame));
+  if (this->OutputHandler != nullptr)
+  {
+    this->OutputHandler(this->EncodeInternal(frame));
+  }
+  else
+  {
+    auto result = this->EncodeInternal(frame);
+    for (const auto& chunk : result.second)
+    {
+      this->InvokeEvent(vtkVideoEncoder::EncodedVideoChunkEvent, chunk.GetPointer());
+    }
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -252,13 +273,13 @@ VTKVideoProcessingStatusType vtkVideoEncoder::UpdateEncoderContext(int width, in
     // be oblivious to the change in dimensions. Some encoders are capable of dynamic resizing but
     // they're few.
     this->Shutdown();
+    this->LastSetupMTime = this->GetMTime();
     if (!this->Initialize())
     {
       vtkLog(ERROR, "Failed to initialize encoding context.");
       return VTKVideoProcessingStatusType::VTKVPStatus_UnknownError;
     }
     const bool success = this->SetupEncoderFrame(width, height);
-    this->LastSetupMTime = success ? this->GetMTime() : -1;
     if (!success)
     {
       vtkLog(ERROR, << "Failed to setup an encoder frame");
