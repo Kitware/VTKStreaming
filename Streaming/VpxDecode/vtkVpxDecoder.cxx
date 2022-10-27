@@ -15,21 +15,21 @@
 
 #include "vtkVpxDecoder.h"
 #include "vtkLogger.h"
+#include "vtkMultiThreader.h"
 #include "vtkObjectFactory.h"
 #include "vtkOpenGLRenderWindow.h"
 #include "vtkOpenGLVideoFrame.h"
-
 #include "vtkPixelFormatTypes.h"
 #include "vtkRawVideoFrame.h"
 #include "vtkVideoProcessingStatusTypes.h"
 #include "vtkVideoProcessingWorkUnitTypes.h"
+
 #include "vtkstreaming_libvpx.h"
-#include "vtkstreaminglibvpx/vpx/vp8dx.h"
-#include "vtkstreaminglibvpx/vpx/vpx_decoder.h"
+#include VTKSTREAMINGLIBVPX_HEADER(vp8dx.h)
+#include VTKSTREAMINGLIBVPX_HEADER(vpx_decoder.h)
 
 #include <algorithm>
 #include <cstdint>
-#include <vtkMultiThreader.h>
 
 struct vtkVpxDecoder::vtkInternals
 {
@@ -132,24 +132,24 @@ VTKVideoDecoderResultType vtkVpxDecoder::DecodeInternal(
     frame->SetContext(vtkOpenGLRenderWindow::SafeDownCast(this->GraphicsContext));
     frame->ComputeDefaultStrides();
     frame->AllocateDataStore();
-    bool success = false;
+    const int chromaHeight = img->h >> 1;
+    bool success = true;
     switch (img->fmt)
     {
       case VPX_IMG_FMT_I420:
         frame->SetPixelFormat(VTKPixelFormatType::VTKPF_IYUV);
-        success = true;
         frame->CopyPlanarData(img->planes[0], img->stride[0], img->h, 0);
-        frame->CopyPlanarData(img->planes[1], img->stride[1], img->h >> 1, 1);
-        frame->CopyPlanarData(img->planes[2], img->stride[2], img->h >> 1, 2);
+        frame->CopyPlanarData(img->planes[1], img->stride[1], chromaHeight, 1);
+        frame->CopyPlanarData(img->planes[2], img->stride[2], chromaHeight, 2);
         break;
       case VPX_IMG_FMT_NV12:
         frame->SetPixelFormat(VTKPixelFormatType::VTKPF_NV12);
         frame->CopyPlanarData(img->planes[0], img->stride[0], img->h, 0);
-        frame->CopyPlanarData(img->planes[1], img->stride[1], img->h >> 1, 1);
-        success = true;
+        frame->CopyPlanarData(img->planes[1], img->stride[1], chromaHeight, 1);
         break;
       default:
         vtkLogF(ERROR, "Unsupported vpx pixel format (%d)", int(img->fmt));
+        success = false;
         break;
     }
     if (!success)
