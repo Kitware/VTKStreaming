@@ -102,7 +102,7 @@ void vtkVideoDecoder::Drain()
 void vtkVideoDecoder::Decode(vtkSmartPointer<vtkCompressedVideoPacket> packet)
 {
   vtkLogScopeFunction(TRACE);
-  if (!this->UpdateDecoderContext(packet->GetWidth(), packet->GetHeight()))
+  if (!this->UpdateDecoderContext(packet->GetDisplayWidth(), packet->GetDisplayHeight()))
   {
     if (this->OutputHandler != nullptr)
     {

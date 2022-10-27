@@ -42,7 +42,6 @@
 #include "vtkVideoProcessingWorkUnitTypes.h" // for work unit
 #include "vtkWeakPointer.h"                  // for ivar
 
-class vtkAsynchronousEncoderDelegate;
 class vtkRawVideoFrame;
 
 class VTKSTREAMINGENCODE_EXPORT vtkVideoEncoder : public vtkObject
@@ -298,13 +297,11 @@ protected:
   unsigned int MinBitRate = 1000000;
   // 5. Parallelism
   unsigned int NumberOfEncoderThreads = 2; // conservative default.
-  // 6. Processing delegate
-  vtkAsynchronousEncoderDelegate* Delegate = nullptr;
-  // 7. Our graphics context.
+  // 6. Our graphics context.
   vtkWeakPointer<vtkRenderWindow> GraphicsContext;
-  // 8. handler
+  // 7. handler
   std::function<void(VTKVideoEncoderResultType)> OutputHandler = nullptr;
-  // 9. state
+  // 8. state
   bool Initialized = false;
   vtkMTimeType LastSetupMTime = 0;
 

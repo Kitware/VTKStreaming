@@ -442,9 +442,9 @@ bool vtkNvEncoderInternals::RegisterInputResources(const std::vector<void*>& inp
   vtkLogScopeFunction(TRACE);
   for (std::size_t i = 0; i < inputResources.size(); ++i)
   {
-    const auto& width = inputFrames[i]->GetStorageWidth();
+    const auto& width = inputFrames[i]->GetWidth();
     const auto& height = inputFrames[i]->GetStorageHeight();
-    const auto& pitch = width;
+    const auto& pitch = inputFrames[i]->GetStrides()[0];
     NV_ENC_REGISTERED_PTR registeredPtr = RegisterResource(
       inputResources[i], resourceType, width, height, pitch, bufferFormat, NV_ENC_INPUT_IMAGE);
     this->NvEncRegisteredResources.push_back(registeredPtr);
@@ -645,8 +645,10 @@ bool vtkNvEncoderInternals::Receive(
     {
       packets.emplace_back(vtkSmartPointer<vtkCompressedVideoPacket>::New());
     }
-    packets[iPkt]->SetWidth(this->Width);
-    packets[iPkt]->SetHeight(this->Height);
+    packets[iPkt]->SetDisplayWidth(this->Width);
+    packets[iPkt]->SetDisplayHeight(this->Height);
+    packets[iPkt]->SetCodedWidth(vtkRawVideoFrame::AlignUp(this->Width, 8));
+    packets[iPkt]->SetCodedHeight(vtkRawVideoFrame::AlignUp(this->Height, 8));
     packets[iPkt]->SetPresentationTS(this->NvEncRecvCounter);
     packets[iPkt]->SetSize(lockBitStreamData.bitstreamSizeInBytes);
     packets[iPkt]->CopyData(data, lockBitStreamData.bitstreamSizeInBytes);

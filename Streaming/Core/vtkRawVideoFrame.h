@@ -111,6 +111,7 @@ public:
    */
   void ComputeDefaultStrides();
   int* GetStrides() VTK_SIZEHINT(3) { return this->Strides; }
+  int GetPlanePointerIdx(int planeIdx);
   ///@}
 
   ///@{
