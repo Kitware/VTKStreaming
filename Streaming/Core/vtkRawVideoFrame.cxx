@@ -60,7 +60,6 @@ void vtkRawVideoFrame::SetWidth(int value) noexcept
 {
   vtkLogScopeF(TRACE, "%s, w=%d", __func__, value);
   this->DisplayWidth = value;
-  this->StorageWidth = ALIGN_UP(value, 8);
   this->Modified();
 }
 
@@ -81,7 +80,6 @@ void vtkRawVideoFrame::SetHeight(int value) noexcept
 {
   vtkLogScopeF(TRACE, "%s, h=%d", __func__, value);
   this->DisplayHeight = value;
-  this->StorageHeight = ALIGN_UP(value, 8);
   this->Modified();
 }
 
@@ -134,16 +132,15 @@ unsigned int vtkRawVideoFrame::AlignUp(int value, int bytes) noexcept
 //------------------------------------------------------------------------------
 unsigned int vtkRawVideoFrame::GetWidthBytes(int width, VTKPixelFormatType pixelFormat) noexcept
 {
-  const auto alignedW = ALIGN_UP(width, 8);
   switch (pixelFormat)
   {
     case VTKPixelFormatType::VTKPF_IYUV:
     case VTKPixelFormatType::VTKPF_NV12:
-      return alignedW;
+      return AlignUp(width, 8);
     case VTKPixelFormatType::VTKPF_RGB24:
-      return alignedW * 3;
+      return width * 3;
     case VTKPixelFormatType::VTKPF_RGBA32:
-      return alignedW * 4;
+      return width * 4;
     default:
       return 0;
   }
@@ -172,7 +169,7 @@ unsigned int vtkRawVideoFrame::GetChromaHeight(int height, VTKPixelFormatType pi
   {
     case VTKPixelFormatType::VTKPF_IYUV:
     case VTKPixelFormatType::VTKPF_NV12:
-      return ALIGN_UP(height, 8) >> 1;
+      return AlignUp(height, 8) >> 1;
     case VTKPixelFormatType::VTKPF_RGB24:
     case VTKPixelFormatType::VTKPF_RGBA32:
     default:
@@ -185,8 +182,8 @@ unsigned int vtkRawVideoFrame::GetEstimatedSize(
   int width, int height, VTKPixelFormatType pixelFormat, int* strides /*=nullptr*/) noexcept
 {
   unsigned int size = 0;
-  const auto alignedW = ALIGN_UP(width, 8);
-  const auto alignedH = ALIGN_UP(height, 8);
+  const auto alignedW = AlignUp(width, 8);
+  const auto alignedH = AlignUp(height, 8);
   if (strides == nullptr)
   {
     switch (pixelFormat)
@@ -196,18 +193,20 @@ unsigned int vtkRawVideoFrame::GetEstimatedSize(
         size = alignedW * (alignedH + (alignedH >> 1));
         break;
       case VTKPixelFormatType::VTKPF_RGB24:
-        size = 3 * alignedW * alignedH;
+        size = 3 * width * height;
         break;
       case VTKPixelFormatType::VTKPF_RGBA32:
-        size = 4 * alignedW * alignedH;
+        size = 4 * width * height;
         break;
     }
   }
   else
   {
     const auto chromaHeight = vtkRawVideoFrame::GetChromaHeight(height, pixelFormat);
+    const bool packed = (pixelFormat == VTKPixelFormatType::VTKPF_RGB24) ||
+      (pixelFormat == VTKPixelFormatType::VTKPF_RGBA32);
     // clang-format off
-     size = strides[0] * alignedH 
+     size = strides[0] * (packed ? height : alignedH)
           + strides[1] * chromaHeight 
           + strides[2] * chromaHeight;
     // clang-format on
@@ -270,9 +269,48 @@ void vtkRawVideoFrame::ComputeDefaultStrides()
 {
   const auto widthBytes = vtkRawVideoFrame::GetWidthBytes(this->DisplayWidth, this->PixelFormat);
   const auto chromaPitch = vtkRawVideoFrame::GetChromaPitch(this->DisplayWidth, this->PixelFormat);
+  switch (this->PixelFormat)
+  {
+    case VTKPixelFormatType::VTKPF_IYUV:
+    case VTKPixelFormatType::VTKPF_NV12:
+      this->StorageWidth = AlignUp(this->DisplayWidth, 8);
+      this->StorageHeight = AlignUp(this->DisplayHeight, 8);
+      break;
+    default:
+      this->StorageWidth = this->DisplayWidth;
+      this->StorageHeight = this->DisplayHeight;
+      break;
+  }
   this->Strides[0] = widthBytes;
   this->Strides[1] = chromaPitch;
   this->Strides[2] = chromaPitch;
+}
+
+//------------------------------------------------------------------------------
+int vtkRawVideoFrame::GetPlanePointerIdx(int planeIdx)
+{
+  int idx = 0;
+  using PFT = VTKPixelFormatType;
+  const auto chromaHeight = this->GetChromaHeight(this->DisplayHeight, this->PixelFormat);
+  if (this->PixelFormat == PFT::VTKPF_RGB24 || this->PixelFormat == PFT::VTKPF_RGBA32)
+  {
+    return 0;
+  }
+  if (planeIdx == 0)
+  {
+    return 0;
+  }
+  idx += this->Strides[0] * this->StorageHeight;
+  if (planeIdx == 1)
+  {
+    return idx;
+  }
+  // planeIdx == 2
+  if (this->PixelFormat == PFT::VTKPF_IYUV)
+  {
+    idx += this->Strides[0] * (chromaHeight >> 1);
+  }
+  return idx;
 }
 
 //------------------------------------------------------------------------------

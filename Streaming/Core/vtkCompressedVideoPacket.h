@@ -64,18 +64,34 @@ public:
 
   ///@{
   /**
-   * Set/Get width of the compressed frame.
+   * Set/Get width at which the packet must be presented for display.
    */
-  vtkGetMacro(Width, int);
-  vtkSetMacro(Width, int);
+  vtkGetMacro(DisplayWidth, int);
+  vtkSetMacro(DisplayWidth, int);
   ///@}
 
   ///@{
   /**
-   * Set/Get height of the compressed frame.
+   * Set/Get width at which the packet is coded. (may differ from display due to alignment)
    */
-  vtkGetMacro(Height, int);
-  vtkSetMacro(Height, int);
+  vtkGetMacro(CodedWidth, int);
+  vtkSetMacro(CodedWidth, int);
+  ///@}
+
+  ///@{
+  /**
+   * Set/Get height at which the packet must be presented for display.
+   */
+  vtkGetMacro(DisplayHeight, int);
+  vtkSetMacro(DisplayHeight, int);
+  ///@}
+
+  ///@{
+  /**
+   * Set/Get height at which the packet is coded. (may differ from display due to alignment)
+   */
+  vtkGetMacro(CodedHeight, int);
+  vtkSetMacro(CodedHeight, int);
   ///@}
 
   ///@{
@@ -128,8 +144,10 @@ protected:
   ~vtkCompressedVideoPacket() override;
 
   bool IsKeyFrame = false;
-  int Width = 0;
-  int Height = 0;
+  int DisplayWidth = 0;
+  int DisplayHeight = 0;
+  int CodedWidth = 0;
+  int CodedHeight = 0;
   long long PresentationTS = 0;
   std::string MimeType;
   std::string CodecLongName;

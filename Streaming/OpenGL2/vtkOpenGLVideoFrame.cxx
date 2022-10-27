@@ -199,8 +199,9 @@ void vtkOpenGLVideoFrame::UploadData(unsigned char* from, int rowsize, int numro
   tex->GetContext()->MakeCurrent();
   tex->Bind();
   auto ostate = tex->GetContext()->GetState();
-  GLint oldUnpack = 0;
-  glGetIntegerv(GL_UNPACK_ROW_LENGTH, &oldUnpack);
+  GLint oldRowLength = 0, oldRowAlign = 0;
+  glGetIntegerv(GL_UNPACK_ROW_LENGTH, &oldRowLength);
+  glGetIntegerv(GL_UNPACK_ALIGNMENT, &oldRowAlign);
 
   int yofst = 0;
   int ymin = 0;
@@ -213,11 +214,8 @@ void vtkOpenGLVideoFrame::UploadData(unsigned char* from, int rowsize, int numro
     switch (plane)
     {
       case 0:
-        ymax = this->StorageHeight;
-        for (int yofst = ymin, rowId = 0; yofst < ymax; ++yofst && ++rowId)
-        {
-          glTexSubImage2D(target, 0, 0, yofst, width, 1, format, datatype, &dptr[rowId * rowsize]);
-        }
+        ostate->vtkglPixelStorei(GL_UNPACK_ROW_LENGTH, rowsize);
+        glTexSubImage2D(target, 0, 0, 0, width, this->StorageHeight, format, datatype, dptr);
         break;
       case 1:
         ymin = this->StorageHeight;
@@ -243,7 +241,6 @@ void vtkOpenGLVideoFrame::UploadData(unsigned char* from, int rowsize, int numro
             &dptr[rowId * rowsize]);
         }
         break;
-        break;
       default:
         break;
     }
@@ -253,19 +250,13 @@ void vtkOpenGLVideoFrame::UploadData(unsigned char* from, int rowsize, int numro
     switch (plane)
     {
       case 0:
-        ymax = this->StorageHeight;
-        for (int yofst = ymin, rowId = 0; yofst < ymax; ++yofst && ++rowId)
-        {
-          glTexSubImage2D(target, 0, 0, yofst, width, 1, format, datatype, &dptr[rowId * rowsize]);
-        }
+        ostate->vtkglPixelStorei(GL_UNPACK_ROW_LENGTH, rowsize);
+        glTexSubImage2D(target, 0, 0, 0, width, this->StorageHeight, format, datatype, dptr);
         break;
       case 1:
-        ymin = this->StorageHeight;
-        ymax = this->StorageHeight + chromaHeight;
-        for (int yofst = ymin, rowId = 0; yofst < ymax; ++yofst && ++rowId)
-        {
-          glTexSubImage2D(target, 0, 0, yofst, width, 1, format, datatype, &dptr[rowId * rowsize]);
-        }
+        ostate->vtkglPixelStorei(GL_UNPACK_ROW_LENGTH, rowsize);
+        glTexSubImage2D(
+          target, 0, 0, this->StorageHeight, width, chromaHeight, format, datatype, dptr);
         break;
       default:
         break;
@@ -274,10 +265,12 @@ void vtkOpenGLVideoFrame::UploadData(unsigned char* from, int rowsize, int numro
   else
   {
     ostate->vtkglPixelStorei(GL_UNPACK_ROW_LENGTH, rowsize / components);
+    ostate->vtkglPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glTexSubImage2D(target, 0, 0, 0, rowsize / components, numrows, format, datatype, from);
+    ostate->vtkglPixelStorei(GL_UNPACK_ALIGNMENT, oldRowAlign);
   }
   vtkOpenGLCheckErrors("ERROR uploading pixels to OpenGL texture. ");
-  ostate->vtkglPixelStorei(GL_UNPACK_ROW_LENGTH, oldUnpack);
+  ostate->vtkglPixelStorei(GL_UNPACK_ROW_LENGTH, oldRowLength);
 
   glBindTexture(target, 0);
   this->Modified();
@@ -355,9 +348,6 @@ void vtkOpenGLVideoFrame::AllocateDataStore()
 
   const unsigned int chromaHeight =
     vtkRawVideoFrame::GetChromaHeight(this->DisplayHeight, this->PixelFormat);
-  const unsigned int numCrPlanes = vtkRawVideoFrame::GetNumberOfChromaPlanes(this->PixelFormat);
-  const unsigned int widthBytes =
-    vtkRawVideoFrame::GetWidthBytes(this->DisplayWidth, this->PixelFormat);
   const int dataType = VTK_UNSIGNED_CHAR;
 
   texture->SetMagnificationFilter(vtkTextureObject::Nearest);
