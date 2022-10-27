@@ -1,0 +1,15 @@
+NAME
+  VTKStreaming::VpxDecode
+LIBRARY_NAME
+  vtkStreamingVpxDecode
+GROUPS
+  Streaming
+KIT
+  VTKStreaming::VpxDecode
+DEPENDS
+  VTK::CommonCore
+  VTK::CommonDataModel
+  VTKStreaming::Decode
+  VTKStreaming::OpenGL2
+  VTK::RenderingOpenGL2
+  VTKStreaming::libvpx
