@@ -960,8 +960,8 @@ bool vtkNvEncoderInternals::TweakFromEncoderObject(
   }
 
   // 2. sequence parameters.
-  params->frameRateNum = encoderObject->GetTimeBaseStart();
-  params->frameRateDen = encoderObject->GetTimeBaseEnd();
+  params->frameRateNum = encoderObject->GetTimeBaseEnd();
+  params->frameRateDen = encoderObject->GetTimeBaseStart();
   if (encoderObject->GetLowDelayMode())
   {
     params->encodeConfig->gopLength = NVENC_INFINITE_GOPLENGTH;

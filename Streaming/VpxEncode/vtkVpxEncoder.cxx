@@ -18,11 +18,22 @@
 #include "vtkObjectFactory.h"
 
 #include "vtkstreaming_libvpx.h"
-#include "vtkstreaminglibvpx/vpx/vp8cx.h"
-#include "vtkstreaminglibvpx/vpx/vpx_codec.h"
+#include VTKSTREAMINGLIBVPX_HEADER(vp8cx.h)
+#include VTKSTREAMINGLIBVPX_HEADER(vpx_encoder.h)
 
 #include <algorithm>
 #include <chrono>
+
+#define EncoderControl(ctx, ctrl_id, data)                                                         \
+  do                                                                                               \
+  {                                                                                                \
+    auto result = vpx_codec_control(ctx, ctrl_id, data);                                           \
+    if (result != vpx_codec_err_t::VPX_CODEC_OK)                                                   \
+    {                                                                                              \
+      vtkLogF(ERROR, "Failed to set control parameter %s=%d. Error : %s", #ctrl_id, data,          \
+        vpx_codec_err_to_string(result));                                                          \
+    }                                                                                              \
+  } while (0)
 
 struct vtkVpxEncoder::vtkInternals
 {
@@ -35,84 +46,6 @@ struct vtkVpxEncoder::vtkInternals
   // timing for encode and copy ops.
   std::chrono::high_resolution_clock::time_point::duration dtEncode, dtCopy;
 };
-
-namespace
-{
-// https://www.webmproject.org/vp9/levels/#example-frame-size-and-display-rate
-// determine level from width, height and percieved encoder framerate.
-unsigned int EstimateLevel(int width, int height, int fps_d, int fps_n)
-{
-  const int lumaSize = width * height;
-  if (lumaSize <= 36864)
-  {
-    return 10;
-  }
-  else if (lumaSize <= 73728)
-  {
-    return 11;
-  }
-  else if (lumaSize <= 122880)
-  {
-    return 20;
-  }
-  else if (lumaSize <= 245760)
-  {
-    return 21;
-  }
-  else if (lumaSize <= 552960)
-  {
-    return 30;
-  }
-  else if (lumaSize <= 983040)
-  {
-    return 31;
-  }
-  else if ((lumaSize <= 2228224) && (fps_n <= 30))
-  {
-    return 40;
-  }
-  else if ((lumaSize <= 2228224) && (fps_n <= 60))
-  {
-    return 41;
-  }
-  else if ((lumaSize <= 8912896) && (fps_n <= 30))
-  {
-    return 50;
-  }
-  else if ((lumaSize <= 8912896) && (fps_n <= 60))
-  {
-    return 51;
-  }
-  else if ((lumaSize <= 8912896) && (fps_n <= 120))
-  {
-    return 52;
-  }
-  else if ((lumaSize <= 35651584) && (fps_n <= 30))
-  {
-    return 60;
-  }
-  else if ((lumaSize <= 35651584) && (fps_n <= 60))
-  {
-    return 61;
-  }
-  else if ((lumaSize <= 35651584) && (fps_n <= 120))
-  {
-    return 62;
-  }
-  return 0;
-}
-
-#define EncoderControl(ctx, ctrl_id, data)                                                         \
-  do                                                                                               \
-  {                                                                                                \
-    auto result = vpx_codec_control(ctx, ctrl_id, data);                                           \
-    if (result != vpx_codec_err_t::VPX_CODEC_OK)                                                   \
-    {                                                                                              \
-      vtkLogF(ERROR, "Failed to set control parameter %s=%d. Error : %s", #ctrl_id, data,          \
-        vpx_codec_err_to_string(result));                                                          \
-    }                                                                                              \
-  } while (0)
-}
 
 vtkStandardNewMacro(vtkVpxEncoder);
 
@@ -285,7 +218,7 @@ bool vtkVpxEncoder::SetupEncoderFrame(int width, int height)
 void vtkVpxEncoder::TearDownEncoderFrame()
 {
   auto& internals = (*this->Internals);
-  if (internals.RawImage)
+  if (internals.RawImage != nullptr)
   {
     // was allocated on the heap? let's free it.
     vpx_img_free(internals.RawImage);
