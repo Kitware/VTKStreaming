@@ -274,9 +274,9 @@ VTKVideoEncoderResultType vtkVpxEncoder::EncodeInternal(vtkSmartPointer<vtkRawVi
     vpx_codec_encode(&internals.Ctx, img, internals.SendCounter++, 1, flags, VPX_DL_REALTIME);
   if (internals.Result != VPX_CODEC_OK)
   {
-    vtkLogF(ERROR, "Failed to encode %s frame %ld. Error: %s, Detail: %s", flags ? "key" : "delta",
-      internals.SendCounter, vpx_codec_err_to_string(internals.Result),
-      vpx_codec_error_detail(&internals.Ctx));
+    long long frameId = static_cast<long long>(internals.SendCounter);
+    vtkLogF(ERROR, "Failed to encode %s frame %lld. Error: %s, Detail: %s", flags ? "key" : "delta",
+      frameId, vpx_codec_err_to_string(internals.Result), vpx_codec_error_detail(&internals.Ctx));
     return { VTKVideoProcessingStatusType::VTKVPStatus_UnknownError, {} };
   }
   VTKVideoEncoderResultType result;
