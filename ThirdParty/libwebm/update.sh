@@ -8,7 +8,7 @@ readonly name="libwebm"
 readonly ownership="Libwebm Upstream <kwrobot@kitware.com>"
 readonly subtree="ThirdParty/$name/vtkstreaming$name"
 readonly repo="https://gitlab.kitware.com/third-party/libwebm.git"
-readonly tag="for/vtkstreaming-20220928-1.0.0.28"
+readonly tag="for/vtkstreaming-20221031-1.0.0.29"
 readonly paths="
 build
 common/webmids.h
