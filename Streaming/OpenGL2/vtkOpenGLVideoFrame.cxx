@@ -133,8 +133,10 @@ void vtkOpenGLVideoFrame::Capture(vtkRenderWindow* window)
     0, internals.VtkTexture, 0, internals.VtkTexture->GetTarget(), 0);
   vtkOpenGLCheckErrorMacro("Failed to add output texture to read framebuffer. ");
 
-  internals.VtkFrameBuffer->CheckFrameBufferStatus(GL_FRAMEBUFFER);
+  // Some applications may not have a default framebuffer (ex: offscreen rendering).
+  // bind ours, then check status.
   internals.VtkFrameBuffer->Bind(GL_DRAW_FRAMEBUFFER);
+  internals.VtkFrameBuffer->CheckFrameBufferStatus(GL_DRAW_FRAMEBUFFER);
   internals.VtkFrameBuffer->ActivateDrawBuffers(1);
   vtkOpenGLCheckErrorMacro("Failed to bind draw framebuffer. ");
 
