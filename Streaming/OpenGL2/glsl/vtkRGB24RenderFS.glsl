@@ -33,4 +33,4 @@ void main()
   ivec2 pixelCoord = ivec2(gl_FragCoord.x - 0.5, yCoord);
   vec3 rgb = texelFetch(rgb24Texture, pixelCoord, 0).xyz;
   gl_FragData[0] = vec4(rgb.xyz,1.0f);
-};
+}
