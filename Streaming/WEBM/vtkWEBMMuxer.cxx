@@ -29,8 +29,8 @@ const long long NanoSecondTicks = 1000000000ll;
 //------------------------------------------------------------------------------
 struct vtkWEBMMuxer::vtkWEBMContextInternals
 {
-  mkvmuxer::Segment* segment;
-  vtkMKVWriterImplementation* writer;
+  mkvmuxer::Segment* segment = nullptr;
+  vtkMKVWriterImplementation* writer = nullptr;
 };
 
 //------------------------------------------------------------------------------
@@ -163,7 +163,7 @@ void vtkWEBMMuxer::WriteWebmBlock(vtkCompressedVideoPacket* packet)
 //------------------------------------------------------------------------------
 void vtkWEBMMuxer::WriteFileTrailer()
 {
-  vtkLogScopeFunction(TRACE);
+  vtkLogScopeF(TRACE, "%s %d", __func__, this->IsHeaderWritten);
   if (!this->IsHeaderWritten)
   {
     return;
