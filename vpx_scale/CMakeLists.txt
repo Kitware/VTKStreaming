@@ -24,13 +24,12 @@ endif ()
 #mips(dspr2)
 # SCALE_SRCS-$(HAVE_DSPR2)  += mips/dspr2/yv12extend_dspr2.c
 
-add_rtcd_build_step(
-  "${VPX_ROOT}/vpx_scale/vpx_scale_rtcd.pl"
-  "${VPX_CONFIG_DIR}/vpx_scale_rtcd.h"
-  "${VPX_ROOT}/vpx_scale/vpx_scale_rtcd.c"
-  "vpx_scale_rtcd"
-)
-
+if (VPX_ARCH_ARM)
+  file(COPY "${VPX_ROOT}/build/rtcd_artifacts/rtcd_neon/vpx_scale_rtcd.h" DESTINATION "${VPX_CONFIG_DIR}")
+elseif (VPX_ARCH_X86 OR VPX_ARCH_X86_64)
+  file(COPY "${VPX_ROOT}/build/rtcd_artifacts/rtcd_x86/vpx_scale_rtcd.h" DESTINATION "${VPX_CONFIG_DIR}")
+endif ()
+list(APPEND vpx_scale_headers "${VPX_CONFIG_DIR}/vpx_scale_rtcd.h")
 list(APPEND vpx_scale_c_sources "${VPX_ROOT}/vpx_scale/vpx_scale_rtcd.c")
 
 add_library(vpx_scale OBJECT
