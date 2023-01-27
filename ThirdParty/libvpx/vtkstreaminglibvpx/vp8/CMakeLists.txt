@@ -92,11 +92,11 @@ if (CONFIG_VP8 OR CONFIG_VP8_ENCODER OR CONFIG_VP8_DECODER)
     "${CMAKE_CURRENT_LIST_DIR}/common/swapyv12buffer.c"
   )
 
-  add_rtcd_build_step("${VPX_ROOT}/vp8/common/rtcd_defs.pl"
-    "${VPX_CONFIG_DIR}/vp8_rtcd.h"
-    "${VPX_ROOT}/vp8/common/rtcd.c"
-    "vp8_rtcd"
-  )
+  if (VPX_ARCH_ARM)
+    file(COPY "${VPX_ROOT}/build/rtcd_artifacts/rtcd_neon/vp8_rtcd.h" DESTINATION "${VPX_CONFIG_DIR}")
+  elseif (VPX_ARCH_X86 OR VPX_ARCH_X86_64)
+    file(COPY "${VPX_ROOT}/build/rtcd_artifacts/rtcd_x86/vp8_rtcd.h" DESTINATION "${VPX_CONFIG_DIR}")
+  endif ()
 
   list(APPEND vp8_common_headers "${VPX_CONFIG_DIR}/vp8_rtcd.h")
   list(APPEND vp8_common_c_sources

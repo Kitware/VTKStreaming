@@ -524,12 +524,11 @@ list(APPEND vpx_dsp_sse2_headers
 # # LSX utilities
 # DSP_SRCS-$(HAVE_LSX)  += loongarch/bitdepth_conversion_lsx.h
 
-add_rtcd_build_step("${VPX_ROOT}/vpx_dsp/vpx_dsp_rtcd_defs.pl"
-  "${VPX_CONFIG_DIR}/vpx_dsp_rtcd.h"
-  "${VPX_ROOT}/vpx_dsp/vpx_dsp_rtcd.c"
-  "vpx_dsp_rtcd"
-)
-
+if (VPX_ARCH_ARM)
+  file(COPY "${VPX_ROOT}/build/rtcd_artifacts/rtcd_neon/vpx_dsp_rtcd.h" DESTINATION "${VPX_CONFIG_DIR}")
+elseif (VPX_ARCH_X86 OR VPX_ARCH_X86_64)
+  file(COPY "${VPX_ROOT}/build/rtcd_artifacts/rtcd_x86/vpx_dsp_rtcd.h" DESTINATION "${VPX_CONFIG_DIR}")
+endif ()
 list(APPEND vpx_dsp_headers "${VPX_CONFIG_DIR}/vpx_dsp_rtcd.h")
 list(APPEND vpx_dsp_c_sources "${VPX_ROOT}/vpx_dsp/vpx_dsp_rtcd.c")
 
