@@ -135,12 +135,11 @@ if (CONFIG_VP9 OR CONFIG_VP9_ENCODER OR CONFIG_VP9_DECODER)
     )
   endif ()
 
-  add_rtcd_build_step("${VPX_ROOT}/vp9/common/vp9_rtcd_defs.pl"
-    "${VPX_CONFIG_DIR}/vp9_rtcd.h"
-    "${VPX_ROOT}/vp9/common/vp9_rtcd.c"
-    "vp9_rtcd"
-  )
-
+  if (VPX_ARCH_ARM)
+    file(COPY "${VPX_ROOT}/build/rtcd_artifacts/rtcd_neon/vp9_rtcd.h" DESTINATION "${VPX_CONFIG_DIR}")
+  elseif (VPX_ARCH_X86 OR VPX_ARCH_X86_64)
+    file(COPY "${VPX_ROOT}/build/rtcd_artifacts/rtcd_x86/vp9_rtcd.h" DESTINATION "${VPX_CONFIG_DIR}")
+  endif ()
   list(APPEND vp9_common_headers "${VPX_CONFIG_DIR}/vp9_rtcd.h")
   list(APPEND vp9_common_c_sources "${CMAKE_CURRENT_LIST_DIR}/common/vp9_rtcd.c")
 endif ()
