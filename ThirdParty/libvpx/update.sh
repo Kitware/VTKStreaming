@@ -8,7 +8,7 @@ readonly name="libvpx"
 readonly ownership="Libvpx Upstream <kwrobot@kitware.com>"
 readonly subtree="ThirdParty/$name/vtkstreaming$name"
 readonly repo="https://gitlab.kitware.com/third-party/libvpx.git"
-readonly tag="for/vtk-20221025.5-v1.12.0"
+readonly tag="for/vtk-20230126-v1.12.0"
 readonly paths="
 build/cmake
 third_party/x86inc/x86inc.asm
