@@ -24,7 +24,7 @@ set(ENABLE_NEON ON)
 if (APPLE AND CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "^arm")
   set(CONFIG_RUNTIME_CPU_DETECT OFF)
 endif ()
-set(LIBVPX_MANGLE_PREFIX "vtkstreaming_")
+set(LIBVPX_MANGLE_PREFIX "vtk_")
 
 find_package(Git QUIET)
 include("${VPX_ROOT}/build/cmake/vpx_determine_version.cmake")
@@ -53,7 +53,7 @@ add_subdirectory("${VPX_ROOT}/vpx_dsp")
 add_subdirectory("${VPX_ROOT}/vp8")
 add_subdirectory("${VPX_ROOT}/vp9")
 
-vtk_module_add_module(VTKStreaming::libvpx
+vtk_module_add_module(VTK::libvpx
 SOURCES ${vpx_installable_headers}
 )
 
@@ -121,7 +121,7 @@ vtk_module_install_headers(
   SUBDIR "vtkstreaminglibvpx"
 )
 
-vtk_module_include(VTKStreaming::libvpx
+vtk_module_include(VTK::libvpx
   PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
 )
