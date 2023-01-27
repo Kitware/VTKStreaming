@@ -8,7 +8,7 @@ readonly name="libvpx"
 readonly ownership="Libvpx Upstream <kwrobot@kitware.com>"
 readonly subtree="ThirdParty/$name/vtkstreaming$name"
 readonly repo="https://gitlab.kitware.com/third-party/libvpx.git"
-readonly tag="for/vtk-20230126-v1.12.0"
+readonly tag="for/vtkstreaming-20230127-v1.12.0"
 readonly paths="
 build/cmake
 third_party/x86inc/x86inc.asm
@@ -26,7 +26,7 @@ vpx_codec_config.c.in
 vpx_mangle.h.in
 vpx_version.h.in
 
-CMakeLists.vtk.txt
+CMakeLists.vtkstreaming.txt
 
 CONTRIBUTING.md
 AUTHORS
@@ -42,10 +42,7 @@ README
 extract_source () {
     git_archive
     pushd "$extractdir/$name-reduced"
-    mv -v CMakeLists.vtk.txt CMakeLists.txt
-    # for vtkstreaming
-    sed -i 's/LIBVPX_MANGLE_PREFIX \"vtk_\"/LIBVPX_MANGLE_PREFIX \"vtkstreaming_\"/g' CMakeLists.txt
-    sed -i 's/VTK::libvpx/VTKStreaming::libvpx/g' CMakeLists.txt
+    mv -v CMakeLists.vtkstreaming.txt CMakeLists.txt
     popd
 }
 
