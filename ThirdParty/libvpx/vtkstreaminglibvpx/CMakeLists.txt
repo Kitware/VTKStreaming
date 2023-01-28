@@ -53,7 +53,9 @@ add_subdirectory("${VPX_ROOT}/vpx_dsp")
 add_subdirectory("${VPX_ROOT}/vp8")
 add_subdirectory("${VPX_ROOT}/vp9")
 
+# For windows debug configuations, linker hangs, force static libraries for this module everywhere.
 vtk_module_add_module(VTKStreaming::libvpx
+FORCE_STATIC
 SOURCES ${vpx_installable_headers}
 )
 
