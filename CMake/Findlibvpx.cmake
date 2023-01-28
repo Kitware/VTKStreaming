@@ -1,23 +1,48 @@
 # - Try to find libvpx.
+# - Set VPX_ROOT on command line to provide an alternate location.
 find_path(VPX_INCLUDE_DIR
   NAMES
     vpx/vpx_codec.h
   DOC
     "vpx include directory"
-  PATHS
+  HINTS
     "${VPX_ROOT}/include"
 )
 mark_as_advanced(VPX_INCLUDE_DIR)
 
-find_library(VPX_LIBRARY
+if (WIN32)
+  if (CMAKE_VS_PLATFORM_TOOLSET_HOST_ARCHITECTURE STREQUAL "x86")
+    find_library(VPX_LIBRARY
+    NAMES
+      libvpx
+    DOC
+      "vpx library"
+    HINTS
+      "${VPX_ROOT}/lib"
+      "${VPX_ROOT}/lib/x86"
+    )
+  elseif (CMAKE_VS_PLATFORM_TOOLSET_HOST_ARCHITECTURE STREQUAL "x64")
+    find_library(VPX_LIBRARY
+    NAMES
+      libvpx
+    DOC
+      "vpx library"
+    HINTS
+      "${VPX_ROOT}/lib"
+      "${VPX_ROOT}/lib/x64"
+    )
+  endif ()
+else ()
+  find_library(VPX_LIBRARY
   NAMES
-    vpx
+    libvpx.a
   DOC
     "vpx library"
-  PATHS
+  HINTS
     "${VPX_ROOT}/lib"
     "${VPX_ROOT}/lib64"
-)
+  )
+endif ()
 mark_as_advanced(VPX_LIBRARY)
 
 include(FindPackageHandleStandardArgs)
