@@ -12,4 +12,3 @@ DEPENDS
   VTKStreaming::Decode
   VTKStreaming::OpenGL2
   VTK::RenderingOpenGL2
-  VTKStreaming::libvpx

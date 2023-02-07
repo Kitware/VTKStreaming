@@ -17,13 +17,16 @@
 #include "vtkLogger.h"
 #include "vtkObjectFactory.h"
 
+#ifdef VTKSTREAMING_USE_LIBVPX
 #include "vtkstreaming_libvpx.h"
 #include VTKSTREAMINGLIBVPX_HEADER(vp8cx.h)
 #include VTKSTREAMINGLIBVPX_HEADER(vpx_encoder.h)
+#endif
 
 #include <algorithm>
 #include <chrono>
 
+#ifdef VTKSTREAMING_USE_LIBVPX
 #define EncoderControl(ctx, ctrl_id, data)                                                         \
   do                                                                                               \
   {                                                                                                \
@@ -34,15 +37,18 @@
         vpx_codec_err_to_string(result));                                                          \
     }                                                                                              \
   } while (0)
+#endif
 
 struct vtkVpxEncoder::vtkInternals
 {
+#ifdef VTKSTREAMING_USE_LIBVPX
   vpx_codec_ctx_t Ctx;
   vpx_codec_enc_cfg_t Cfg;
   vpx_codec_iface_t* (*const Interface)() = &vpx_codec_vp9_cx;
   vpx_image_t* RawImage = nullptr;
   vpx_codec_err_t Result;
   vpx_codec_pts_t SendCounter;
+#endif
   // timing for encode and copy ops.
   std::chrono::high_resolution_clock::time_point::duration dtEncode, dtCopy;
 };
@@ -89,6 +95,7 @@ bool vtkVpxEncoder::SupportsCodec(VTKVideoCodecType codec) const noexcept
 bool vtkVpxEncoder::InitializeInternal()
 {
   auto& internals = (*this->Internals);
+#ifdef VTKSTREAMING_USE_LIBVPX
   internals.SendCounter = 0;
   // an initial config.
   internals.Result = vpx_codec_enc_config_default(internals.Interface(), &internals.Cfg, 0);
@@ -138,12 +145,17 @@ bool vtkVpxEncoder::InitializeInternal()
     internals.Cfg.ss_enable_auto_alt_ref + VPX_SS_MAX_LAYERS, 0);
   internals.Cfg.ss_number_layers = 1;
   internals.Cfg.temporal_layering_mode = VP9E_TEMPORAL_LAYERING_MODE_NOLAYERING;
+#else
+  vtkLog(WARNING,
+    "VTKStreaming was built without libvpx. Please enable libvpx in the cmake configuration.");
+#endif
   return true;
 }
 
 //------------------------------------------------------------------------------
 void vtkVpxEncoder::ShutdownInternal()
 {
+#ifdef VTKSTREAMING_USE_LIBVPX
   auto& internals = (*this->Internals);
   // free input resource.
   this->TearDownEncoderFrame();
@@ -153,12 +165,17 @@ void vtkVpxEncoder::ShutdownInternal()
   {
     vtkLogF(ERROR, "Failed to destroy encoder context.");
   }
+#else
+  vtkLog(WARNING,
+    "VTKStreaming was built without libvpx. Please enable libvpx in the cmake configuration.");
+#endif
 }
 
 //------------------------------------------------------------------------------
 bool vtkVpxEncoder::SetupEncoderFrame(int width, int height)
 {
   vtkLogF(TRACE, "%s, %dx%d", __func__, width, height);
+#ifdef VTKSTREAMING_USE_LIBVPX
   auto& internals = (*this->Internals);
   // initialize encoder for these dimensions.
   internals.Cfg.g_w = this->Width;
@@ -211,12 +228,17 @@ bool vtkVpxEncoder::SetupEncoderFrame(int width, int height)
       break;
   }
   internals.RawImage = vpx_img_alloc(internals.RawImage, img_fmt, this->Width, this->Height, 8);
+#else
+  vtkLog(WARNING,
+    "VTKStreaming was built without libvpx. Please enable libvpx in the cmake configuration.");
+#endif
   return true;
 }
 
 //------------------------------------------------------------------------------
 void vtkVpxEncoder::TearDownEncoderFrame()
 {
+#ifdef VTKSTREAMING_USE_LIBVPX
   auto& internals = (*this->Internals);
   if (internals.RawImage != nullptr)
   {
@@ -224,11 +246,16 @@ void vtkVpxEncoder::TearDownEncoderFrame()
     vpx_img_free(internals.RawImage);
     internals.RawImage = nullptr;
   }
+#else
+  vtkLog(WARNING,
+    "VTKStreaming was built without libvpx. Please enable libvpx in the cmake configuration.");
+#endif
 }
 
 //------------------------------------------------------------------------------
 VTKVideoEncoderResultType vtkVpxEncoder::EncodeInternal(vtkSmartPointer<vtkRawVideoFrame> frame)
 {
+#ifdef VTKSTREAMING_USE_LIBVPX
   auto& internals = (*this->Internals);
   // populate vpx_image with video frame data.
   auto img = internals.RawImage;
@@ -304,6 +331,11 @@ VTKVideoEncoderResultType vtkVpxEncoder::EncodeInternal(vtkSmartPointer<vtkRawVi
   auto te2 = std::chrono::high_resolution_clock::now();
   internals.dtEncode = te2 - te1;
   return result;
+#else
+  vtkLog(WARNING,
+    "VTKStreaming was built without libvpx. Please enable libvpx in the cmake configuration.");
+  return {};
+#endif
 }
 
 //------------------------------------------------------------------------------

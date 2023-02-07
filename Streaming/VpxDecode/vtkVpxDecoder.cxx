@@ -24,19 +24,23 @@
 #include "vtkVideoProcessingStatusTypes.h"
 #include "vtkVideoProcessingWorkUnitTypes.h"
 
+#ifdef VTKSTREAMING_USE_LIBVPX
 #include "vtkstreaming_libvpx.h"
 #include VTKSTREAMINGLIBVPX_HEADER(vp8dx.h)
 #include VTKSTREAMINGLIBVPX_HEADER(vpx_decoder.h)
+#endif
 
 #include <algorithm>
 #include <cstdint>
 
 struct vtkVpxDecoder::vtkInternals
 {
+#ifdef VTKSTREAMING_USE_LIBVPX
   vpx_codec_ctx_t Ctx;
   vpx_codec_dec_cfg_t Cfg;
   vpx_codec_iface_t* (*const Interface)() = &vpx_codec_vp9_dx;
   vpx_codec_err_t Result;
+#endif
 };
 
 vtkStandardNewMacro(vtkVpxDecoder);
@@ -80,6 +84,7 @@ bool vtkVpxDecoder::SupportsCodec(VTKVideoCodecType codec) const noexcept
 //------------------------------------------------------------------------------
 bool vtkVpxDecoder::InitializeInternal()
 {
+#ifdef VTKSTREAMING_USE_LIBVPX
   auto& internals = (*this->Internals);
   internals.Cfg.threads = vtkMultiThreader::GetGlobalDefaultNumberOfThreads();
   internals.Cfg.w = this->Width;
@@ -89,12 +94,17 @@ bool vtkVpxDecoder::InitializeInternal()
     vtkLogF(ERROR, "Failed to initialize vpx decoder.");
     return false;
   }
+#else
+  vtkLog(WARNING,
+    "VTKStreaming was built without libvpx. Please enable libvpx in the cmake configuration.");
+#endif
   return true;
 }
 
 //------------------------------------------------------------------------------
 void vtkVpxDecoder::ShutdownInternal()
 {
+#ifdef VTKSTREAMING_USE_LIBVPX
   auto& internals = (*this->Internals);
   // destroy decoder context.
   internals.Result = vpx_codec_destroy(&internals.Ctx);
@@ -102,12 +112,17 @@ void vtkVpxDecoder::ShutdownInternal()
   {
     vtkLogF(ERROR, "Failed to destroy decoder context.");
   }
+#else
+  vtkLog(WARNING,
+    "VTKStreaming was built without libvpx. Please enable libvpx in the cmake configuration.");
+#endif
 }
 
 //------------------------------------------------------------------------------
 VTKVideoDecoderResultType vtkVpxDecoder::DecodeInternal(
   vtkSmartPointer<vtkCompressedVideoPacket> chunk)
 {
+#ifdef VTKSTREAMING_USE_LIBVPX
   auto& internals = (*this->Internals);
   vpx_codec_iter_t iter = nullptr;
   vpx_image_t* img = nullptr;
@@ -162,6 +177,11 @@ VTKVideoDecoderResultType vtkVpxDecoder::DecodeInternal(
     }
   }
   return result;
+#else
+  vtkLog(WARNING,
+    "VTKStreaming was built without libvpx. Please enable libvpx in the cmake configuration.");
+  return {};
+#endif
 }
 
 //------------------------------------------------------------------------------

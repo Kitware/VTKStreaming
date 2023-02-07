@@ -13,6 +13,7 @@ endif()
 
 option(VTKSTREAMING_ENABLE_TESTING "Enable testing." ON)
 option(VTKSTREAMING_BUILD_SHARED_LIBS "Generate shared libraries instead of static ones" ON)
+option(VTKSTREAMING_USE_LIBVPX "Enable libvpx encoder and decoder." ON)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/CMake")
 
