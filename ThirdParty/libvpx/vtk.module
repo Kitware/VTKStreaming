@@ -1,5 +1,7 @@
 NAME
   VTKStreaming::libvpx
+CONDITION
+  VTKSTREAMING_USE_LIBVPX
 LIBRARY_NAME
   vtkstreaminglibvpx
 THIRD_PARTY
