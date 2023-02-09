@@ -12,7 +12,6 @@ DEPENDS
   VTKStreaming::Encode
   VTKStreaming::OpenGL2
   VTK::RenderingOpenGL2
-  VTKStreaming::libvpx
 TEST_DEPENDS
   VTK::TestingCore
   VTK::RenderingOpenGL2
