@@ -45,20 +45,12 @@ if (NOT DEFINED VTKSTREAMING_CMAKE_DESTINATION)
     "${CMAKE_INSTALL_LIBDIR}/cmake/vtkstreaming")
 endif ()
 
-# use, i.e. don't skip the full RPATH for the build tree
-set(CMAKE_SKIP_BUILD_RPATH FALSE)
- 
-# when building, don't use the install RPATH already
-# (but later on when installing)
-set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
-set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
- 
-# add the automatically determined parts of the RPATH
-# which point to directories outside the build tree to the install RPATH
-set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-if (APPLE)
-  set(CMAKE_MACOSX_RPATH ON)
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  list(APPEND CMAKE_INSTALL_RPATH "$ORIGIN")
+elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+  list(APPEND CMAKE_INSTALL_RPATH "@loader_path")
 endif ()
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 set(vtkstreaming_src_directories "${PROJECT_SOURCE_DIR}/Streaming" "${PROJECT_SOURCE_DIR}/ThirdParty")
 set(_vtk_module_log ALL)
