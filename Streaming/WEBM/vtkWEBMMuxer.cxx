@@ -143,7 +143,7 @@ void vtkWEBMMuxer::WriteWebmBlock(vtkCompressedVideoPacket* packet)
     }
     else
     {
-      vtkLog(ERROR, << "Dynamic display dimensions are only supported when writing to memory.")
+      vtkLog(ERROR, << "Dynamic display dimensions are only supported when writing to memory.");
     }
   }
 
