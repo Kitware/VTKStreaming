@@ -9,6 +9,7 @@ readonly ownership="Libvpx Upstream <kwrobot@kitware.com>"
 readonly subtree="ThirdParty/$name/vtkstreaming$name"
 readonly repo="https://gitlab.kitware.com/third-party/libvpx.git"
 readonly tag="for/vtkstreaming-20230127.1-v1.12.0"
+readonly exact_tree_match="false"
 readonly paths="
 build/cmake
 build/rtcd_artifacts/rtcd_neon
