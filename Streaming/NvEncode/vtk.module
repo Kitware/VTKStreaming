@@ -10,7 +10,7 @@ DEPENDS
   VTKStreaming::Encode
   VTKStreaming::OpenGL2
 PRIVATE_DEPENDS
-  VTK::glew
+  VTK::glad
   VTK::RenderingOpenGL2
 TEST_DEPENDS
   VTK::TestingCore

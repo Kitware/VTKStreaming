@@ -26,7 +26,7 @@
 #include "vtkOpenGLVideoFrameRenderer.h"
 #include "vtkPixelFormatTypes.h"
 #include "vtkSmartPointer.h"
-#include "vtk_glew.h"
+#include "vtk_glad.h"
 
 #include <algorithm>
 

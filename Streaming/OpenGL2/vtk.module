@@ -9,7 +9,7 @@ KIT
 DEPENDS
   VTKStreaming::Core
 PRIVATE_DEPENDS
-  VTK::glew
+  VTK::glad
   VTK::RenderingOpenGL2
 TEST_DEPENDS
   VTK::RenderingOpenGL2

@@ -28,7 +28,7 @@
 #include "vtkUnsignedCharArray.h"
 #include <thread>
 
-#include <vtk_glew.h>
+#include <vtk_glad.h>
 
 class vtkOpenGLVideoFrameInternals
 {
