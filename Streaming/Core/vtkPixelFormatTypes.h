@@ -18,7 +18,7 @@
 
 #include "vtkStreamingCoreModule.h"
 
-enum class VTKPixelFormatType
+enum VTKPixelFormatType
 {
   VTKPF_RGBA32, // r,g,b,a 8:8:8:8, 32 bpp Ex: 2x2 -> rgba|rgba|rgba|rgba
   VTKPF_RGB24,  // r,g,b   8:8:8, 24 bpp Ex: 2x2 -> rgb|rgb|rgb|rgb

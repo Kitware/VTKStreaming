@@ -20,7 +20,7 @@
 
 // For new codecs, please insert above MaxNumberOfSupportedCodecs
 
-enum class VTKVideoCodecType
+enum VTKVideoCodecType
 {
   VTKVC_VP9,
   VTKVC_AV1,
