@@ -154,7 +154,6 @@ public:
    */
   vtkSetEnumMacro(Codec, VTKVideoCodecType);
   vtkGetEnumMacro(Codec, VTKVideoCodecType);
-  void SetCodec(int codec);
   ///@}
 
   ///@{
@@ -173,7 +172,6 @@ public:
    */
   vtkSetEnumMacro(InputPixelFormat, VTKPixelFormatType);
   vtkGetEnumMacro(InputPixelFormat, VTKPixelFormatType);
-  void SetInputPixelFormat(int pixFmt);
   ///@}
 
   ///@{

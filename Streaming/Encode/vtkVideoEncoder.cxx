@@ -91,16 +91,6 @@ vtkRenderWindow* vtkVideoEncoder::GetGraphicsContext() const
 }
 
 //------------------------------------------------------------------------------
-void vtkVideoEncoder::SetCodec(int codec)
-{
-  vtkLogScopeFunction(TRACE);
-  if (codec >= 0 && codec < static_cast<int>(VTKVideoCodecType::VTKVC_MaxNumberOfSupportedCodecs))
-  {
-    this->SetCodec(static_cast<VTKVideoCodecType>(codec));
-  }
-}
-
-//------------------------------------------------------------------------------
 void vtkVideoEncoder::SetWidth(int width)
 {
   vtkLogScopeF(TRACE, "%s, w=%d", __func__, width);
@@ -112,16 +102,6 @@ void vtkVideoEncoder::SetHeight(int height)
 {
   vtkLogScopeF(TRACE, "%s, h=%d", __func__, height);
   this->Height = height;
-}
-
-//------------------------------------------------------------------------------
-void vtkVideoEncoder::SetInputPixelFormat(int pixFmt)
-{
-  vtkLogScopeFunction(TRACE);
-  if (pixFmt >= 0 && pixFmt <= 3)
-  {
-    this->SetInputPixelFormat(static_cast<VTKPixelFormatType>(pixFmt));
-  }
 }
 
 //------------------------------------------------------------------------------
