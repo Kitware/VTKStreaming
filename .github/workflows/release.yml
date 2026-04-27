@@ -1,0 +1,60 @@
+name: Release
+
+on: workflow_dispatch
+
+jobs:
+  release-build:
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        py-abi: ["cp310", "cp311", "cp312", "cp313"]
+        include:
+          # Python version to install on host
+          - py-abi: cp310
+            python-version: "3.10"
+          - py-abi: cp311
+            python-version: "3.11"
+          - py-abi: cp312
+            python-version: "3.12"
+          - py-abi: cp313
+            python-version: "3.13"
+          # OS name to ciwheelbuild platform name
+          - os: ubuntu-latest
+            platform-tag: manylinux_2_28_x86_64
+            build-target: "manylinux_x86_64"
+          - os: windows-latest
+            platform-tag: win_amd64
+            build-target: "win_amd64"
+    uses: ./.github/workflows/build-wheels.yml
+    with:
+      os: ${{ matrix.os }}
+      build-target: ${{ matrix.py-abi }}-${{ matrix.build-target }}
+      python-version: ${{ matrix.python-version }}
+      platform-tag: ${{ matrix.platform-tag }}
+
+  upload-pypi:
+    name: Push runtime wheel on PyPi
+    needs: [release-build]
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/vtk-streaming
+    permissions:
+      id-token: write # IMPORTANT: mandatory for trusted publishing
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all wheel artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./wheelhouse
+          pattern: vtk_streaming-*
+          merge-multiple: true # Flattens them into one directory
+
+      # https://docs.pypi.org/trusted-publishers/using-a-publisher/
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: ./wheelhouse
