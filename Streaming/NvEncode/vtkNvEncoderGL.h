@@ -48,6 +48,8 @@ public:
   vtkIdType GetLastScaleTimeNS() const noexcept override;
   bool SupportsCodec(VTKVideoCodecType codec) const noexcept override;
 
+  static bool CheckAvailability() noexcept;
+
 protected:
   vtkNvEncoderGL();
   ~vtkNvEncoderGL() override;

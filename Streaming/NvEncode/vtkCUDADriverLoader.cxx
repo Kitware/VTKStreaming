@@ -119,3 +119,15 @@ void vtkCUDADriverLoader::FreeFunctions()
     this->FunctionsList = nullptr;
   }
 }
+
+bool vtkCUDADriverLoader::CheckAvailability() noexcept
+{
+  auto library = VTKSTREAMING_NV_LOAD_LIB(VTKSTREAMING_CUDA_LIBNAME);
+  if (library)
+  {
+    VTKSTREAMING_NV_FREE_LIB(library);
+    return true;
+  }
+
+  return false;
+}

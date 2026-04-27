@@ -111,6 +111,11 @@ bool vtkNvEncoderGL::SupportsCodec(VTKVideoCodecType codec) const noexcept
   }
 }
 
+bool vtkNvEncoderGL::CheckAvailability() noexcept
+{
+  return vtkCUDADriverLoader::CheckAvailability();
+}
+
 //------------------------------------------------------------------------------
 bool vtkNvEncoderGL::InitializeInternal()
 {
