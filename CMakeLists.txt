@@ -3,12 +3,15 @@ project(${SKBUILD_PROJECT_NAME} VERSION ${SKBUILD_PROJECT_VERSION})
 
 option(VTKSTREAMING_ENABLE_TESTING "Enable testing." OFF)
 
+set(VTKSTREAMING_USE_LIBVPX ON)
 set(modules
   VTKStreaming::Core
-  VTKStreaming::Decode
   VTKStreaming::Encode
   VTKStreaming::NvEncode
+  VTKStreaming::libvpx
+  VTKStreaming::VpxEncode
   VTKStreaming::OpenGL2
+  VTKStreaming::WEBM
 )
 
 include(VTKSDKPythonWheelHelper)
