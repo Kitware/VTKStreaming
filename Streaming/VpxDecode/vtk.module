@@ -2,10 +2,6 @@ NAME
   VTKStreaming::VpxDecode
 LIBRARY_NAME
   vtkStreamingVpxDecode
-GROUPS
-  Streaming
-KIT
-  VTKStreaming::VpxDecode
 DEPENDS
   VTK::CommonCore
   VTK::CommonDataModel

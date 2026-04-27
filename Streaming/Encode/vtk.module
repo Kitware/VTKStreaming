@@ -2,10 +2,6 @@ NAME
   VTKStreaming::Encode
 LIBRARY_NAME
   vtkStreamingEncode
-GROUPS
-  Streaming
-KIT
-  VTKStreaming::Encode
 DEPENDS
   VTKStreaming::Core
   VTK::RenderingCore

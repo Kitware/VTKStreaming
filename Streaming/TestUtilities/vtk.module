@@ -2,10 +2,6 @@ NAME
   VTKStreaming::TestUtilites
 LIBRARY_NAME
   vtkStreamingTestUtilites
-GROUPS
-  Streaming
-KIT
-  VTKStreaming::TestUtilites
 DEPENDS
 PRIVATE_DEPENDS
   VTK::CommonCore

@@ -2,8 +2,6 @@ NAME
   VTKStreaming::WEBM
 LIBRARY_NAME
   vtkStreamingWEBM
-GROUPS
-  StandAlone
 DEPENDS
   VTK::CommonDataModel
 PRIVATE_DEPENDS

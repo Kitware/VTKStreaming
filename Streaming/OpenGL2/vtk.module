@@ -2,10 +2,6 @@ NAME
   VTKStreaming::OpenGL2
 LIBRARY_NAME
   vtkStreamingOpenGL2
-GROUPS
-  Streaming
-KIT
-  VTKStreaming::OpenGL2
 DEPENDS
   VTKStreaming::Core
 PRIVATE_DEPENDS

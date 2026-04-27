@@ -2,10 +2,6 @@ NAME
   VTKStreaming::NvEncode
 LIBRARY_NAME
   vtkStreamingNvEncode
-GROUPS
-  Streaming
-KIT
-  VTKStreaming::NvEncode
 DEPENDS
   VTKStreaming::Encode
   VTKStreaming::OpenGL2

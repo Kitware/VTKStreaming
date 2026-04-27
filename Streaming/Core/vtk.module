@@ -2,10 +2,6 @@ NAME
   VTKStreaming::Core
 LIBRARY_NAME
   vtkStreamingCore
-GROUPS
-  Streaming
-KIT
-  VTKStreaming::Core
 DEPENDS
   VTK::CommonCore
   VTK::CommonDataModel

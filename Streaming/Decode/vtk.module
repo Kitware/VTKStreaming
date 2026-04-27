@@ -2,9 +2,5 @@ NAME
   VTKStreaming::Decode
 LIBRARY_NAME
   vtkStreamingDecode
-GROUPS
-  Streaming
-KIT
-  VTKStreaming::Decode
 DEPENDS
   VTKStreaming::Core
