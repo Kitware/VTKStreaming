@@ -1,0 +1,49 @@
+[build-system]
+requires = [
+  "scikit-build-core",
+  "vtk-sdk==9.6.0",
+  "vtk-sdk-python-wheel-helper"
+]
+build-backend = "scikit_build_core.build"
+
+[tool.scikit-build]
+cmake.args = ["-GNinja", "-DCMAKE_BUILD_TYPE=Release"]
+
+[project]
+name = "vtk-streaming"
+version = "0.1.0"
+readme = "README.md"
+description = "This module provides classes to encode and stream frames from a VTK OpenGL render window using video codecs."
+license = { text = "Apache License" }
+authors = [
+  { name = "Alexy Pellegrini", email = "alexy.pellegrini@kitware.com" },
+]
+keywords = ["Python", "VTK"]
+dependencies = ["vtk==9.6.0"]
+
+classifiers = [
+  "License :: OSI Approved :: BSD License",
+  "Natural Language :: English",
+  "Programming Language :: Python",
+  "Programming Language :: C++",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Education",
+  "Intended Audience :: Healthcare Industry",
+  "Intended Audience :: Science/Research",
+  "Topic :: Multimedia :: Graphics",
+  "Topic :: Multimedia :: Graphics :: 3D Rendering",
+  "Topic :: Scientific/Engineering",
+  "Topic :: Scientific/Engineering :: Visualization",
+  "Topic :: Software Development :: Libraries",
+  "Operating System :: Microsoft :: Windows",
+  "Operating System :: POSIX :: Linux",
+]
+
+[project.urls]
+documentation = "https://slicerlayerdisplayablemanager.readthedocs.io"
+source = "https://github.com/KitwareMedical/SlicerLayerDisplayableManager"
+download = "https://pypi.org/project/slicer-layer-dm/#files"
+tracker = "https://github.com/KitwareMedical/SlicerLayerDisplayableManager/issues"
+
+[project.optional-dependencies]
+test = ["pytest", "virtualenv"]
