@@ -28,6 +28,7 @@ jobs:
       PIP_EXTRA_INDEX_URL: "https://vtk.org/files/wheel-sdks"
       CIBW_ENVIRONMENT_PASS_LINUX: "PIP_EXTRA_INDEX_URL"
       CIBW_BUILD: ${{ inputs.build-target }}
+      CIBW_TEST_COMMAND: "python -m pytest {project} --verbose"
       # Required to make tests pass (VTK needs them)
       CIBW_BEFORE_ALL_LINUX: "yum install -y mesa-libGL-devel glx-utils freeglut-devel"
       # Global test setup
@@ -49,8 +50,6 @@ jobs:
 
       - name: Build wheel
         uses: pypa/cibuildwheel@v3.3.1
-        env:
-          CIBW_TEST_COMMAND: "python -m pytest {project}--verbose"
         with:
           package-dir: .
           output-dir: wheelhouse
