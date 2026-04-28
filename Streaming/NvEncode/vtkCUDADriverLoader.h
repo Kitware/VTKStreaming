@@ -29,8 +29,6 @@ struct VTKSTREAMINGNVENCODE_EXPORT vtkCUDADriverLoader
   bool LoadFunctionsTable();
   bool CloseLibrary();
 
-  static bool CheckAvailability() noexcept;
-
   CUDRVFunctions* FunctionsList = nullptr;
 
 private:

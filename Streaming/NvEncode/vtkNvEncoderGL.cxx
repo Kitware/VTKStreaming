@@ -111,9 +111,20 @@ bool vtkNvEncoderGL::SupportsCodec(VTKVideoCodecType codec) const noexcept
   }
 }
 
-bool vtkNvEncoderGL::CheckAvailability() noexcept
+bool vtkNvEncoderGL::CheckAvailability() noexcept // assumes no exception can occur
 {
-  return vtkCUDADriverLoader::CheckAvailability();
+  const auto verbosity = vtkLogger::GetCurrentVerbosityCutoff();
+  vtkLogger::SetStderrVerbosity(vtkLogger::VERBOSITY_OFF);
+
+  vtkNew<vtkNvEncoderGL> encoder;
+  encoder->SetCodec(VTKVC_H264); // most wildly available format
+  encoder->SetInputPixelFormat(VTKPF_IYUV);
+  encoder->SetWidth(640);
+  encoder->SetWidth(480);
+  const bool success = encoder->Initialize();
+
+  vtkLogger::SetStderrVerbosity(verbosity);
+  return success;
 }
 
 //------------------------------------------------------------------------------
