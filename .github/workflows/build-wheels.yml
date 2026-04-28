@@ -38,6 +38,11 @@ jobs:
         python -m pip install wheel &&
         python -m wheel tags --platform-tag ${{ inputs.platform-tag }} --remove {wheel} &&
         cp $(dirname {wheel})/vtk_streaming*.whl {dest_dir}"
+      # same as above, we don't patch the wheel on Mac too.
+      CIBW_REPAIR_WHEEL_COMMAND_MACOS: "
+        python -m pip install wheel &&
+        python -m wheel tags --platform-tag ${{ inputs.platform-tag }} --remove {wheel} &&
+        cp $(dirname {wheel})/vtk_streaming*.whl {dest_dir}"
 
     steps:
       - uses: actions/checkout@v4

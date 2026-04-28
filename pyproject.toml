@@ -11,7 +11,7 @@ cmake.args = ["-GNinja", "-DCMAKE_BUILD_TYPE=Release"]
 
 [project]
 name = "vtk-streaming"
-version = "0.2.1"
+version = "0.3.0"
 readme = "README.md"
 description = "This module provides classes to encode and stream frames from a VTK OpenGL render window using video codecs."
 license = { text = "Apache License" }
@@ -37,6 +37,7 @@ classifiers = [
   "Topic :: Software Development :: Libraries",
   "Operating System :: Microsoft :: Windows",
   "Operating System :: POSIX :: Linux",
+  "Operating System :: MacOS",
 ]
 
 [project.urls]
