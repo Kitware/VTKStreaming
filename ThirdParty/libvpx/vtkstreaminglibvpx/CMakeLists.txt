@@ -1,4 +1,8 @@
-enable_language(ASM_NASM)
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "^AMD64|x86_64$")
+  enable_language(ASM_NASM)
+else()
+  enable_language(ASM)
+endif()
 
 set(VPX_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
 set(VPX_CONFIG_DIR "${CMAKE_CURRENT_BINARY_DIR}")
