@@ -41,6 +41,7 @@
 
 struct vtkVpxEncoder::vtkInternals
 {
+  bool initialized {false};
 #ifdef VTKSTREAMING_USE_LIBVPX
   vpx_codec_ctx_t Ctx;
   vpx_codec_enc_cfg_t Cfg;
@@ -165,11 +166,15 @@ void vtkVpxEncoder::ShutdownInternal()
 {
 #ifdef VTKSTREAMING_USE_LIBVPX
   auto& internals = (*this->Internals);
+  if (!internals.initialized)
+  {
+    return;
+  }
   // free input resource.
   this->TearDownEncoderFrame();
   // destroy encoder context.
   internals.Result = vpx_codec_destroy(&internals.Ctx);
-  if (internals.Result)
+  if (internals.Result != VPX_CODEC_OK)
   {
     vtkLogF(ERROR, "Failed to destroy encoder context.");
   }
@@ -217,7 +222,7 @@ bool vtkVpxEncoder::SetupEncoderFrame(int width, int height)
     vpx_color_space::VPX_CS_BT_709);                        // default should be BT_709
   EncoderControl(&internals.Ctx, VP9E_SET_COLOR_RANGE, 0);  // should be limited.
   EncoderControl(&internals.Ctx, VP9E_SET_TARGET_LEVEL, 0); // let encoder determine a level.
-  EncoderControl(&internals.Ctx, VP9E_SET_ROW_MT, this->RowBasedMultiThreading); // false/true
+  EncoderControl(&internals.Ctx, VP9E_SET_ROW_MT, this->RowBasedMultiThreading ? 1 : 0); // false/true
 
   // create a new raw image object.
   vpx_img_fmt_t img_fmt;
@@ -236,6 +241,7 @@ bool vtkVpxEncoder::SetupEncoderFrame(int width, int height)
       break;
   }
   internals.RawImage = vpx_img_alloc(internals.RawImage, img_fmt, this->Width, this->Height, 8);
+  internals.initialized = true;
 #else
   vtkLog(WARNING,
     "VTKStreaming was built without libvpx. Please enable libvpx in the cmake configuration.");
@@ -265,41 +271,44 @@ VTKVideoEncoderResultType vtkVpxEncoder::EncodeInternal(vtkSmartPointer<vtkRawVi
 {
 #ifdef VTKSTREAMING_USE_LIBVPX
   auto& internals = (*this->Internals);
+  if (frame == nullptr)
+  {
+    return {};
+  }
   // populate vpx_image with video frame data.
   auto img = internals.RawImage;
-  if (frame != nullptr)
+
+  auto tc1 = std::chrono::high_resolution_clock::now();
+  auto data = frame->GetData();
+  const auto height = frame->GetHeight();
+  const auto chromaHeight = frame->GetChromaHeight(height, frame->GetPixelFormat());
+  const int ptrIds[3] = { frame->GetPlanePointerIdx(0), frame->GetPlanePointerIdx(1),
+    frame->GetPlanePointerIdx(2) };
+  if (frame->GetPixelFormat() == VTKPixelFormatType::VTKPF_IYUV)
   {
-    auto tc1 = std::chrono::high_resolution_clock::now();
-    auto data = frame->GetData();
-    const auto height = frame->GetHeight();
-    const auto chromaHeight = frame->GetChromaHeight(height, frame->GetPixelFormat());
-    const int ptrIds[3] = { frame->GetPlanePointerIdx(0), frame->GetPlanePointerIdx(1),
-      frame->GetPlanePointerIdx(2) };
-    if (frame->GetPixelFormat() == VTKPixelFormatType::VTKPF_IYUV)
-    {
-      unsigned char* src = data->GetPointer(0);
-      unsigned char* dst = img->planes[0];
-      std::copy(src, src + (img->stride[0] * img->h), dst);
+    unsigned char* src = data->GetPointer(0);
+    unsigned char* dst = img->planes[0];
+    std::copy(src, src + (img->stride[0] * img->h), dst);
 
-      dst = img->planes[1];
-      std::copy(src + ptrIds[1], src + ptrIds[1] + (img->stride[1] * img->h >> 1), dst);
+    dst = img->planes[1];
+    std::copy(src + ptrIds[1], src + ptrIds[1] + (img->stride[1] * img->h >> 1), dst);
 
-      dst = img->planes[2];
-      std::copy(src + ptrIds[2], src + ptrIds[2] + (img->stride[2] * img->h >> 1), dst);
-    }
-    else if (frame->GetPixelFormat() == VTKPixelFormatType::VTKPF_NV12)
-    {
-      unsigned char* src = data->GetPointer(0);
-      unsigned char* dst = img->planes[0];
-      std::copy(src, src + (img->stride[0] * img->h), dst);
-
-      dst = img->planes[1];
-      std::copy(src + ptrIds[1], src + ptrIds[1] + (img->stride[1] * img->h >> 1), dst);
-    }
-
-    auto tc2 = std::chrono::high_resolution_clock::now();
-    internals.dtCopy = tc2 - tc1;
+    dst = img->planes[2];
+    std::copy(src + ptrIds[2], src + ptrIds[2] + (img->stride[2] * img->h >> 1), dst);
   }
+  else if (frame->GetPixelFormat() == VTKPixelFormatType::VTKPF_NV12)
+  {
+    unsigned char* src = data->GetPointer(0);
+    unsigned char* dst = img->planes[0];
+    std::copy(src, src + (img->stride[0] * img->h), dst);
+
+    dst = img->planes[1];
+    std::copy(src + ptrIds[1], src + ptrIds[1] + (img->stride[1] * img->h >> 1), dst);
+  }
+
+  auto tc2 = std::chrono::high_resolution_clock::now();
+  internals.dtCopy = tc2 - tc1;
+  
   // encode frame.
   const int flags = (this->ForceIFrame || this->KeyFramesOnly) ? VPX_EFLAG_FORCE_KF : 0;
   vpx_codec_iter_t iter = 0;
@@ -309,7 +318,7 @@ VTKVideoEncoderResultType vtkVpxEncoder::EncodeInternal(vtkSmartPointer<vtkRawVi
     vpx_codec_encode(&internals.Ctx, img, internals.SendCounter++, 1, flags, VPX_DL_REALTIME);
   if (internals.Result != VPX_CODEC_OK)
   {
-    long long frameId = static_cast<long long>(internals.SendCounter);
+    long long frameId = static_cast<long long>(internals.SendCounter - 1);
     vtkLogF(ERROR, "Failed to encode %s frame %lld. Error: %s, Detail: %s", flags ? "key" : "delta",
       frameId, vpx_codec_err_to_string(internals.Result), vpx_codec_error_detail(&internals.Ctx));
     return { VTKVideoProcessingStatusType::VTKVPStatus_UnknownError, {} };
