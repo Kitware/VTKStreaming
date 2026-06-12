@@ -47,7 +47,7 @@ download = "https://pypi.org/project/slicer-layer-dm/#files"
 tracker = "https://github.com/Kitware/VTKStreaming/issues"
 
 [project.optional-dependencies]
-test = ["pytest", "virtualenv"]
+test = ["pytest", "virtualenv", "numpy"]
 
 # Shared cibuildwheel config; CI (build-wheels.yml) only adds the
 # per-matrix CIBW_BUILD selection. Locally, build the same wheel with e.g.
@@ -58,7 +58,7 @@ test = ["pytest", "virtualenv"]
 environment = { PIP_EXTRA_INDEX_URL = "https://vtk.org/files/wheel-sdks" }
 # No vtk-sdk wheels exist for musllinux.
 skip = "*-musllinux_*"
-test-requires = ["pytest", "virtualenv"]
+test-requires = ["pytest", "virtualenv", "numpy"]
 test-command = "python -m pytest {project} --verbose"
 
 [tool.cibuildwheel.linux]

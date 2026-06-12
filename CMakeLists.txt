@@ -7,9 +7,11 @@ set(VTKSTREAMING_USE_LIBVPX ON)
 set(modules
   VTKStreaming::Core
   VTKStreaming::Encode
+  VTKStreaming::Decode
   VTKStreaming::NvEncode
   VTKStreaming::libvpx
   VTKStreaming::VpxEncode
+  VTKStreaming::VpxDecode
   VTKStreaming::OpenGL2
   VTKStreaming::WEBM
 )
