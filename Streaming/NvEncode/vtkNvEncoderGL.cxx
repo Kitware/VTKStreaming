@@ -160,6 +160,7 @@ bool vtkNvEncoderGL::InitializeInternal()
     unsigned int cudaDeviceCount = 0;
     VTK_NV_CUDA_DRIVER_API_CHECKED_INVOKE(
       cuGLGetDevices_v2(&cudaDeviceCount, devices, 4, CU_GL_DEVICE_LIST_ALL));
+    char devName[100];
     if (!cudaDeviceCount)
     {
       vtkLogF(ERROR, "OpenGL rendering is not on a CUDA device.");
@@ -167,21 +168,18 @@ bool vtkNvEncoderGL::InitializeInternal()
     }
     else
     {
-      vtkLogF(INFO, "Found %u devices capable of CUDA-OpenGL interop.", cudaDeviceCount);
+      status = cufns->cuDeviceGetName(devName, sizeof(devName), devices[0]);
+      auto& ctx = this->CUDAInstance->Context;
+      ctx = nullptr;
+      status = cufns->cuCtxCreate_v2(&ctx, 0, devices[0]);
+      unsigned int version = 0;
+      cufns->cuCtxGetApiVersion(ctx, &version);
+      unsigned int major = version / 1000;
+      unsigned int minor = version - major * 1000;
+      vtkLogF(TRACE,
+        "NVENC GPU #%d ('%s') CUDA ctx %d.%d in use. %d gpu (s) capable of cuda-gl interop.", 0,
+        devName, major, minor, cudaDeviceCount);
     }
-    char devName[100];
-    status = cufns->cuDeviceGetName(devName, sizeof(devName), devices[0]);
-    vtkLogF(INFO, "NvEncode: GPU %d in use - %s", 0, devName);
-
-    auto& ctx = this->CUDAInstance->Context;
-    ctx = nullptr;
-    status = cufns->cuCtxCreate_v2(&ctx, 0, devices[0]);
-
-    unsigned int version = 0;
-    cufns->cuCtxGetApiVersion(ctx, &version);
-    unsigned int major = version / 1000;
-    unsigned int minor = version - major * 1000;
-    vtkLogF(INFO, "CUDA context in use - %d.%d", major, minor);
   }
 
   // 2. Initializes NVENC with CUDA device.

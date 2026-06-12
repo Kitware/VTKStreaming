@@ -77,7 +77,7 @@ frame_text.GetTextProperty().SetJustificationToRight()
 frame_text.GetTextProperty().SetVerticalJustificationToTop()
 frame_text.GetPositionCoordinate().SetCoordinateSystemToNormalizedViewport()
 frame_text.GetPositionCoordinate().SetValue(0.98, 0.98)
-renderer.AddActor2D(frame_text)
+renderer.AddViewProp(frame_text)
 
 scene_window = vtkRenderWindow()
 scene_window.SetWindowName("Input scene (VP9 encode)")
