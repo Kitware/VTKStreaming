@@ -42,9 +42,9 @@ classifiers = [
 
 [project.urls]
 documentation = "https://slicerlayerdisplayablemanager.readthedocs.io"
-source = "https://github.com/KitwareMedical/SlicerLayerDisplayableManager"
+source = "https://github.com/Kitware/VTKStreaming"
 download = "https://pypi.org/project/slicer-layer-dm/#files"
-tracker = "https://github.com/KitwareMedical/SlicerLayerDisplayableManager/issues"
+tracker = "https://github.com/Kitware/VTKStreaming/issues"
 
 [project.optional-dependencies]
 test = ["pytest", "virtualenv"]
