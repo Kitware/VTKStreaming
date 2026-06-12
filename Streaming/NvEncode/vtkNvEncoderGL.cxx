@@ -229,6 +229,11 @@ void vtkNvEncoderGL::ShutdownInternal()
 {
   this->ResourceCallback->Release();
   this->Internals->Shutdown();
+  if (this->Initialized)
+  {
+    this->CUDADriverLoader->FunctionsList->cuCtxDestroy_v2(this->CUDAInstance->Context);
+    this->CUDADriverAvailable = false;
+  }
 }
 
 //------------------------------------------------------------------------------
