@@ -257,10 +257,25 @@ VTKVideoEncoderResultType vtkNvEncoderGL::EncodeInternal(vtkSmartPointer<vtkRawV
   internals.dtUpload = tu2 - tu1;
 
   auto te1 = std::chrono::high_resolution_clock::now();
-  auto status = internals.Send(this->ForceIFrame);
-  if (status != NV_ENC_SUCCESS)
+  
+  CUresult status;
+  auto& ctx = this->CUDAInstance->Context;
+  auto glContext = vtkOpenGLRenderWindow::SafeDownCast(this->GraphicsContext);
+  glContext->MakeCurrent();
+  VTK_NV_CUDA_DRIVER_API_CHECKED_INVOKE(cuCtxPushCurrent_v2(ctx));
+  const auto bfrIdx = internals.NvEncSendCounter % internals.NvEncBufferCount;
+  VTK_NV_CUDA_DRIVER_API_CHECKED_INVOKE(cuGraphicsMapResources(1, &this->CUDAInstance->Resources[bfrIdx], nullptr));
+  VTK_NV_CUDA_DRIVER_API_CHECKED_INVOKE(cuCtxPopCurrent_v2(nullptr));
+  glContext->ReleaseCurrent();
+  auto sstatus = internals.Send(this->ForceIFrame);
+  glContext->MakeCurrent();
+  VTK_NV_CUDA_DRIVER_API_CHECKED_INVOKE(cuCtxPushCurrent_v2(ctx));
+  VTK_NV_CUDA_DRIVER_API_CHECKED_INVOKE(cuGraphicsUnmapResources(1, &this->CUDAInstance->Resources[bfrIdx], nullptr));
+  VTK_NV_CUDA_DRIVER_API_CHECKED_INVOKE(cuCtxPopCurrent_v2(nullptr));
+  glContext->ReleaseCurrent();
+  if (sstatus != NV_ENC_SUCCESS)
   {
-    return { vtkNvEncoderInternals::ParseNvEncodeAPIStatus(status), {} };
+    return { vtkNvEncoderInternals::ParseNvEncodeAPIStatus(sstatus), {} };
   }
   std::vector<vtkSmartPointer<vtkCompressedVideoPacket>> packets;
   bool success = internals.Receive(packets);
@@ -371,6 +386,12 @@ bool vtkNvEncoderGL::AllocateInputBuffers()
   const auto bufFmt = vtkNvEncoderInternals::ParsePixelFormat(this->InputPixelFormat);
   bool success = internals.RegisterInputResources(
     inputResources, inputFrames, NV_ENC_INPUT_RESOURCE_TYPE_CUDAARRAY, bufFmt);
+  for (std::size_t i = 0; i < internals.GetEncoderBufferCount(); ++i)
+  {
+    VTK_NV_CUDA_DRIVER_API_CHECKED_INVOKE(cuGraphicsUnmapResources(1, &
+    this->CUDAInstance->Resources[i], nullptr));
+  }
+
   return success;
 }
 
@@ -407,11 +428,6 @@ void vtkNvEncoderGL::ReleaseGLResources(vtkWindow* window)
     auto resource = this->CUDAInstance->Resources[i];
     if (deviceArray != nullptr && resource != nullptr)
     {
-      VTK_NV_CUDA_DRIVER_API_CHECKED_INVOKE(cuGraphicsUnmapResources(1, &resource, nullptr));
-      if (status != CUDA_SUCCESS)
-      {
-        vtkLog(ERROR, "Failed to unmap CUDA gfx resource.");
-      }
       VTK_NV_CUDA_DRIVER_API_CHECKED_INVOKE(cuGraphicsUnregisterResource(resource));
       if (status != CUDA_SUCCESS)
       {
