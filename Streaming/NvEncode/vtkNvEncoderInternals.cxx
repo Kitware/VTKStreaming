@@ -1039,6 +1039,17 @@ bool vtkNvEncoderInternals::TweakFromEncoderObject(
     params->encodeConfig->rcParams.enableAQ = 0;
     params->encodeConfig->rcParams.constQP = { q, q, q };
   }
+  else if (encoderObject->GetBitRateControlMode() == vtkVideoEncoder::BRCType::QP)
+  {
+    params->encodeConfig->rcParams.rateControlMode = NV_ENC_PARAMS_RC_CONSTQP;
+    vtkLogF(TRACE, "Applied QP with qp=%d", q);
+    params->encodeConfig->rcParams.enableMinQP = 0;
+    params->encodeConfig->rcParams.enableMaxQP = 0;
+    params->encodeConfig->rcParams.averageBitRate = 0;
+    params->encodeConfig->rcParams.maxBitRate = 0;
+    params->encodeConfig->rcParams.enableAQ = 0;
+    params->encodeConfig->rcParams.constQP = { q, q, q };
+  }
 
   if (encoderObject->GetLowDelayMode())
   {

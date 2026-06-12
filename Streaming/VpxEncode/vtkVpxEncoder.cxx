@@ -118,10 +118,14 @@ bool vtkVpxEncoder::InitializeInternal()
 
   // fine tune rate control settings
   internals.Cfg.rc_target_bitrate = this->BitRate / 1000;
-  internals.Cfg.rc_max_quantizer = 63;
+  internals.Cfg.rc_max_quantizer = vtkMath::ClampValue(
+    this->MaxQuantizationParameter, static_cast<unsigned int>(1), static_cast<unsigned int>(63));
   internals.Cfg.rc_min_quantizer = vtkMath::ClampValue(
-    this->QuantizationParameter, static_cast<unsigned int>(1), static_cast<unsigned int>(63));
-  // internals.Cfg.rc_dropframe_thresh = 100;
+    this->MinQuantizationParameter, static_cast<unsigned int>(1), static_cast<unsigned int>(63));
+  if(internals.Cfg.rc_max_quantizer < internals.Cfg.rc_min_quantizer)
+  {
+    internals.Cfg.rc_max_quantizer = internals.Cfg.rc_min_quantizer;
+  }
 
   switch (this->BitRateControlMode)
   {
@@ -132,7 +136,11 @@ bool vtkVpxEncoder::InitializeInternal()
       break;
     case vtkVideoEncoder::BRCType::CQP:
       internals.Cfg.rc_end_usage = vpx_rc_mode::VPX_CQ;
-      internals.Cfg.rc_min_quantizer = internals.Cfg.rc_max_quantizer;
+      break;
+    case vtkVideoEncoder::BRCType::QP:
+      internals.Cfg.rc_end_usage = vpx_rc_mode::VPX_Q;
+      internals.Cfg.rc_max_quantizer = this->GetQuantizationParameter();
+      internals.Cfg.rc_min_quantizer = this->GetQuantizationParameter();
       break;
     case vtkVideoEncoder::BRCType::CBR:
     default:

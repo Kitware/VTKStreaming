@@ -51,9 +51,11 @@ void vtkVideoEncoder::PrintSelf(ostream& os, vtkIndent indent)
     case vtkVideoEncoder::BRCType::CBR:
       os << "Constant Bit Rate\n";
     case vtkVideoEncoder::BRCType::CQP:
-      os << "Constant Quantization Parameter\n";
+      os << "Constrained Quantization Parameter\n";
     case vtkVideoEncoder::BRCType::VBR:
       os << "Variable Bit Rate\n";
+    case vtkVideoEncoder::BRCType::QP:
+      os << "Constant Quantization Parameter\n";
     default:
       break;
   }
@@ -107,11 +109,8 @@ void vtkVideoEncoder::SetHeight(int height)
 //------------------------------------------------------------------------------
 void vtkVideoEncoder::SetBitRateControlMode(int mode)
 {
-  if (mode >= 0 && mode < 3 && mode != static_cast<int>(this->BitRateControlMode))
-  {
-    this->BitRateControlMode = static_cast<vtkVideoEncoder::BRCType>(mode);
-    this->Modified();
-  }
+  this->BitRateControlMode = static_cast<vtkVideoEncoder::BRCType>(mode);
+  this->Modified();
 }
 
 //------------------------------------------------------------------------------

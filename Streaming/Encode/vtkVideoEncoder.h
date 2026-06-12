@@ -125,7 +125,8 @@ public:
   {
     CBR, // MaxBitRate = MinBitRate = BitRate
     VBR, // Bitrate may fluctuate within set minimum and maximum.
-    CQP  // no bitrate control. Set QuantizationParameter
+    CQP,  // no bitrate control. Set QuantizationParameter
+    QP   // Constant Quantization Parameter
   };
 
   ///@{
@@ -223,11 +224,33 @@ public:
   /**
    * Set/Get quantization parameter of an encoder.
    * Note: This value is used only when the encoder and codec support rate-control
-   * AND they are configured in CQP (Constant Quantization Parameter) mode.
+   * AND they are configured in Quantization modes.
    */
-  vtkSetClampMacro(QuantizationParameter, unsigned int, 1, 60);
+  vtkSetClampMacro(QuantizationParameter, unsigned int, 1, 63);
   vtkGetMacro(QuantizationParameter, unsigned int);
   ///@}
+
+
+  ///@{
+  /**
+   * Set/Get quantization parameter of an encoder.
+   * Note: This value is used only when the encoder and codec support rate-control
+   * AND they are configured in Quantization modes.
+   */
+  vtkSetClampMacro(MinQuantizationParameter, unsigned int, 1, 63);
+  vtkGetMacro(MinQuantizationParameter, unsigned int);
+  ///@}
+
+  ///@{
+  /**
+   * Set/Get quantization parameter of an encoder.
+   * Note: This value is used only when the encoder and codec support rate-control
+   * AND they are configured in Quantization modes.
+   */
+  vtkSetClampMacro(MaxQuantizationParameter, unsigned int, 1, 63);
+  vtkGetMacro(MaxQuantizationParameter, unsigned int);
+  ///@}
+
 
   ///@{
   /**
@@ -289,7 +312,9 @@ protected:
   VTKPixelFormatType InputPixelFormat = VTKPixelFormatType::VTKPF_NV12;
   // 4. Bitrate control (in bits per second)
   BRCType BitRateControlMode = BRCType::CBR;
-  unsigned int QuantizationParameter = 33;
+  unsigned int QuantizationParameter = 16;
+  unsigned int MinQuantizationParameter = 16;
+  unsigned int MaxQuantizationParameter = 16;
   unsigned int BitRate = 1000000; // 1Mbps
   unsigned int MaxBitRate = 1000000;
   unsigned int MinBitRate = 1000000;
