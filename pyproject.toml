@@ -48,3 +48,34 @@ tracker = "https://github.com/Kitware/VTKStreaming/issues"
 
 [project.optional-dependencies]
 test = ["pytest", "virtualenv"]
+
+# Shared cibuildwheel config; CI (build-wheels.yml) only adds the
+# per-matrix CIBW_BUILD selection. Locally, build the same wheel with e.g.
+# `uvx cibuildwheel --only cp310-manylinux_x86_64`.
+[tool.cibuildwheel]
+# pip installs build requirements inside the build environment, so it needs
+# the VTK wheel-SDK index to resolve vtk-sdk.
+environment = { PIP_EXTRA_INDEX_URL = "https://vtk.org/files/wheel-sdks" }
+# No vtk-sdk wheels exist for musllinux.
+skip = "*-musllinux_*"
+test-requires = ["pytest", "virtualenv"]
+test-command = "python -m pytest {project} --verbose"
+
+[tool.cibuildwheel.linux]
+# Required to make tests pass (VTK needs them)
+before-all = "yum install -y mesa-libGL-devel glx-utils freeglut-devel"
+# Do not repair (no auditwheel), everything is already put just as needed to
+# make it work; only retag the platform tag.
+repair-wheel-command = [
+  "python -m pip install wheel",
+  "python -m wheel tags --platform-tag manylinux_2_28_x86_64 --remove {wheel}",
+  "cp $(dirname {wheel})/vtk_streaming*.whl {dest_dir}",
+]
+
+[tool.cibuildwheel.macos]
+# Same as Linux: no delocate, only retag the platform tag.
+repair-wheel-command = [
+  "python -m pip install wheel",
+  "python -m wheel tags --platform-tag macosx_11_0_arm64 --remove {wheel}",
+  "cp $(dirname {wheel})/vtk_streaming*.whl {dest_dir}",
+]

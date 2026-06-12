@@ -18,6 +18,77 @@ It is currently based on VTK 9.6.0.
 pip install vtk-streaming
 ```
 
+## Building from source
+
+# Build for quick development
+
+Requirements:
+- Linux: A C++ compiler (GCC 11.4+ or any other compiler supported by VTK.)
+- Windows: MSVC (Visual Studio Build Tools). (ensure visual studio environment is initialized)
+- macOS: Xcode command line tools. (`xcode-select --install` should have completed successfully)
+
+## Linux/macOS
+
+```sh
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -e . --extra-index-url https://vtk.org/files/wheel-sdks
+```
+
+# Windows
+
+Open a powershell with MSVC initialized (ex: Visual Studio Developer Powershell)
+
+```sh
+python3 -m venv .venv
+.venv/bin/activate.ps1
+pip install -e . --extra-index-url https://vtk.org/files/wheel-sdks
+```
+
+# Reproduce CI artifacts
+Wheels are built with [cibuildwheel](https://cibuildwheel.pypa.io/).
+
+Requirements:
+- Linux: [Docker](https://www.docker.com/) (the build runs in a manylinux container).
+- Windows: MSVC (Visual Studio Build Tools). (ensure visual studio environment is initialized)
+- macOS: Xcode command line tools. (`xcode-select --install` should have completed successfully)
+
+Build a wheel for one Python/platform target:
+
+```sh
+# Linux
+uvx cibuildwheel --only cp310-manylinux_x86_64
+
+# Windows
+uvx cibuildwheel --only cp310-win_amd64
+
+# macOS
+uvx cibuildwheel --only cp310-macosx_arm64
+```
+
+`uvx` comes with [uv](https://docs.astral.sh/uv/); alternatively
+`pipx run cibuildwheel` or if you use `pip`:
+
+```sh
+pip install cibuildwheel
+
+# Linux
+cibuildwheel --only cp310-manylinux_x86_64
+
+# Windows
+cibuildwheel --only cp310-win_amd64
+
+# macOS
+cibuildwheel --only cp310-macosx_arm64
+```
+
+Substitute `cp310`/`cp311`/`cp312`/`cp313` to target other Python versions. The wheel is
+written to `wheelhouse/` and can be installed directly:
+
+```sh
+pip install wheelhouse/vtk_streaming-*.whl
+```
+
 ## Example
 
 ```py
