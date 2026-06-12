@@ -337,7 +337,6 @@ VTKVideoEncoderResultType vtkVpxEncoder::EncodeInternal(vtkSmartPointer<vtkRawVi
       chunk->SetDisplayHeight(this->Height);
       chunk->SetCodedWidth(pkt->data.frame.width[0]);
       chunk->SetCodedHeight(pkt->data.frame.height[0]);
-      chunk->SetMimeType("application/octet-stream");
       chunk->SetPresentationTS(pkt->data.frame.pts);
       chunk->CopyData(reinterpret_cast<unsigned char*>(pkt->data.frame.buf), pkt->data.frame.sz);
       vtkLogF(TRACE, "%lld|%s|%d bytes", chunk->GetPresentationTS(),
