@@ -20,14 +20,14 @@ pip install vtk-streaming
 
 ## Building from source
 
-# Build for quick development
+## Build for quick development
 
 Requirements:
 - Linux: A C++ compiler (GCC 11.4+ or any other compiler supported by VTK.)
 - Windows: MSVC (Visual Studio Build Tools). (ensure visual studio environment is initialized)
 - macOS: Xcode command line tools. (`xcode-select --install` should have completed successfully)
 
-## Linux/macOS
+### Linux/macOS
 
 ```sh
 python3 -m venv .venv
@@ -35,7 +35,7 @@ python3 -m venv .venv
 pip install -e . --extra-index-url https://vtk.org/files/wheel-sdks
 ```
 
-# Windows
+### Windows
 
 Open a powershell with MSVC initialized (ex: Visual Studio Developer Powershell)
 
@@ -45,7 +45,7 @@ python3 -m venv .venv
 pip install -e . --extra-index-url https://vtk.org/files/wheel-sdks
 ```
 
-# Reproduce CI artifacts
+## Reproduce CI artifacts
 Wheels are built with [cibuildwheel](https://cibuildwheel.pypa.io/).
 
 Requirements:
