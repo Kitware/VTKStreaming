@@ -647,6 +647,7 @@ bool vtkNvEncoderInternals::Receive(
     }
     packets[iPkt]->SetDisplayWidth(this->Width);
     packets[iPkt]->SetDisplayHeight(this->Height);
+    packets[iPkt]->SetCodecLongName("avc1.640032");
     packets[iPkt]->SetCodedWidth(vtkRawVideoFrame::AlignUp(this->Width, 8));
     packets[iPkt]->SetCodedHeight(vtkRawVideoFrame::AlignUp(this->Height, 8));
     packets[iPkt]->SetPresentationTS(this->NvEncRecvCounter);
