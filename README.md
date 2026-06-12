@@ -92,6 +92,7 @@ pip install wheelhouse/vtk_streaming-*.whl
 ## Examples
 
 1. [examples/simple_encoder_decoder.py](./examples/simple_encoder_decoder.py) - Live VP9 encode/decode round-trip with two render windows side by side.
+2. [examples/resize_encoder_decoder.py](./examples/resize_encoder_decoder.py) - VP9 encode/decode round-trip that survives window resizes.
 
 ## Getting help
 

@@ -161,9 +161,9 @@ public:
   /**
    * Set/Get width and height of encoding context.
    */
-  void SetWidth(int width);
+  vtkSetMacro(Width, int);
   vtkGetMacro(Width, int);
-  void SetHeight(int height);
+  vtkSetMacro(Height, int);
   vtkGetMacro(Height, int);
   ///@}
 
