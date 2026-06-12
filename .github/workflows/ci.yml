@@ -1,8 +1,10 @@
-name: CI Slicer Core
+name: CI VTK Streaming
 
 on:
   pull_request:
-    branches: [master]
+    branches: [wheel]
+  push:
+    branches: [wheel]
 
 jobs:
   build-test:
