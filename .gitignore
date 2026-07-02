@@ -38,3 +38,5 @@ wheelbuild/
 wheelhouse/
 __pycache__
 *.whl
+
+*.h264

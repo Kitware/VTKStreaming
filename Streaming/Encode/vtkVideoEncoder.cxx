@@ -93,20 +93,6 @@ vtkRenderWindow* vtkVideoEncoder::GetGraphicsContext() const
 }
 
 //------------------------------------------------------------------------------
-void vtkVideoEncoder::SetWidth(int width)
-{
-  vtkLogScopeF(TRACE, "%s, w=%d", __func__, width);
-  this->Width = width;
-}
-
-//------------------------------------------------------------------------------
-void vtkVideoEncoder::SetHeight(int height)
-{
-  vtkLogScopeF(TRACE, "%s, h=%d", __func__, height);
-  this->Height = height;
-}
-
-//------------------------------------------------------------------------------
 void vtkVideoEncoder::SetBitRateControlMode(int mode)
 {
   this->BitRateControlMode = static_cast<vtkVideoEncoder::BRCType>(mode);

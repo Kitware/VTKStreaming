@@ -248,7 +248,6 @@ bool vtkNvEncoderInternals::LoadNvEncodeAPI()
   }
   else
   {
-    vtkLog(INFO, << "loaded NvEncodeAPI.");
     return true;
   }
 }
