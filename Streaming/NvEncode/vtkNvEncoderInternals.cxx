@@ -24,6 +24,8 @@
 #include "vtkVideoEncoder.h"
 #include "vtkVideoProcessingWorkUnitTypes.h"
 
+#include <cstdint>
+#include <cstdio>
 #include <cstdlib>
 #include <iterator>
 #include <sstream>
@@ -61,6 +63,81 @@ namespace
 
 std::vector<std::string> codecNames = { "h264", "hevc" };
 std::vector<GUID> vCodec = std::vector<GUID>{ NV_ENC_CODEC_H264_GUID, NV_ENC_CODEC_HEVC_GUID };
+
+//------------------------------------------------------------------------------
+// Build a WebCodecs/RFC-6381 codec string from the sequence parameter set (SPS)
+// carried by an Annex-B key frame bitstream. Returns an empty string when no SPS
+// is present (e.g. a delta frame) or the codec is unsupported.
+std::string BuildCodecString(const GUID& codec, const unsigned char* data, std::size_t size)
+{
+  const bool isH264 = (codec == NV_ENC_CODEC_H264_GUID);
+  const bool isHEVC = (codec == NV_ENC_CODEC_HEVC_GUID);
+  if (data == nullptr || (!isH264 && !isHEVC))
+  {
+    return {};
+  }
+  // Walk the Annex-B NAL units looking for the SPS. A leading zero of a 4-byte
+  // start code is skipped naturally by advancing one byte at a time.
+  for (std::size_t i = 0; i + 3 < size; ++i)
+  {
+    if (data[i] != 0 || data[i + 1] != 0 || data[i + 2] != 1)
+    {
+      continue;
+    }
+    const std::size_t nal = i + 3;
+    if (isH264)
+    {
+      const int nalType = data[nal] & 0x1F;
+      if (nalType == 7 && nal + 3 < size) // Sequence parameter set.
+      {
+        // avc1.PPCCLL: profile_idc, constraint_set flags byte, level_idc.
+        char buf[16];
+        std::snprintf(buf, sizeof(buf), "avc1.%02X%02X%02X", data[nal + 1], data[nal + 2],
+          data[nal + 3]);
+        return buf;
+      }
+    }
+    else // HEVC
+    {
+      const int nalType = (data[nal] >> 1) & 0x3F;
+      if (nalType == 33 && nal + 14 < size) // Sequence parameter set.
+      {
+        // Skip the 2-byte NAL header and the byte holding
+        // sps_video_parameter_set_id/sps_max_sub_layers_minus1/
+        // sps_temporal_id_nesting_flag to reach profile_tier_level().
+        const unsigned char* ptl = &data[nal + 3];
+        const int profileSpace = (ptl[0] >> 6) & 0x03;
+        const int tierFlag = (ptl[0] >> 5) & 0x01;
+        const int profileIdc = ptl[0] & 0x1F;
+        const std::uint32_t compat = (std::uint32_t(ptl[1]) << 24) |
+          (std::uint32_t(ptl[2]) << 16) | (std::uint32_t(ptl[3]) << 8) | std::uint32_t(ptl[4]);
+        const int levelIdc = ptl[11];
+        std::ostringstream oss;
+        oss << "hvc1.";
+        if (profileSpace > 0)
+        {
+          oss << static_cast<char>('A' + profileSpace - 1);
+        }
+        oss << profileIdc << '.' << std::uppercase << std::hex << compat << std::dec << '.'
+            << (tierFlag ? 'H' : 'L') << levelIdc;
+        // Six constraint-indicator-flag bytes, trailing zero bytes trimmed.
+        int last = 5;
+        while (last >= 0 && ptl[5 + last] == 0)
+        {
+          --last;
+        }
+        for (int c = 0; c <= last; ++c)
+        {
+          char cbuf[8];
+          std::snprintf(cbuf, sizeof(cbuf), ".%02X", ptl[5 + c]);
+          oss << cbuf;
+        }
+        return oss.str();
+      }
+    }
+  }
+  return {};
+}
 
 std::vector<std::string> szPresetNames = { "p1", "p2", "p3", "p4", "p5", "p6", "p7" };
 std::vector<GUID> vPreset = std::vector<GUID>{
@@ -646,9 +723,29 @@ bool vtkNvEncoderInternals::Receive(
     }
     packets[iPkt]->SetDisplayWidth(this->Width);
     packets[iPkt]->SetDisplayHeight(this->Height);
-    packets[iPkt]->SetCodecLongName("avc1.640032");
-    packets[iPkt]->SetCodedWidth(vtkRawVideoFrame::AlignUp(this->Width, 8));
-    packets[iPkt]->SetCodedHeight(vtkRawVideoFrame::AlignUp(this->Height, 8));
+    // Key frames carry the sequence header; parse the codec string from it and
+    // cache it so the following delta frames report the same value.
+    const bool keyFrame = lockBitStreamData.pictureType == NV_ENC_PIC_TYPE_IDR ||
+      lockBitStreamData.pictureType == NV_ENC_PIC_TYPE_I;
+    packets[iPkt]->SetIsKeyFrame(keyFrame);
+    if (keyFrame || this->CodecName.empty())
+    {
+      std::string parsed = BuildCodecString(
+        this->NvEncInitializeParams.encodeGUID, data, lockBitStreamData.bitstreamSizeInBytes);
+      if (!parsed.empty())
+      {
+        this->CodecName = std::move(parsed);
+      }
+    }
+    packets[iPkt]->SetCodecLongName(this->CodecName.c_str());
+    // The coded picture dimensions are aligned to the codec's coding-block size:
+    // H.264 codes in 16x16 macroblocks, while HEVC signals a coded size that is a
+    // multiple of the minimum luma coding block size (8). Anything smaller here would
+    // under-report the coded size for H.264.
+    const int codedAlign =
+      (this->NvEncInitializeParams.encodeGUID == NV_ENC_CODEC_H264_GUID) ? 16 : 8;
+    packets[iPkt]->SetCodedWidth(vtkRawVideoFrame::AlignUp(this->Width, codedAlign));
+    packets[iPkt]->SetCodedHeight(vtkRawVideoFrame::AlignUp(this->Height, codedAlign));
     packets[iPkt]->SetPresentationTS(this->NvEncRecvCounter);
     packets[iPkt]->SetSize(lockBitStreamData.bitstreamSizeInBytes);
     packets[iPkt]->CopyData(data, lockBitStreamData.bitstreamSizeInBytes);

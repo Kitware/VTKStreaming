@@ -242,6 +242,9 @@ private:
   int Height = 0;
   int MaxWidth = 0;
   int MaxHeight = 0;
+  // RFC 6381 codec string (ex: "avc1.640032"), parsed from the encoded sequence
+  // header on key frames and reused for the delta frames that follow.
+  std::string CodecName;
 
   /**
    * Returns true only if the driver supports our nvEncodeAPI.h version
