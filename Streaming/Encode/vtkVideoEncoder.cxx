@@ -93,13 +93,6 @@ vtkRenderWindow* vtkVideoEncoder::GetGraphicsContext() const
 }
 
 //------------------------------------------------------------------------------
-void vtkVideoEncoder::SetBitRateControlMode(int mode)
-{
-  this->BitRateControlMode = static_cast<vtkVideoEncoder::BRCType>(mode);
-  this->Modified();
-}
-
-//------------------------------------------------------------------------------
 void vtkVideoEncoder::SetForceIFrame(bool val)
 {
   vtkLogScopeFunction(TRACE);

@@ -217,7 +217,6 @@ public:
    */
   vtkSetEnumMacro(BitRateControlMode, BRCType);
   vtkGetEnumMacro(BitRateControlMode, BRCType);
-  void SetBitRateControlMode(int mode);
   ///@}
 
   ///@{
