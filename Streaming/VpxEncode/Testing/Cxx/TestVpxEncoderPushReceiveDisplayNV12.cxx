@@ -89,28 +89,29 @@ int TestVpxEncoderPushReceiveDisplayNV12(int argc, char* argv[])
 #else
     [&bitstream, &frameId, &success]
 #endif
-    (VTKVideoEncoderResultType result) {
-      bitstream.clear();
-      for (const auto& packet : result.second)
+    (VTKVideoEncoderResultType result)
+  {
+    bitstream.clear();
+    for (const auto& packet : result.second)
+    {
+      auto data = reinterpret_cast<char*>(packet->GetData()->GetPointer(0));
+      auto size = packet->GetSize();
+      vtkLogF(INFO, "Recvd %d bytes", size);
+      for (int i = 0; i < size; ++i)
       {
-        auto data = reinterpret_cast<char*>(packet->GetData()->GetPointer(0));
-        auto size = packet->GetSize();
-        vtkLogF(INFO, "Recvd %d bytes", size);
-        for (int i = 0; i < size; ++i)
-        {
-          bitstream.push_back(data[i]);
-        }
-#if WRITE_BITSTREAM
-        file.write((char*)bitstream.data(), bitstream.size());
-#endif
-        if (frameId > 0)
-        {
-          assert(bitstream.size() > 10);
-          success &= bitstream.size() > 10;
-        }
-        ++frameId;
+        bitstream.push_back(data[i]);
       }
-    };
+#if WRITE_BITSTREAM
+      file.write((char*)bitstream.data(), bitstream.size());
+#endif
+      if (frameId > 0)
+      {
+        assert(bitstream.size() > 10);
+        success &= bitstream.size() > 10;
+      }
+      ++frameId;
+    }
+  };
 
   vtkNew<vtkVpxEncoder> enc;
   enc->SetOutputHandler(writeBitstream);
@@ -130,14 +131,16 @@ int TestVpxEncoderPushReceiveDisplayNV12(int argc, char* argv[])
 
   vtkNew<vtkCallbackCommand> exitCallback;
   exitCallback->SetClientData(enc);
-  exitCallback->SetCallback([](vtkObject* iren_ptr, unsigned long, void* enc_ptr, void*) {
-    // drain needs an opengl context so it can release the resources.
-    auto encoder = reinterpret_cast<vtkVideoEncoder*>(enc_ptr);
-    encoder->Drain();
-    auto iren = reinterpret_cast<vtkRenderWindowInteractor*>(iren_ptr);
-    encoder->Shutdown();
-    iren->TerminateApp();
-  });
+  exitCallback->SetCallback(
+    [](vtkObject* iren_ptr, unsigned long, void* enc_ptr, void*)
+    {
+      // drain needs an opengl context so it can release the resources.
+      auto encoder = reinterpret_cast<vtkVideoEncoder*>(enc_ptr);
+      encoder->Drain();
+      auto iren = reinterpret_cast<vtkRenderWindowInteractor*>(iren_ptr);
+      encoder->Shutdown();
+      iren->TerminateApp();
+    });
   iren->AddObserver(vtkCommand::ExitEvent, exitCallback);
 
   while (true)

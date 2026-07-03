@@ -125,7 +125,7 @@ public:
   {
     CBR, // MaxBitRate = MinBitRate = BitRate
     VBR, // Bitrate may fluctuate within set minimum and maximum.
-    CQP,  // no bitrate control. Set QuantizationParameter
+    CQP, // no bitrate control. Set QuantizationParameter
     QP   // Constant Quantization Parameter
   };
 
@@ -229,7 +229,6 @@ public:
   vtkGetMacro(QuantizationParameter, unsigned int);
   ///@}
 
-
   ///@{
   /**
    * Set/Get quantization parameter of an encoder.
@@ -249,7 +248,6 @@ public:
   vtkSetClampMacro(MaxQuantizationParameter, unsigned int, 1, 63);
   vtkGetMacro(MaxQuantizationParameter, unsigned int);
   ///@}
-
 
   ///@{
   /**

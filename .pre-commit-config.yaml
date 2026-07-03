@@ -1,0 +1,13 @@
+# Install: uv tool install pre-commit && pre-commit install
+# Run on everything: pre-commit run --all-files
+exclude: ^ThirdParty/
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.20
+    hooks:
+      - id: ruff-format
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: v22.1.5
+    hooks:
+      - id: clang-format
+        types_or: [c++, c]

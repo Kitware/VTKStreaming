@@ -1,7 +1,7 @@
 """Exercise display encoding with the libvpx VP9 encoder.
 
 A scene with a cylinder is captured from the
-render window in IYUV or NV12 and encoded. The output 
+render window in IYUV or NV12 and encoded. The output
 of encoder must have a valid h.264 stream for this test to pass.
 """
 
@@ -54,9 +54,7 @@ def _make_cylinder_scene():
     return renderer
 
 
-@pytest.mark.parametrize(
-    "pixel_format", [VTKPF_IYUV, VTKPF_NV12], ids=["iyuv", "nv12"]
-)
+@pytest.mark.parametrize("pixel_format", [VTKPF_IYUV, VTKPF_NV12], ids=["iyuv", "nv12"])
 def test_nv_encode_decode_render_window_capture(pixel_format, tmp_path):
     scene_window = video_test_utils.make_offscreen_window(WIDTH, HEIGHT)
     renderer = _make_cylinder_scene()

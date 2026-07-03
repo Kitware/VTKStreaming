@@ -41,7 +41,7 @@
 
 struct vtkVpxEncoder::vtkInternals
 {
-  bool initialized {false};
+  bool initialized{ false };
 #ifdef VTKSTREAMING_USE_LIBVPX
   vpx_codec_ctx_t Ctx;
   vpx_codec_enc_cfg_t Cfg;
@@ -123,7 +123,7 @@ bool vtkVpxEncoder::InitializeInternal()
     this->MaxQuantizationParameter, static_cast<unsigned int>(1), static_cast<unsigned int>(63));
   internals.Cfg.rc_min_quantizer = vtkMath::ClampValue(
     this->MinQuantizationParameter, static_cast<unsigned int>(1), static_cast<unsigned int>(63));
-  if(internals.Cfg.rc_max_quantizer < internals.Cfg.rc_min_quantizer)
+  if (internals.Cfg.rc_max_quantizer < internals.Cfg.rc_min_quantizer)
   {
     internals.Cfg.rc_max_quantizer = internals.Cfg.rc_min_quantizer;
   }
@@ -236,7 +236,8 @@ bool vtkVpxEncoder::SetupEncoderFrame(int width, int height)
     vpx_color_space::VPX_CS_BT_709);                        // default should be BT_709
   EncoderControl(&internals.Ctx, VP9E_SET_COLOR_RANGE, 0);  // should be limited.
   EncoderControl(&internals.Ctx, VP9E_SET_TARGET_LEVEL, 0); // let encoder determine a level.
-  EncoderControl(&internals.Ctx, VP9E_SET_ROW_MT, this->RowBasedMultiThreading ? 1 : 0); // false/true
+  EncoderControl(
+    &internals.Ctx, VP9E_SET_ROW_MT, this->RowBasedMultiThreading ? 1 : 0); // false/true
 
   // create a new raw image object.
   vpx_img_fmt_t img_fmt;
@@ -322,7 +323,7 @@ VTKVideoEncoderResultType vtkVpxEncoder::EncodeInternal(vtkSmartPointer<vtkRawVi
 
   auto tc2 = std::chrono::high_resolution_clock::now();
   internals.dtCopy = tc2 - tc1;
-  
+
   // encode frame.
   const int flags = (this->ForceIFrame || this->KeyFramesOnly) ? VPX_EFLAG_FORCE_KF : 0;
   vpx_codec_iter_t iter = 0;

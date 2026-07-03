@@ -63,6 +63,7 @@ renderer = vtkRenderer()
 renderer.AddActor(actor)
 renderer.SetBackground(0.1, 0.2, 0.4)
 
+
 def current_time_text() -> str:
     now = datetime.now()
     return f"{now:%H:%M:%S}.{now.microsecond // 1000:03d}"

@@ -31,7 +31,7 @@ class VTKSTREAMINGNVENCODE_EXPORT vtkNvEncoderGL : public vtkVideoEncoder
 {
 public:
   vtkTypeMacro(vtkNvEncoderGL, vtkVideoEncoder);
-  void PrintSelf(ostream& os, vtkIndent indent) override{};
+  void PrintSelf(ostream& os, vtkIndent indent) override {};
   static vtkNvEncoderGL* New();
 
   vtkSetClampMacro(Preset, int, 1, 7);

@@ -47,6 +47,7 @@ renderer = vtkRenderer()
 renderer.AddActor(actor)
 renderer.SetBackground(0.1, 0.2, 0.4)
 
+
 def current_time_text() -> str:
     now = datetime.now()
     return f"{now:%H:%M:%S}.{now.microsecond // 1000:03d}"
@@ -81,11 +82,12 @@ encoder.SetWidth(width)
 encoder.SetHeight(height)
 encoder.SetInputPixelFormat(VTKPF_IYUV)
 
+
 @calldata_type(VTK_OBJECT)
 def receive_packet(
     _encoder: vtkVideoEncoder, _event: int, packet: vtkCompressedVideoPacket
 ):
-    with open("./recording.h264", mode='+ab') as f:
+    with open("./recording.h264", mode="+ab") as f:
         f.write(bytes(memoryview(packet.GetData())))
 
 
