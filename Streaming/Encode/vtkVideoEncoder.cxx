@@ -66,12 +66,9 @@ void vtkVideoEncoder::PrintSelf(ostream& os, vtkIndent indent)
 
   os << "Initialized: " << this->Initialized << '\n';
   os << "LastSetupMTime: " << this->LastSetupMTime << '\n';
-  os << "GraphicsContext: ";
-  if (this->GraphicsContext == nullptr)
-  {
-    os << "(nullptr)\n";
-  }
-  this->GraphicsContext->PrintSelf(os, indent.GetNextIndent());
+  os << "GraphicsContext: "
+     << ((this->GraphicsContext != nullptr) ? this->GraphicsContext->GetObjectDescription()
+                                            : "(nullptr)");
 }
 
 //------------------------------------------------------------------------------

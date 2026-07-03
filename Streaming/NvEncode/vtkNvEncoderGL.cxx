@@ -116,11 +116,19 @@ bool vtkNvEncoderGL::CheckAvailability() noexcept // assumes no exception can oc
   const auto verbosity = vtkLogger::GetCurrentVerbosityCutoff();
   vtkLogger::SetStderrVerbosity(vtkLogger::VERBOSITY_OFF);
 
+  vtkNew<vtkRenderWindow> renderWindow;
+  renderWindow->OffScreenRenderingOn();
+  if (!renderWindow->SupportsOpenGL())
+  {
+    return false;
+  }
+  renderWindow->Render();
   vtkNew<vtkNvEncoderGL> encoder;
   encoder->SetCodec(VTKVC_H264); // most wildly available format
   encoder->SetInputPixelFormat(VTKPF_IYUV);
   encoder->SetWidth(640);
-  encoder->SetWidth(480);
+  encoder->SetHeight(480);
+  encoder->SetGraphicsContext(renderWindow);
   const bool success = encoder->Initialize();
 
   vtkLogger::SetStderrVerbosity(verbosity);
@@ -264,6 +272,11 @@ VTKVideoEncoderResultType vtkNvEncoderGL::EncodeInternal(vtkSmartPointer<vtkRawV
   CUresult status;
   auto& ctx = this->CUDAInstance->Context;
   auto glContext = vtkOpenGLRenderWindow::SafeDownCast(this->GraphicsContext);
+  if (!glContext)
+  {
+    vtkLogF(ERROR, "GraphicsContext not set or not an OpenGL render window");
+    return { VTKVideoProcessingStatusType::VTKVPStatus_UnknownError, {} };
+  }
   glContext->MakeCurrent();
   VTK_NV_CUDA_DRIVER_API_CHECKED_INVOKE(cuCtxPushCurrent_v2(ctx));
   const auto bfrIdx = internals.NvEncSendCounter % internals.NvEncBufferCount;
@@ -328,6 +341,12 @@ bool vtkNvEncoderGL::AllocateInputBuffers()
   {
     return false;
   }
+  auto glContext = vtkOpenGLRenderWindow::SafeDownCast(this->GraphicsContext);
+  if (!glContext)
+  {
+    vtkLogF(ERROR, "GraphicsContext not set or not an OpenGL render window");
+    return false;
+  }
 
   CUresult status;
   auto& ctx = this->CUDAInstance->Context;
@@ -335,7 +354,6 @@ bool vtkNvEncoderGL::AllocateInputBuffers()
 
   std::vector<void*> inputResources;
   std::vector<vtkSmartPointer<vtkRawVideoFrame>> inputFrames;
-  auto glContext = vtkOpenGLRenderWindow::SafeDownCast(this->GraphicsContext);
   this->ResourceCallback->RegisterGraphicsResources(glContext);
   for (std::size_t i = 0; i < internals.GetEncoderBufferCount(); ++i)
   {
