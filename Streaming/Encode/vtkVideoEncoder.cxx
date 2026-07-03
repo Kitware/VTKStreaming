@@ -142,7 +142,16 @@ bool vtkVideoEncoder::Initialize()
       "Encoder context already initialized. Please close existing contexts. Call Shutdown()");
     return true;
   }
-  this->Initialized = this->InitializeInternal();
+  this->Initialized =
+    this->InitializeInternal() && this->SetupEncoderFrame(this->Width, this->Height);
+  if (this->Initialized)
+  {
+    this->LastSetupMTime = this->GetMTime();
+  }
+  else
+  {
+    vtkLog(ERROR, << "Failed to setup an encoder frame");
+  }
   return this->Initialized;
 }
 
@@ -155,6 +164,7 @@ void vtkVideoEncoder::Shutdown()
     return;
   }
   this->Drain();
+  this->TearDownEncoderFrame();
   this->ShutdownInternal();
   this->Initialized = false;
 }
@@ -220,7 +230,6 @@ void vtkVideoEncoder::Encode(vtkSmartPointer<vtkRawVideoFrame> frame)
 VTKVideoProcessingStatusType vtkVideoEncoder::UpdateEncoderContext(int width, int height)
 {
   vtkLogScopeF(TRACE, "%s %dx%d", __func__, width, height);
-  bool success = true;
   // check if we've to setup a new frame.
   if (this->NeedsNewEncoderFrame(width, height) || this->LastSetupMTime < this->GetMTime() ||
     !this->Initialized)
@@ -229,16 +238,9 @@ VTKVideoProcessingStatusType vtkVideoEncoder::UpdateEncoderContext(int width, in
     // be oblivious to the change in dimensions. Some encoders are capable of dynamic resizing but
     // they're few.
     this->Shutdown();
-    this->LastSetupMTime = this->GetMTime();
     if (!this->Initialize())
     {
       vtkLog(ERROR, "Failed to initialize encoding context.");
-      return VTKVideoProcessingStatusType::VTKVPStatus_UnknownError;
-    }
-    const bool success = this->SetupEncoderFrame(width, height);
-    if (!success)
-    {
-      vtkLog(ERROR, << "Failed to setup an encoder frame");
       return VTKVideoProcessingStatusType::VTKVPStatus_UnknownError;
     }
   }

@@ -170,10 +170,10 @@ void vtkVpxEncoder::ShutdownInternal()
   {
     return;
   }
-  // free input resource.
-  this->TearDownEncoderFrame();
+  // input resource already freed by vtkVideoEncoder::Shutdown via TearDownEncoderFrame.
   // destroy encoder context.
   internals.Result = vpx_codec_destroy(&internals.Ctx);
+  internals.initialized = false;
   switch (internals.Result)
   {
     case VPX_CODEC_OK:
