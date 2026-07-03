@@ -174,9 +174,23 @@ void vtkVpxEncoder::ShutdownInternal()
   this->TearDownEncoderFrame();
   // destroy encoder context.
   internals.Result = vpx_codec_destroy(&internals.Ctx);
-  if (internals.Result != VPX_CODEC_OK)
+  switch (internals.Result)
   {
-    vtkLogF(ERROR, "Failed to destroy encoder context.");
+    case VPX_CODEC_OK:
+      vtkLogF(TRACE, "Shutdown successful");
+      break;
+    case VPX_CODEC_ERROR:
+      vtkLogF(ERROR, "Failed to destroy encoder context: VPX_CODEC_ERROR");
+      break;
+    case VPX_CODEC_MEM_ERROR:
+      vtkLogF(ERROR, "Failed to destroy encoder context: VPX_CODEC_MEM_ERROR");
+      break;
+    case VPX_CODEC_ABI_MISMATCH:
+      vtkLogF(ERROR, "Failed to destroy encoder context: VPX_CODEC_ABI_MISMATCH");
+      break;
+    default:
+      vtkLogF(ERROR, "Failed to destroy encoder context: Unknown error");
+      break;
   }
 #else
   vtkLog(WARNING,
