@@ -24,6 +24,7 @@
 #include "vtkVideoEncoder.h"
 #include "vtkVideoProcessingWorkUnitTypes.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -475,7 +476,63 @@ bool vtkNvEncoderInternals::InitializeEncodeCtx(
   }
   this->NvEncInitializeParams.encodeConfig = &this->NvEncConfig;
 
-  // 3. Initialize the NVENC encoder.
+  // 3. Sanitize dimensions. 4:2:0 pixel formats subsample chroma 2x2, so NVENC requires even
+  // luma dimensions. Odd sizes show up when clients scale by a fractional devicePixelRatio;
+  // align down (the registered input buffers may be larger, NVENC crops the extra row/column).
+  switch (this->NvEncPixelFormat)
+  {
+    case NV_ENC_BUFFER_FORMAT_NV12:
+    case NV_ENC_BUFFER_FORMAT_YV12:
+    case NV_ENC_BUFFER_FORMAT_IYUV:
+    case NV_ENC_BUFFER_FORMAT_YUV420_10BIT:
+    {
+      auto& initParams = this->NvEncInitializeParams;
+      initParams.encodeWidth &= ~1U;
+      initParams.encodeHeight &= ~1U;
+      initParams.darWidth &= ~1U;
+      initParams.darHeight &= ~1U;
+      initParams.maxEncodeWidth &= ~1U;
+      initParams.maxEncodeHeight &= ~1U;
+      break;
+    }
+    default:
+      break;
+  }
+
+  // 4. Verify the dimensions against the hardware limits for the chosen codec so that failure
+  // is actionable instead of a bare NV_ENC_ERR_INVALID_PARAM. Ex: H.264 NVENC caps out at
+  // 4096x4096 while HEVC allows 8192x8192.
+  {
+    const auto codec = this->NvEncInitializeParams.encodeGUID;
+    const auto minWidth =
+      static_cast<uint32_t>(std::max(0, this->GetCapability(codec, NV_ENC_CAPS_WIDTH_MIN)));
+    const auto minHeight =
+      static_cast<uint32_t>(std::max(0, this->GetCapability(codec, NV_ENC_CAPS_HEIGHT_MIN)));
+    const auto maxWidth =
+      static_cast<uint32_t>(std::max(0, this->GetCapability(codec, NV_ENC_CAPS_WIDTH_MAX)));
+    const auto maxHeight =
+      static_cast<uint32_t>(std::max(0, this->GetCapability(codec, NV_ENC_CAPS_HEIGHT_MAX)));
+    const auto& encodeWidth = this->NvEncInitializeParams.encodeWidth;
+    const auto& encodeHeight = this->NvEncInitializeParams.encodeHeight;
+    if ((maxWidth > 0 && encodeWidth > maxWidth) || (maxHeight > 0 && encodeHeight > maxHeight))
+    {
+      vtkLog(ERROR, << "Error (" << NV_ENC_ERR_INVALID_PARAM << ") Encode dimensions "
+                    << encodeWidth << "x" << encodeHeight << " exceed the NVENC limit of "
+                    << maxWidth << "x" << maxHeight
+                    << " for the chosen codec. Reduce the frame size or switch to a codec with "
+                       "higher limits (ex: HEVC).");
+      return false;
+    }
+    if (encodeWidth < minWidth || encodeHeight < minHeight)
+    {
+      vtkLog(ERROR, << "Error (" << NV_ENC_ERR_INVALID_PARAM << ") Encode dimensions "
+                    << encodeWidth << "x" << encodeHeight << " are below the NVENC minimum of "
+                    << minWidth << "x" << minHeight << " for the chosen codec.");
+      return false;
+    }
+  }
+
+  // 5. Initialize the NVENC encoder.
   bool success = true;
   NVENCSTATUS errorCode;
   VTK_NVENC_API_CHECKED_INVOKE(
@@ -486,13 +543,13 @@ bool vtkNvEncoderInternals::InitializeEncodeCtx(
     return false;
   }
 
-  // 4. Keep track of the dimensions.
+  // 6. Keep track of the dimensions.
   this->Width = this->NvEncInitializeParams.encodeWidth;
   this->Height = this->NvEncInitializeParams.encodeHeight;
   this->MaxWidth = this->NvEncInitializeParams.maxEncodeWidth;
   this->MaxHeight = this->NvEncInitializeParams.maxEncodeHeight;
 
-  // 5. Compute the number of input/output buffers needed.
+  // 7. Compute the number of input/output buffers needed.
   this->NvEncExtraOutputDelay = extra_delay;
   this->NvEncBufferCount = this->NvEncConfig.frameIntervalP +
     this->NvEncConfig.rcParams.lookaheadDepth + this->NvEncExtraOutputDelay;
@@ -502,7 +559,7 @@ bool vtkNvEncoderInternals::InitializeEncodeCtx(
   }
   this->NvEncOutputDelay = this->NvEncBufferCount - 1;
 
-  // 6. resize input/output buffers.
+  // 8. resize input/output buffers.
   this->NvEncMappedInputBuffers.resize(this->NvEncBufferCount, nullptr);
   this->NvBitstreamBuffers.resize(this->NvEncBufferCount, nullptr);
   this->InitializeBitstreamBuffers();
