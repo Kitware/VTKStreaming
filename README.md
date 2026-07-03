@@ -20,33 +20,67 @@ pip install vtk-streaming
 
 ## Building from source
 
-## Build for quick development
+There are two build flows:
 
-Requirements:
+- **Development build**: an editable install into a local virtual environment,
+  built *without* build isolation. Rebuilds are fast and the generated
+  `compile_commands.json` stays valid, so clangd/IDE tooling works.
+- **Release build**: [cibuildwheel](https://cibuildwheel.pypa.io/) produces the
+  exact same distributable wheel as CI, in an isolated environment.
+
+Requirements (both flows):
 - Linux: A C++ compiler (GCC 11.4+ or any other compiler supported by VTK.)
 - Windows: MSVC (Visual Studio Build Tools). (ensure visual studio environment is initialized)
 - macOS: Xcode command line tools. (`xcode-select --install` should have completed successfully)
 
-### Linux/macOS
+We recommend [uv](https://docs.astral.sh/uv/); it reads the `vtk-sdk` package
+index from `pyproject.toml`, so no extra index flags are needed.
+
+### Development build
+
+The editable install runs with `--no-build-isolation`, so the build
+requirements (`scikit-build-core`, `vtk-sdk`, `vtk-sdk-python-wheel-helper`)
+must be present in the environment first, the `dev` dependency group installs
+them along with the test dependencies.
+
+Linux/macOS:
 
 ```sh
-python3 -m venv .venv
+uv venv -p 3.13
 . .venv/bin/activate
-pip install -e . --extra-index-url https://vtk.org/files/wheel-sdks
+uv pip install --group dev
+uv pip install -e . --no-build-isolation
 ```
 
-### Windows
+Windows (open a PowerShell with MSVC initialized, e.g. Visual Studio Developer PowerShell):
 
-Open a powershell with MSVC initialized (ex: Visual Studio Developer Powershell)
+```powershell
+uv venv -p 3.13
+.venv\Scripts\Activate.ps1
+uv pip install --group dev
+uv pip install -e . --no-build-isolation
+```
+
+After changing C++ sources, rebuild by re-running the editable install:
 
 ```sh
-python3 -m venv .venv
-.venv/bin/activate.ps1
-pip install -e . --extra-index-url https://vtk.org/files/wheel-sdks
+uv pip install -e . --no-build-isolation
 ```
 
-## Reproduce CI artifacts
-Wheels are built with [cibuildwheel](https://cibuildwheel.pypa.io/).
+The CMake build tree persists under `build/<wheel_tag>/`, which keeps generated
+module headers on disk and `compile_commands.json` valid.
+
+Run the tests with:
+
+```sh
+pytest tests/ -v
+```
+
+### Release build (reproduce CI artifacts)
+
+Wheels are built with [cibuildwheel](https://cibuildwheel.pypa.io/) in an
+isolated environment; all configuration lives in `[tool.cibuildwheel]` in
+`pyproject.toml`.
 
 Requirements:
 - Linux: [Docker](https://www.docker.com/) (the build runs in a manylinux container).

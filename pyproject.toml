@@ -6,8 +6,39 @@ requires = [
 ]
 build-backend = "scikit_build_core.build"
 
+# Dependency groups (PEP 735) for the development flow: `uv pip install --group dev`
+# puts the build requirements into the active venv so the editable install below can
+# run with --no-build-isolation (which keeps compile_commands.json paths valid):
+#   uv pip install --group dev
+#   uv pip install -e . --no-build-isolation
+# The vtk-sdk pin must stay in sync with [build-system] requires and the runtime
+# `vtk` dependency.
+[dependency-groups]
+build = [
+  "scikit-build-core",
+  "vtk-sdk==9.6.0",
+  "vtk-sdk-python-wheel-helper"
+]
+dev = [
+  { include-group = "build" },
+  "pytest",
+  "virtualenv",
+  "numpy"
+]
+# Extra index so uv resolves vtk-sdk / vtk-sdk-python-wheel-helper. Read by
+# `uv pip install` when run from this directory — no --extra-index-url needed.
+[[tool.uv.index]]
+name = "vtk-sdk"
+url = "https://vtk.org/files/wheel-sdks"
+
 [tool.scikit-build]
-cmake.args = ["-GNinja", "-DCMAKE_BUILD_TYPE=Release"]
+cmake.args = ["-GNinja", "-DCMAKE_BUILD_TYPE=Release", "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"]
+# Use a persistent build directory instead of a throwaway temp dir. The module
+# export headers (e.g. vtkStreamingNvEncodeModule.h) are generated into the
+# build tree, and compile_commands.json references them by absolute path; a
+# persistent build dir keeps those generated headers on disk so clangd can
+# resolve them.
+build-dir = "build/{wheel_tag}"
 
 [project]
 name = "vtk-streaming"
@@ -17,6 +48,7 @@ description = "This module provides classes to encode and stream frames from a V
 license = { text = "Apache License" }
 authors = [
   { name = "Alexy Pellegrini", email = "alexy.pellegrini@kitware.com" },
+  { name = "Jaswant Panchumarti", email = "jaswant.panchumarti@kitware.com" },
 ]
 keywords = ["Python", "VTK"]
 dependencies = ["vtk==9.6.0"]
@@ -45,9 +77,6 @@ documentation = "https://slicerlayerdisplayablemanager.readthedocs.io"
 source = "https://github.com/Kitware/VTKStreaming"
 download = "https://pypi.org/project/slicer-layer-dm/#files"
 tracker = "https://github.com/Kitware/VTKStreaming/issues"
-
-[project.optional-dependencies]
-test = ["pytest", "virtualenv", "numpy"]
 
 # Shared cibuildwheel config; CI (build-wheels.yml) only adds the
 # per-matrix CIBW_BUILD selection. Locally, build the same wheel with e.g.
