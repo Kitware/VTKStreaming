@@ -63,7 +63,7 @@ vtkUnsignedCharArray* vtkStreamingTestUtility::GenerateRGBA32ColorBars(
   reds = { 255, 255, 0, 0, 255, 255, 0, 0 };
   greens = { 255, 255, 255, 255, 0, 0, 0, 0 };
   blues = { 255, 0, 255, 0, 255, 0, 255, 0 };
-  for (int j = 0; j<height>> 1; ++j)
+  for (int j = 0; j < height >> 1; ++j)
   {
     for (int i = 0; i < width; ++i)
     {

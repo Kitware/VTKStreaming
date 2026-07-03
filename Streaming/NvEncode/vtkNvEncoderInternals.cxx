@@ -92,8 +92,8 @@ std::string BuildCodecString(const GUID& codec, const unsigned char* data, std::
       {
         // avc1.PPCCLL: profile_idc, constraint_set flags byte, level_idc.
         char buf[16];
-        std::snprintf(buf, sizeof(buf), "avc1.%02X%02X%02X", data[nal + 1], data[nal + 2],
-          data[nal + 3]);
+        std::snprintf(
+          buf, sizeof(buf), "avc1.%02X%02X%02X", data[nal + 1], data[nal + 2], data[nal + 3]);
         return buf;
       }
     }
@@ -109,8 +109,8 @@ std::string BuildCodecString(const GUID& codec, const unsigned char* data, std::
         const int profileSpace = (ptl[0] >> 6) & 0x03;
         const int tierFlag = (ptl[0] >> 5) & 0x01;
         const int profileIdc = ptl[0] & 0x1F;
-        const std::uint32_t compat = (std::uint32_t(ptl[1]) << 24) |
-          (std::uint32_t(ptl[2]) << 16) | (std::uint32_t(ptl[3]) << 8) | std::uint32_t(ptl[4]);
+        const std::uint32_t compat = (std::uint32_t(ptl[1]) << 24) | (std::uint32_t(ptl[2]) << 16) |
+          (std::uint32_t(ptl[3]) << 8) | std::uint32_t(ptl[4]);
         const int levelIdc = ptl[11];
         std::ostringstream oss;
         oss << "hvc1.";

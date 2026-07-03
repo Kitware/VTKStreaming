@@ -57,9 +57,8 @@ int TestNvEncoderGLMapResource(int argc, char* argv[])
   frame->Capture(renWin);
 
   vtkNew<vtkNvEncoderGL> enc;
-  enc->SetOutputHandler([&success](VTKVideoEncoderResultType result) {
-    success = (result.first == VTKVideoProcessingStatusType::VTKVPStatus_Success);
-  });
+  enc->SetOutputHandler([&success](VTKVideoEncoderResultType result)
+    { success = (result.first == VTKVideoProcessingStatusType::VTKVPStatus_Success); });
   enc->SetCodec(VTKVideoCodecType::VTKVC_H264);
   enc->SetGraphicsContext(renWin);
   enc->SetWidth(w);

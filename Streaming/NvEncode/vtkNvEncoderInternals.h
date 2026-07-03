@@ -182,7 +182,7 @@ public:
   ///@}
 
 private:
-    friend class vtkNvEncoderGL;
+  friend class vtkNvEncoderGL;
 
   vtkNvEncoderInternals(const vtkNvEncoderInternals&) = delete;
   void operator=(const vtkNvEncoderInternals&) = delete;

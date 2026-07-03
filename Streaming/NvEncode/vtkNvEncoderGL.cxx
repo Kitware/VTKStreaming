@@ -260,20 +260,22 @@ VTKVideoEncoderResultType vtkNvEncoderGL::EncodeInternal(vtkSmartPointer<vtkRawV
   internals.dtUpload = tu2 - tu1;
 
   auto te1 = std::chrono::high_resolution_clock::now();
-  
+
   CUresult status;
   auto& ctx = this->CUDAInstance->Context;
   auto glContext = vtkOpenGLRenderWindow::SafeDownCast(this->GraphicsContext);
   glContext->MakeCurrent();
   VTK_NV_CUDA_DRIVER_API_CHECKED_INVOKE(cuCtxPushCurrent_v2(ctx));
   const auto bfrIdx = internals.NvEncSendCounter % internals.NvEncBufferCount;
-  VTK_NV_CUDA_DRIVER_API_CHECKED_INVOKE(cuGraphicsMapResources(1, &this->CUDAInstance->Resources[bfrIdx], nullptr));
+  VTK_NV_CUDA_DRIVER_API_CHECKED_INVOKE(
+    cuGraphicsMapResources(1, &this->CUDAInstance->Resources[bfrIdx], nullptr));
   VTK_NV_CUDA_DRIVER_API_CHECKED_INVOKE(cuCtxPopCurrent_v2(nullptr));
   glContext->ReleaseCurrent();
   auto sstatus = internals.Send(this->ForceIFrame);
   glContext->MakeCurrent();
   VTK_NV_CUDA_DRIVER_API_CHECKED_INVOKE(cuCtxPushCurrent_v2(ctx));
-  VTK_NV_CUDA_DRIVER_API_CHECKED_INVOKE(cuGraphicsUnmapResources(1, &this->CUDAInstance->Resources[bfrIdx], nullptr));
+  VTK_NV_CUDA_DRIVER_API_CHECKED_INVOKE(
+    cuGraphicsUnmapResources(1, &this->CUDAInstance->Resources[bfrIdx], nullptr));
   VTK_NV_CUDA_DRIVER_API_CHECKED_INVOKE(cuCtxPopCurrent_v2(nullptr));
   glContext->ReleaseCurrent();
   if (sstatus != NV_ENC_SUCCESS)
@@ -391,8 +393,8 @@ bool vtkNvEncoderGL::AllocateInputBuffers()
     inputResources, inputFrames, NV_ENC_INPUT_RESOURCE_TYPE_CUDAARRAY, bufFmt);
   for (std::size_t i = 0; i < internals.GetEncoderBufferCount(); ++i)
   {
-    VTK_NV_CUDA_DRIVER_API_CHECKED_INVOKE(cuGraphicsUnmapResources(1, &
-    this->CUDAInstance->Resources[i], nullptr));
+    VTK_NV_CUDA_DRIVER_API_CHECKED_INVOKE(
+      cuGraphicsUnmapResources(1, &this->CUDAInstance->Resources[i], nullptr));
   }
 
   return success;
