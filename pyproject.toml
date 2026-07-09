@@ -42,7 +42,7 @@ build-dir = "build/{wheel_tag}"
 
 [project]
 name = "vtk-streaming"
-version = "0.3.5"
+version = "0.4.0"
 readme = "README.md"
 description = "This module provides classes to encode and stream frames from a VTK OpenGL render window using video codecs."
 license = { text = "Apache License" }
