@@ -117,7 +117,6 @@ def update_time_text(_window: vtkRenderWindow, _event: int):
 def encode_frame(window: vtkRenderWindow, _event: int):
     picture.Capture(window)
     encoder.Encode(picture)  # fires EncodedVideoChunkEvent per packet
-    window.MakeCurrent()
 
 
 # StartEvent fires at the start of every vtkRenderWindow::Render, so the
