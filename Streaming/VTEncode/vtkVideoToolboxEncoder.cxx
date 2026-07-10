@@ -148,6 +148,10 @@ vtkStandardNewMacro(vtkVideoToolboxEncoder);
 vtkVideoToolboxEncoder::vtkVideoToolboxEncoder()
   : Internals(new vtkVideoToolboxEncoderInternals())
 {
+  // Default to a codec this backend supports (matches Internals->CodecType), so an
+  // instance created without an explicit SetCodec is valid. The base class default is VP9,
+  // which VideoToolbox does not support.
+  this->Codec = VTKVideoCodecType::VTKVC_H264;
 }
 
 //------------------------------------------------------------------------------

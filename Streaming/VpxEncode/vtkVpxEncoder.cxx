@@ -60,6 +60,10 @@ vtkStandardNewMacro(vtkVpxEncoder);
 vtkVpxEncoder::vtkVpxEncoder()
   : Internals(new vtkInternals())
 {
+  // Default to a codec this backend supports (VP9, matching Internals->Interface). This
+  // happens to equal the base class default, but set it explicitly so the default tracks
+  // the internals rather than the base.
+  this->Codec = VTKVideoCodecType::VTKVC_VP9;
 }
 
 //------------------------------------------------------------------------------

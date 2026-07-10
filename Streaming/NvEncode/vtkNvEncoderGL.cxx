@@ -77,6 +77,10 @@ vtkNvEncoderGL::vtkNvEncoderGL()
 {
   this->ResourceCallback =
     new vtkOpenGLResourceFreeCallback<vtkNvEncoderGL>(this, &vtkNvEncoderGL::ReleaseGLResources);
+  // Default to a codec this backend supports (H.264, its internal default), so an instance
+  // created without an explicit SetCodec is valid. The base class default is VP9, which
+  // NVENC does not support.
+  this->Codec = VTKVideoCodecType::VTKVC_H264;
 }
 
 //------------------------------------------------------------------------------
