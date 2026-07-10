@@ -786,3 +786,33 @@ bool vtkVideoToolboxEncoder::CheckAvailability() noexcept
   }
   return false;
 }
+
+//------------------------------------------------------------------------------
+// TEMP (VTK 9.6): self-register this backend with vtkEncoderFactory so it can be
+// selected by preferences. Delete this block for VTK 9.7 and instead return these
+// attributes from vtkVideoToolboxEncoder::CreateOverrideAttributes().
+#include "vtkEncoderFactory.h"
+namespace
+{
+vtkVideoEncoder* CreateVideoToolboxEncoder()
+{
+  return vtkVideoToolboxEncoder::New();
+}
+
+struct vtkVideoToolboxEncoderRegistrar
+{
+  vtkVideoToolboxEncoderRegistrar()
+  {
+    vtkEncoderFactory::BackendDescriptor d;
+    d.SubclassName = "vtkVideoToolboxEncoder";
+    d.Create = &CreateVideoToolboxEncoder;
+    d.Available = &vtkVideoToolboxEncoder::CheckAvailability;
+    d.Hardware = true;
+    d.Codecs = { VTKVideoCodecType::VTKVC_H264, VTKVideoCodecType::VTKVC_H265 };
+    d.Attributes = { { "Platform", "macOS" }, { "Hardware", "true" } };
+    vtkEncoderFactory::RegisterBackend(d);
+  }
+};
+// Runs when the vtkStreamingVTEncode library is loaded (e.g. on `import vtk_streaming`).
+const vtkVideoToolboxEncoderRegistrar sVideoToolboxEncoderRegistrar;
+} // anonymous namespace

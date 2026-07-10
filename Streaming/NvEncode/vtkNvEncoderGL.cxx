@@ -471,3 +471,43 @@ void vtkNvEncoderGL::ReleaseGLResources(vtkWindow* window)
   internals.NvEncInputFrames.clear();
   internals.NvEncInputResources.clear();
 }
+
+//------------------------------------------------------------------------------
+// TEMP (VTK 9.6): self-register this backend with vtkEncoderFactory so it can be
+// selected by preferences. Delete this block for VTK 9.7 and instead return these
+// attributes from vtkNvEncoderGL::CreateOverrideAttributes().
+#include "vtkEncoderFactory.h"
+namespace
+{
+vtkVideoEncoder* CreateNvEncoderGL()
+{
+  return vtkNvEncoderGL::New();
+}
+
+// The NvEncode module is built for Linux and Windows, so the Platform attribute is
+// resolved at compile time rather than hard-coded.
+#if defined(_WIN32)
+constexpr const char* kNvEncodePlatform = "Windows";
+#elif defined(__APPLE__)
+constexpr const char* kNvEncodePlatform = "macOS";
+#else
+constexpr const char* kNvEncodePlatform = "Linux";
+#endif
+
+struct vtkNvEncoderGLRegistrar
+{
+  vtkNvEncoderGLRegistrar()
+  {
+    vtkEncoderFactory::BackendDescriptor d;
+    d.SubclassName = "vtkNvEncoderGL";
+    d.Create = &CreateNvEncoderGL;
+    d.Available = &vtkNvEncoderGL::CheckAvailability;
+    d.Hardware = true;
+    d.Codecs = { VTKVideoCodecType::VTKVC_H264, VTKVideoCodecType::VTKVC_H265 };
+    d.Attributes = { { "Platform", kNvEncodePlatform }, { "Hardware", "true" } };
+    vtkEncoderFactory::RegisterBackend(d);
+  }
+};
+// Runs when the vtkStreamingNvEncode library is loaded (e.g. on `import vtk_streaming`).
+const vtkNvEncoderGLRegistrar sNvEncoderGLRegistrar;
+} // anonymous namespace

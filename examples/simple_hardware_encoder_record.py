@@ -1,11 +1,12 @@
-"""Record a render window to an H.264 file using Apple's VideoToolbox encoder.
+"""Record a render window to an H.264 file using a hardware video encoder.
 
-This uses the hardware media engine on Apple Silicon (and Intel Macs) through a
-vtkVideoToolboxEncoder to record the render window to a raw .h264 file.
+The concrete backend is chosen by vtkEncoderFactory from a preference string rather than
+hard-coded, so the same example drives Apple's VideoToolbox on macOS and NVENC on NVIDIA
+GPUs (whichever hardware H.264 encoder is available on this machine).
 
 Tip: After running this, quit it and play back the recording with:
     ffplay recording.h264
-The encoder emits an H.264 Annex B stream (like the NVENC backend).
+The encoder emits an H.264 Annex B stream.
 """
 
 from datetime import datetime
@@ -26,17 +27,20 @@ from vtkmodules.vtkRenderingCore import (
 )
 
 from vtk_streaming.vtkStreamingCore import (
-    VTKPF_NV12,
+    VTKPF_IYUV,
     VTKVC_H264,
     vtkCompressedVideoPacket,
     vtkRawVideoFrame,
 )
-from vtk_streaming.vtkStreamingEncode import vtkVideoEncoder
+from vtk_streaming.vtkStreamingEncode import vtkEncoderFactory, vtkVideoEncoder
 from vtk_streaming.vtkStreamingOpenGL2 import vtkOpenGLVideoFrame
-from vtk_streaming.vtkStreamingVTEncode import vtkVideoToolboxEncoder
 
-if not vtkVideoToolboxEncoder.CheckAvailability():
-    raise SystemExit("VideoToolbox hardware encoding is not available on this machine.")
+# Ask the encoder factory for a hardware H.264 encoder. On macOS this resolves to the
+# VideoToolbox backend, on NVIDIA GPUs to NVENC; the factory keeps the backend choice out of
+# this script. (This interim helper stands in for VTK 9.7's vtkObjectFactory::SetPreferences
+# + New().)
+if not vtkEncoderFactory.CheckAvailability(VTKVC_H264):
+    raise SystemExit("No hardware H.264 encoder is available on this machine.")
 
 width, height = 640, 480  # codecs prefer sizes aligned to %4 or %8
 
@@ -71,7 +75,7 @@ frame_text.GetPositionCoordinate().SetValue(0.98, 0.98)
 renderer.AddViewProp(frame_text)
 
 scene_window = vtkRenderWindow()
-scene_window.SetWindowName("Input scene (VideoToolbox H.264 encode)")
+scene_window.SetWindowName("Input scene (hardware H.264 encode)")
 scene_window.AddRenderer(renderer)
 scene_window.SetSize(width, height)
 scene_window.SetPosition(50, 50)
@@ -81,12 +85,16 @@ interactor.SetRenderWindow(scene_window)
 interactor.Initialize()
 scene_window.Render()
 
-encoder = vtkVideoToolboxEncoder()
+vtkEncoderFactory.SetPreferences("Codec=H264;Hardware=true")
+encoder = vtkEncoderFactory.CreateEncoder()
+if encoder is None:
+    raise SystemExit("The encoder factory could not create a hardware H.264 encoder.")
+print(f"Selected encoder backend: {encoder.GetClassName()}")
 encoder.SetGraphicsContext(scene_window)
 encoder.SetCodec(VTKVC_H264)
 encoder.SetWidth(width)
 encoder.SetHeight(height)
-encoder.SetInputPixelFormat(VTKPF_NV12)
+encoder.SetInputPixelFormat(VTKPF_IYUV)
 
 
 @calldata_type(VTK_OBJECT)
@@ -105,7 +113,7 @@ picture = vtkOpenGLVideoFrame()
 picture.SetContext(scene_window)
 picture.SetWidth(width)
 picture.SetHeight(height)
-picture.SetPixelFormat(VTKPF_NV12)
+picture.SetPixelFormat(VTKPF_IYUV)
 picture.SetSliceOrderType(vtkRawVideoFrame.TopDown)
 picture.AllocateDataStore()
 
