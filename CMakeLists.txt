@@ -16,6 +16,12 @@ set(modules
   VTKStreaming::WEBM
 )
 
+# VideoToolbox is an Apple-only system framework; only build the hardware
+# encoder backend that uses it on macOS. Non-Apple builds are unaffected.
+if(APPLE)
+  list(APPEND modules VTKStreaming::VTEncode)
+endif()
+
 include(VTKSDKPythonWheelHelper)
 vtksdk_build_modules(${SKBUILD_PROJECT_NAME} MODULES ${modules})
 vtksdk_generate_package_init(${SKBUILD_PROJECT_NAME} MODULES ${modules})

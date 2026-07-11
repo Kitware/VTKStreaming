@@ -1,0 +1,7 @@
+NAME
+  VTKStreaming::VTEncode
+LIBRARY_NAME
+  vtkStreamingVTEncode
+DEPENDS
+  VTKStreaming::Core
+  VTKStreaming::Encode

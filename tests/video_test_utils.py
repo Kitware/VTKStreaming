@@ -207,6 +207,36 @@ def requires_nvenc():
     )
 
 
+# vtkVideoToolboxEncoder is only built (and only functional) on macOS. Probe in
+# a subprocess so a missing module or missing hardware encoder cleanly skips.
+_VIDEOTOOLBOX_PROBE = """
+from vtk_streaming.vtkStreamingVTEncode import vtkVideoToolboxEncoder
+raise SystemExit(0 if vtkVideoToolboxEncoder.CheckAvailability() else 1)
+"""
+
+
+@functools.lru_cache(maxsize=1)
+def videotoolbox_available():
+    """Whether VideoToolbox hardware encoding is available on this machine."""
+    try:
+        probe = subprocess.run(
+            [sys.executable, "-c", _VIDEOTOOLBOX_PROBE],
+            capture_output=True,
+            timeout=120,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return probe.returncode == 0
+
+
+def requires_videotoolbox():
+    return pytest.mark.skipif(
+        not videotoolbox_available(),
+        reason="VideoToolbox hardware encoding is not available (non-macOS "
+        "platform, or no usable hardware encoder)",
+    )
+
+
 def make_offscreen_window(width, height):
     """Create and initialize an offscreen render window.
 

@@ -3,7 +3,9 @@
 This module provides classes to encode and stream frames
 from a VTK OpenGL render window using video codecs. 
 It supports video encoding with VP9 (through [libvpx](https://chromium.googlesource.com/webm/libvpx/))
-and H.264/H.265 (through [NVENC](https://developer.nvidia.com/nvidia-video-codec-sdk/download)). 
+and H.264/H.265 through hardware encoders: [NVENC](https://developer.nvidia.com/nvidia-video-codec-sdk/download)
+on NVIDIA GPUs, and [VideoToolbox](https://developer.apple.com/documentation/videotoolbox)
+on macOS (Apple Silicon and Intel). 
 
 ## Installation
 
@@ -127,7 +129,7 @@ pip install wheelhouse/vtk_streaming-*.whl
 
 1. [examples/simple_encoder_decoder.py](./examples/simple_encoder_decoder.py) - Live VP9 encode/decode round-trip with two render windows side by side.
 2. [examples/resize_encoder_decoder.py](./examples/resize_encoder_decoder.py) - VP9 encode/decode round-trip that survives window resizes.
-3. [examples/simple_nvenc_record.py](./examples/simple_nvenc_record.py) - Record a render window for later playback using NVENC. This needs `ffplay` to playback the .h264 file.
+3. [examples/simple_hardware_encoder_record.py](./examples/simple_hardware_encoder_record.py) - Record a render window for later playback using whichever hardware H.264 encoder `vtkEncoderFactory` selects (Apple VideoToolbox on macOS, NVENC on NVIDIA GPUs). This needs `ffplay` to playback the .h264 file.
 
 ## Getting help
 

@@ -1,8 +1,12 @@
-"""Live VP9 encode/decode round-trip with two render windows side by side.
+"""Record a render window to an H.264 file using a hardware video encoder.
 
-This uses an NVENC encoder to record the render window to a .h264 file.
+The concrete backend is chosen by vtkEncoderFactory from a preference string rather than
+hard-coded, so the same example drives Apple's VideoToolbox on macOS and NVENC on NVIDIA
+GPUs (whichever hardware H.264 encoder is available on this machine).
 
-Tip: After running this, quit it and playback the recording with `ffplay recording.h264`
+Tip: After running this, quit it and play back the recording with:
+    ffplay recording.h264
+The encoder emits an H.264 Annex B stream.
 """
 
 from datetime import datetime
@@ -28,13 +32,19 @@ from vtk_streaming.vtkStreamingCore import (
     vtkCompressedVideoPacket,
     vtkRawVideoFrame,
 )
-from vtk_streaming.vtkStreamingEncode import vtkVideoEncoder
+from vtk_streaming.vtkStreamingEncode import vtkEncoderFactory, vtkVideoEncoder
 from vtk_streaming.vtkStreamingOpenGL2 import vtkOpenGLVideoFrame
-from vtk_streaming.vtkStreamingNvEncode import vtkNvEncoderGL
+
+# Ask the encoder factory for a hardware H.264 encoder. On macOS this resolves to the
+# VideoToolbox backend, on NVIDIA GPUs to NVENC; the factory keeps the backend choice out of
+# this script. (This interim helper stands in for VTK 9.7's vtkObjectFactory::SetPreferences
+# + New().)
+if not vtkEncoderFactory.CheckAvailability(VTKVC_H264):
+    raise SystemExit("No hardware H.264 encoder is available on this machine.")
 
 width, height = 640, 480  # codecs prefer sizes aligned to %4 or %8
 
-# Left window: the scene that gets encoded.
+# The scene that gets encoded.
 cylinder = vtkCylinderSource()
 mapper = vtkPolyDataMapper()
 mapper.SetInputConnection(cylinder.GetOutputPort())
@@ -65,7 +75,7 @@ frame_text.GetPositionCoordinate().SetValue(0.98, 0.98)
 renderer.AddViewProp(frame_text)
 
 scene_window = vtkRenderWindow()
-scene_window.SetWindowName("Input scene (VP9 encode)")
+scene_window.SetWindowName("Input scene (hardware H.264 encode)")
 scene_window.AddRenderer(renderer)
 scene_window.SetSize(width, height)
 scene_window.SetPosition(50, 50)
@@ -75,7 +85,11 @@ interactor.SetRenderWindow(scene_window)
 interactor.Initialize()
 scene_window.Render()
 
-encoder = vtkNvEncoderGL()
+vtkEncoderFactory.SetPreferences("Codec=H264;Hardware=true")
+encoder = vtkEncoderFactory.CreateEncoder()
+if encoder is None:
+    raise SystemExit("The encoder factory could not create a hardware H.264 encoder.")
+print(f"Selected encoder backend: {encoder.GetClassName()}")
 encoder.SetGraphicsContext(scene_window)
 encoder.SetCodec(VTKVC_H264)
 encoder.SetWidth(width)
@@ -111,8 +125,6 @@ def update_time_text(_window: vtkRenderWindow, _event: int):
 def encode_frame(window: vtkRenderWindow, _event: int):
     picture.Capture(window)
     encoder.Encode(picture)  # fires EncodedVideoChunkEvent per packet
-    # Decoding rendered into the other window; hand the context back.
-    window.MakeCurrent()
 
 
 # StartEvent fires at the start of every vtkRenderWindow::Render, so the
@@ -130,8 +142,8 @@ def spin(_interactor: vtkRenderWindowInteractor, _event: int):
 interactor.AddObserver(vtkCommand.TimerEvent, spin)
 interactor.CreateRepeatingTimer(33)
 
-print("Interact with the left window; the right window shows the decoded stream.")
-print("Press 'q' or 'e' in the left window to quit.")
+print("Interact with the window; frames are encoded to ./recording.h264.")
+print("Press 'q' or 'e' in the window to quit.")
 interactor.Start()
 
 encoder.Drain()

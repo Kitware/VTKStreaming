@@ -60,6 +60,10 @@ vtkStandardNewMacro(vtkVpxEncoder);
 vtkVpxEncoder::vtkVpxEncoder()
   : Internals(new vtkInternals())
 {
+  // Default to a codec this backend supports (VP9, matching Internals->Interface). This
+  // happens to equal the base class default, but set it explicitly so the default tracks
+  // the internals rather than the base.
+  this->Codec = VTKVideoCodecType::VTKVC_VP9;
 }
 
 //------------------------------------------------------------------------------
@@ -374,3 +378,34 @@ VTKVideoEncoderResultType vtkVpxEncoder::SendEOS()
 {
   return this->EncodeInternal(nullptr);
 }
+
+//------------------------------------------------------------------------------
+// TEMP (VTK 9.6): self-register this backend with vtkEncoderFactory so it can be
+// selected by preferences. Delete this block for VTK 9.7 and instead return these
+// attributes from vtkVpxEncoder::CreateOverrideAttributes().
+#include "vtkEncoderFactory.h"
+namespace
+{
+vtkVideoEncoder* CreateVpxEncoder()
+{
+  return vtkVpxEncoder::New();
+}
+
+struct vtkVpxEncoderRegistrar
+{
+  vtkVpxEncoderRegistrar()
+  {
+    vtkEncoderFactory::BackendDescriptor d;
+    d.SubclassName = "vtkVpxEncoder";
+    d.Create = &CreateVpxEncoder;
+    d.Available = nullptr; // software encoder: always available
+    d.Hardware = false;
+    d.Codecs = { VTKVideoCodecType::VTKVC_VP9 };
+    // Cross-platform software backend: no Platform attribute (wildcard).
+    d.Attributes = { { "Hardware", "false" } };
+    vtkEncoderFactory::RegisterBackend(d);
+  }
+};
+// Runs when the vtkStreamingVpxEncode library is loaded (e.g. on `import vtk_streaming`).
+const vtkVpxEncoderRegistrar sVpxEncoderRegistrar;
+} // anonymous namespace
