@@ -59,9 +59,11 @@ add_subdirectory("${VPX_ROOT}/vp9")
 
 # For windows debug configuations, linker hangs, force static libraries for this module everywhere.
 vtk_module_add_module(VTKStreaming::libvpx
-FORCE_STATIC
-SOURCES ${vpx_installable_headers}
+  FORCE_STATIC
+  SOURCES ${vpx_installable_headers}
 )
+# The real CMake target name is derived from the module name, not LIBRARY_NAME.
+_vtk_module_real_target(_vpx_module_target VTKStreaming::libvpx)
 
 list(APPEND _vpx_c_targets
   "vpx_codec"
@@ -81,34 +83,34 @@ list(APPEND _vpx_targets_with_asm_or_intrin
   "vp9_decoder"
 )
 
-foreach(_vpx_target IN LISTS _vpx_c_targets _vpx_targets_with_asm_or_intrin) 
+foreach(_vpx_target IN LISTS _vpx_c_targets _vpx_targets_with_asm_or_intrin)
   if (TARGET ${_vpx_target})
     target_include_directories(${_vpx_target} PUBLIC
         $<BUILD_INTERFACE:${VPX_ROOT}>
         $<BUILD_INTERFACE:${VPX_CONFIG_DIR}>
         $<BUILD_INTERFACE:${VPX_ROOT}/${_vpx_target}>
       )
-    target_sources(libvpx PRIVATE $<TARGET_OBJECTS:${_vpx_target}>)
+    target_sources(${_vpx_module_target} PRIVATE $<TARGET_OBJECTS:${_vpx_target}>)
   endif ()
 endforeach()
 
-foreach(_vpx_target IN LISTS _vpx_targets_with_asm_or_intrin) 
+foreach(_vpx_target IN LISTS _vpx_targets_with_asm_or_intrin)
   foreach(asm_type in "sse" "sse2" "ssse3" "sse4_1" "avx" "avx2" "avx512" "mmx" "neon")
     if (TARGET ${_vpx_target}_${asm_type}_intrinsics)
-      target_sources(libvpx PRIVATE $<TARGET_OBJECTS:${_vpx_target}_${asm_type}_intrinsics>)
-    endif ()  
+      target_sources(${_vpx_module_target} PRIVATE $<TARGET_OBJECTS:${_vpx_target}_${asm_type}_intrinsics>)
+    endif ()
     if (TARGET ${_vpx_target}_${asm_type}_asm)
-      target_sources(libvpx PRIVATE $<TARGET_OBJECTS:${_vpx_target}_${asm_type}_asm>)
+      target_sources(${_vpx_module_target} PRIVATE $<TARGET_OBJECTS:${_vpx_target}_${asm_type}_asm>)
     endif ()
   endforeach()
 endforeach()
 
 if (HAVE_PTHREAD_H AND CONFIG_MULTITHREAD)
   find_package(Threads)
-  target_link_libraries(libvpx PRIVATE Threads::Threads)
+  target_link_libraries(${_vpx_module_target} PRIVATE Threads::Threads)
 endif ()
 if (NOT MSVC)
-  target_link_libraries(libvpx PRIVATE m)
+  target_link_libraries(${_vpx_module_target} PRIVATE m)
 endif ()
 
 # let's export a few select symbols on all platforms.
@@ -116,10 +118,10 @@ if(BUILD_SHARED_LIBS)
   if(NOT WIN32 AND NOT APPLE)
     # The -z defs linker option reports unresolved symbol references from object
     # files when building a shared library.
-    target_link_options(libvpx PRIVATE LINKER:-z,defs)
+    target_link_options(${_vpx_module_target} PRIVATE LINKER:-z,defs)
   endif()
   include("${VPX_ROOT}/build/cmake/vpx_export_symbols.cmake")
-  setup_exports_target(libvpx "${LIBVPX_MANGLE_PREFIX}")
+  setup_exports_target(${_vpx_module_target} "${LIBVPX_MANGLE_PREFIX}")
 endif()
 
 vtk_module_install_headers(
