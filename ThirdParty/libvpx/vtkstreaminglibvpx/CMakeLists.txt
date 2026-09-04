@@ -88,27 +88,27 @@ foreach(_vpx_target IN LISTS _vpx_c_targets _vpx_targets_with_asm_or_intrin)
         $<BUILD_INTERFACE:${VPX_CONFIG_DIR}>
         $<BUILD_INTERFACE:${VPX_ROOT}/${_vpx_target}>
       )
-    target_sources(libvpx PRIVATE $<TARGET_OBJECTS:${_vpx_target}>)
+    target_sources(vtkstreaminglibvpx PRIVATE $<TARGET_OBJECTS:${_vpx_target}>)
   endif ()
 endforeach()
 
 foreach(_vpx_target IN LISTS _vpx_targets_with_asm_or_intrin) 
   foreach(asm_type in "sse" "sse2" "ssse3" "sse4_1" "avx" "avx2" "avx512" "mmx" "neon")
     if (TARGET ${_vpx_target}_${asm_type}_intrinsics)
-      target_sources(libvpx PRIVATE $<TARGET_OBJECTS:${_vpx_target}_${asm_type}_intrinsics>)
+      target_sources(vtkstreaminglibvpx PRIVATE $<TARGET_OBJECTS:${_vpx_target}_${asm_type}_intrinsics>)
     endif ()  
     if (TARGET ${_vpx_target}_${asm_type}_asm)
-      target_sources(libvpx PRIVATE $<TARGET_OBJECTS:${_vpx_target}_${asm_type}_asm>)
+      target_sources(vtkstreaminglibvpx PRIVATE $<TARGET_OBJECTS:${_vpx_target}_${asm_type}_asm>)
     endif ()
   endforeach()
 endforeach()
 
 if (HAVE_PTHREAD_H AND CONFIG_MULTITHREAD)
   find_package(Threads)
-  target_link_libraries(libvpx PRIVATE Threads::Threads)
+  target_link_libraries(vtkstreaminglibvpx PRIVATE Threads::Threads)
 endif ()
 if (NOT MSVC)
-  target_link_libraries(libvpx PRIVATE m)
+  target_link_libraries(vtkstreaminglibvpx PRIVATE m)
 endif ()
 
 # let's export a few select symbols on all platforms.
@@ -116,10 +116,10 @@ if(BUILD_SHARED_LIBS)
   if(NOT WIN32 AND NOT APPLE)
     # The -z defs linker option reports unresolved symbol references from object
     # files when building a shared library.
-    target_link_options(libvpx PRIVATE LINKER:-z,defs)
+    target_link_options(vtkstreaminglibvpx PRIVATE LINKER:-z,defs)
   endif()
   include("${VPX_ROOT}/build/cmake/vpx_export_symbols.cmake")
-  setup_exports_target(libvpx "${LIBVPX_MANGLE_PREFIX}")
+  setup_exports_target(vtkstreaminglibvpx "${LIBVPX_MANGLE_PREFIX}")
 endif()
 
 vtk_module_install_headers(
