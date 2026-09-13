@@ -289,10 +289,6 @@ VTKVideoEncoderResultType vtkNvEncoderGL::EncodeInternal(vtkSmartPointer<vtkRawV
   }
   std::vector<vtkSmartPointer<vtkCompressedVideoPacket>> packets;
   bool success = internals.Receive(packets);
-  for (const auto& pkt : packets)
-  {
-    pkt->SetIsKeyFrame(this->ForceIFrame);
-  }
   auto te2 = std::chrono::high_resolution_clock::now();
   internals.dtEncode = te2 - te1;
 
