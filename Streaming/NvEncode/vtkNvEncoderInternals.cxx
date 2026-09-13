@@ -693,15 +693,12 @@ NVENCSTATUS vtkNvEncoderInternals::Send(bool keyFrame /*=false*/)
   picParams.inputHeight = this->Height;
   picParams.outputBitstream = bitstreamBuffer;
   picParams.completionEvent = nullptr;
+  picParams.encodePicFlags = 0;
   if (keyFrame)
   {
-    picParams.encodePicFlags = (this->NvEncInitializeParams.enablePTD == 1)
-      ? NV_ENC_PIC_FLAG_FORCEIDR
-      : NV_ENC_PIC_FLAG_FORCEINTRA;
-  }
-  else
-  {
-    picParams.encodePicFlags = NV_ENC_PIC_FLAG_OUTPUT_SPSPPS;
+    picParams.encodePicFlags = NV_ENC_PIC_FLAG_OUTPUT_SPSPPS |
+      ((this->NvEncInitializeParams.enablePTD == 1) ? NV_ENC_PIC_FLAG_FORCEIDR
+                                                    : NV_ENC_PIC_FLAG_FORCEINTRA);
   }
   bool success = true;
   NVENCSTATUS errorCode;
