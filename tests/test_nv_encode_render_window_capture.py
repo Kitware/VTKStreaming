@@ -55,7 +55,7 @@ def _make_cylinder_scene():
 
 
 @pytest.mark.parametrize("pixel_format", [VTKPF_IYUV, VTKPF_NV12], ids=["iyuv", "nv12"])
-def test_nv_encode_decode_render_window_capture(pixel_format, tmp_path):
+def test_nv_encode_render_window_capture(pixel_format, tmp_path):
     scene_window = video_test_utils.make_offscreen_window(WIDTH, HEIGHT)
     renderer = _make_cylinder_scene()
     scene_window.AddRenderer(renderer)
