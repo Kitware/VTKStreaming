@@ -312,25 +312,53 @@ std::string BuildCodecString(CMVideoCodecType codec, const unsigned char* data, 
     else // HEVC
     {
       const int nalType = (data[nal] >> 1) & 0x3F;
-      if (nalType == 33 && nal + 14 < size) // Sequence parameter set.
+      if (nalType == 33) // Sequence parameter set.
       {
-        // Skip the 2-byte NAL header and the byte holding
+        // The payload starts after the 2-byte NAL header; the first RBSP byte holds
         // sps_video_parameter_set_id/sps_max_sub_layers_minus1/
-        // sps_temporal_id_nesting_flag to reach profile_tier_level().
-        const unsigned char* ptl = &data[nal + 3];
+        // sps_temporal_id_nesting_flag, so profile_tier_level() begins at
+        // rbsp[1] and spans 12 bytes.
+        unsigned char rbsp[13];
+        std::size_t nRbsp = 0;
+        int zeros = 0;
+        for (std::size_t j = nal + 2; j < size && nRbsp < sizeof(rbsp); ++j)
+        {
+          const unsigned char byte = data[j];
+          if (zeros >= 2 && byte == 0x03)
+          {
+            zeros = 0;
+            continue;
+          }
+          zeros = (byte == 0) ? zeros + 1 : 0;
+          rbsp[nRbsp++] = byte;
+        }
+        if (nRbsp < sizeof(rbsp))
+        {
+          return {};
+        }
+        const unsigned char* ptl = &rbsp[1];
         const int profileSpace = (ptl[0] >> 6) & 0x03;
         const int tierFlag = (ptl[0] >> 5) & 0x01;
         const int profileIdc = ptl[0] & 0x1F;
-        const std::uint32_t compat = (std::uint32_t(ptl[1]) << 24) | (std::uint32_t(ptl[2]) << 16) |
+        std::uint32_t compat = (std::uint32_t(ptl[1]) << 24) | (std::uint32_t(ptl[2]) << 16) |
           (std::uint32_t(ptl[3]) << 8) | std::uint32_t(ptl[4]);
+        // RFC 6381 prints general_profile_compatibility_flags in reverse bit
+        // order, with leading zeroes trimmed (Main becomes "6", not "60000000").
+        std::uint32_t reversedCompat = 0;
+        for (int bit = 0; bit < 32; ++bit)
+        {
+          reversedCompat = (reversedCompat << 1) | ((compat >> bit) & 0x01u);
+        }
         const int levelIdc = ptl[11];
         std::ostringstream oss;
-        oss << "hvc1.";
+        // "hev1" (not "hvc1") is the Annex-B form, where the parameter sets
+        // travel in band rather than in a decoder configuration record.
+        oss << "hev1.";
         if (profileSpace > 0)
         {
           oss << static_cast<char>('A' + profileSpace - 1);
         }
-        oss << profileIdc << '.' << std::uppercase << std::hex << compat << std::dec << '.'
+        oss << profileIdc << '.' << std::uppercase << std::hex << reversedCompat << std::dec << '.'
             << (tierFlag ? 'H' : 'L') << levelIdc;
         // Six constraint-indicator-flag bytes, trailing zero bytes trimmed.
         int last = 5;
