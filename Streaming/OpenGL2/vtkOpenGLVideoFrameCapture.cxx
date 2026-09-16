@@ -4,7 +4,7 @@
 #include "vtkOpenGLVideoFrameCapture.h"
 #include "vtkIYUVCaptureFS.h"
 #include "vtkNV12CaptureFS.h"
-#include "vtkObject.h"
+#include "vtkOpenGLFramebufferObject.h"
 #include "vtkOpenGLError.h"
 #include "vtkOpenGLRenderUtilities.h"
 #include "vtkOpenGLRenderWindow.h"
@@ -33,6 +33,8 @@ const char* VertexShader =
 void vtkOpenGLVideoFrameCapture::ReleaseGraphicsResources(vtkOpenGLRenderWindow* window)
 {
   this->DrawHelper.ReleaseGraphicsResources(window);
+  this->ChromaDrawHelper.ReleaseGraphicsResources(window);
+  this->PlaneFrameBuffer->ReleaseGraphicsResources(window);
 }
 
 void vtkOpenGLVideoFrameCapture::Capture(vtkTextureObject* rgba32Texture,

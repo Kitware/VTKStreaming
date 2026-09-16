@@ -1,0 +1,73 @@
+// SPDX-FileCopyrightText: Copyright (c) Kitware, Inc.
+// SPDX-License-Identifier: Apache-2.0
+//
+// RGBA8 -> BT.709 NV12 conversion for vtkVulkanEncoderInternals.
+//
+// One invocation handles one 2x2 block of source pixels: it writes four luma texels and the
+// one interleaved Cb/Cr texel that covers them. The colour math is identical to the OpenGL
+// vtkNV12PlaneLumaCaptureFS/vtkNV12PlaneChromaCaptureFS shaders it replaces (luma is
+// full-range, chroma is scaled to limited range), so the encoded output is unchanged.
+//
+// The dispatch covers the whole macroblock-aligned picture; reads outside the
+// `width x height` region the window actually rendered are clamped to the edge so the
+// cropped padding encodes cheaply instead of holding garbage. `flipY` turns OpenGL's
+// bottom-up framebuffer into a top-down picture.
+//
+// Recompile with `shaders/compile.sh` (glslang) after editing; the SPIR-V is checked in as
+// vtkVulkanRGBAToNV12CS.h.
+#version 450
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+layout(binding = 0, rgba8) uniform readonly image2D rgbaImage;
+layout(binding = 1, r8) uniform writeonly image2D lumaImage;
+layout(binding = 2, rg8) uniform writeonly image2D chromaImage;
+
+layout(push_constant) uniform Params
+{
+  uint width;
+  uint height;
+  uint flipY;
+}
+params;
+
+vec3 fetchRGB(ivec2 p)
+{
+  p = clamp(p, ivec2(0), ivec2(int(params.width) - 1, int(params.height) - 1));
+  if (params.flipY != 0u)
+  {
+    p.y = int(params.height) - 1 - p.y;
+  }
+  return imageLoad(rgbaImage, p).rgb * 255.0;
+}
+
+void main()
+{
+  const ivec2 block = ivec2(gl_GlobalInvocationID.xy);
+  const ivec2 chromaSize = imageSize(chromaImage);
+  if (block.x >= chromaSize.x || block.y >= chromaSize.y)
+  {
+    return;
+  }
+  const ivec2 base = block * 2;
+
+  vec3 sum = vec3(0.0);
+  for (int dy = 0; dy < 2; ++dy)
+  {
+    for (int dx = 0; dx < 2; ++dx)
+    {
+      const ivec2 p = base + ivec2(dx, dy);
+      const vec3 rgb = fetchRGB(p);
+      const float luma = dot(rgb, vec3(0.2126, 0.7152, 0.0722)) / 255.0;
+      imageStore(lumaImage, p, vec4(luma, 0.0, 0.0, 0.0));
+      sum += rgb;
+    }
+  }
+  sum *= 0.25;
+
+  const vec3 cbMultiplier = vec3(-0.2126, -0.7152, 0.9278) * 224.0 / (219.0 * 1.8556);
+  const vec3 crMultiplier = vec3(0.7874, -0.7152, -0.0722) * 224.0 / (219.0 * 1.5748);
+  const float cb = (dot(sum, cbMultiplier) + 128.0) / 255.0;
+  const float cr = (dot(sum, crMultiplier) + 128.0) / 255.0;
+  imageStore(chromaImage, block, vec4(cb, cr, 0.0, 0.0));
+}

@@ -41,6 +41,7 @@ public:
   vtkIdType GetLastEncodeTimeNS() const noexcept override;
   vtkIdType GetLastScaleTimeNS() const noexcept override;
   bool SupportsCodec(VTKVideoCodecType codec) const noexcept override;
+  bool SupportsDirectCaptureFromVTKRenderWindow() const noexcept override { return false; }
 
   /**
    * Returns true when a hardware-accelerated VideoToolbox encoder for H.264 is

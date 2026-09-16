@@ -237,6 +237,36 @@ def requires_videotoolbox():
     )
 
 
+# vtkVulkanEncoder is only built on Linux. CheckAvailability() only loads the
+# Vulkan loader and enumerates devices; no rendering context is needed.
+_VULKAN_ENCODE_PROBE = """
+from vtk_streaming.vtkStreamingVulkanEncode import vtkVulkanEncoder
+raise SystemExit(0 if vtkVulkanEncoder.CheckAvailability() else 1)
+"""
+
+
+@functools.lru_cache(maxsize=1)
+def vulkan_encode_available():
+    """Whether Vulkan Video H.264 encoding is available on this machine."""
+    try:
+        probe = subprocess.run(
+            [sys.executable, "-c", _VULKAN_ENCODE_PROBE],
+            capture_output=True,
+            timeout=120,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return probe.returncode == 0
+
+
+def requires_vulkan_encode():
+    return pytest.mark.skipif(
+        not vulkan_encode_available(),
+        reason="Vulkan Video encoding is not available (no loader, or no GPU/driver "
+        "exposing VK_KHR_video_encode_h264)",
+    )
+
+
 def make_offscreen_window(width, height):
     """Create and initialize an offscreen render window.
 

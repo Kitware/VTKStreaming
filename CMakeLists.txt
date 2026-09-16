@@ -35,6 +35,11 @@ if(APPLE)
   list(APPEND modules VTKStreaming::VTEncode)
 endif()
 
+# Vulkan Video encode backend; loads libvulkan.so.1 at runtime, no build-time dependency.
+if(UNIX AND NOT APPLE)
+  list(APPEND modules VTKStreaming::VulkanEncode)
+endif()
+
 if(VTKSTREAMING_USE_VTKSDK)
   # --- Path 1: VTK-SDK wheel build (scikit-build-core) ---
   include(VTKSDKPythonWheelHelper)

@@ -1,0 +1,11 @@
+NAME
+  VTKStreaming::VulkanEncode
+LIBRARY_NAME
+  vtkStreamingVulkanEncode
+DEPENDS
+  VTKStreaming::Core
+  VTKStreaming::Encode
+PRIVATE_DEPENDS
+  VTKStreaming::OpenGL2
+  VTK::glad
+  VTK::RenderingOpenGL2

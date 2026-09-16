@@ -8,9 +8,11 @@
  * @sa vtkOpenGLVideoFrame
  */
 
+#include "vtkNew.h"
 #include "vtkOpenGLHelper.h"
 #include "vtkPixelFormatTypes.h"
 
+class vtkOpenGLFramebufferObject;
 class vtkOpenGLRenderWindow;
 class vtkTextureObject;
 
@@ -24,5 +26,7 @@ public:
 
 private:
   vtkOpenGLHelper DrawHelper;
+  vtkOpenGLHelper ChromaDrawHelper;
+  vtkNew<vtkOpenGLFramebufferObject> PlaneFrameBuffer;
 };
 // VTK-HeaderTest-Exclude: vtkOpenGLVideoFrameCapture.h

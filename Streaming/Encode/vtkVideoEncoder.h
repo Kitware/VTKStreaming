@@ -82,6 +82,11 @@ public:
   virtual vtkIdType GetLastEncodeTimeNS() const noexcept = 0;
   virtual vtkIdType GetLastScaleTimeNS() const noexcept = 0;
   virtual bool SupportsCodec(VTKVideoCodecType codec) const noexcept = 0;
+  // true: this encoder does not respect data from a `vtkVideoFrame`, instead
+  // it reads pixels off the render window directly. `frame` is only used for width
+  // and height.
+  // false: this encoder needs a vtkVideoFrame with valid pixels.
+  virtual bool SupportsDirectCaptureFromVTKRenderWindow() const noexcept = 0;
   ///@}
 
   ///@{

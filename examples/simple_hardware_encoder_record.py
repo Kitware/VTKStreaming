@@ -10,6 +10,7 @@ The encoder emits an H.264 Annex B stream.
 """
 
 from datetime import datetime
+import sys
 
 import vtkmodules.vtkRenderingOpenGL2  # noqa: F401 (register the OpenGL factory)
 import vtkmodules.vtkInteractionStyle  # noqa: F401 (register interactor styles)
@@ -27,13 +28,35 @@ from vtkmodules.vtkRenderingCore import (
 )
 
 from vtk_streaming.vtkStreamingCore import (
-    VTKPF_IYUV,
+    VTKPF_NV12,
     VTKVC_H264,
     vtkCompressedVideoPacket,
     vtkRawVideoFrame,
 )
 from vtk_streaming.vtkStreamingEncode import vtkEncoderFactory, vtkVideoEncoder
 from vtk_streaming.vtkStreamingOpenGL2 import vtkOpenGLVideoFrame
+
+encoder_classes = {
+}
+try:
+    from vtk_streaming.vtkStreamingVulkanEncode import vtkVulkanEncoder
+    encoder_classes.update({"vtkVulkanEncoder": vtkVulkanEncoder})
+except ImportError:
+    pass
+try:
+    from vtk_streaming.vtkStreamingNvEncode import vtkNvEncoderGL
+    encoder_classes.update({"vtkNvEncoderGL": vtkNvEncoderGL})
+except ImportError:
+    pass
+try:
+    from vtk_streaming.vtkStreamingVTEncode import vtkVideoToolboxEncoder
+    encoder_classes.update({"vtkVideoToolboxEncoder": vtkVideoToolboxEncoder})
+except ImportError:
+    pass
+
+encoder_class = None
+if len(sys.argv) > 1:
+    encoder_class = encoder_classes.get(sys.argv[1], None)
 
 # Ask the encoder factory for a hardware H.264 encoder. On macOS this resolves to the
 # VideoToolbox backend, on NVIDIA GPUs to NVENC; the factory keeps the backend choice out of
@@ -85,8 +108,11 @@ interactor.SetRenderWindow(scene_window)
 interactor.Initialize()
 scene_window.Render()
 
-vtkEncoderFactory.SetPreferences("Codec=H264;Hardware=true")
-encoder = vtkEncoderFactory.CreateEncoder()
+if encoder_class is not None:
+    encoder = encoder_class()
+else:
+    vtkEncoderFactory.SetPreferences("Codec=H264;Hardware=true")
+    encoder = vtkEncoderFactory.CreateEncoder()
 if encoder is None:
     raise SystemExit("The encoder factory could not create a hardware H.264 encoder.")
 print(f"Selected encoder backend: {encoder.GetClassName()}")
@@ -94,7 +120,7 @@ encoder.SetGraphicsContext(scene_window)
 encoder.SetCodec(VTKVC_H264)
 encoder.SetWidth(width)
 encoder.SetHeight(height)
-encoder.SetInputPixelFormat(VTKPF_IYUV)
+encoder.SetInputPixelFormat(VTKPF_NV12)
 
 
 @calldata_type(VTK_OBJECT)
@@ -113,7 +139,7 @@ picture = vtkOpenGLVideoFrame()
 picture.SetContext(scene_window)
 picture.SetWidth(width)
 picture.SetHeight(height)
-picture.SetPixelFormat(VTKPF_IYUV)
+picture.SetPixelFormat(VTKPF_NV12)
 picture.SetSliceOrderType(vtkRawVideoFrame.TopDown)
 picture.AllocateDataStore()
 
